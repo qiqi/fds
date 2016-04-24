@@ -1,26 +1,24 @@
 import os
-import struct
+import argparse
 from subprocess import *
 
-import f90nml
-from pylab import *
 from numpy import *
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-# ====================== time horizon parameters ============================= #
-## time horizon start
-m0 = 16500
-## time segment size
-dm = 200
-## number of time segments
-K = 60
-## total time
-dt = 0.001
-dT = dm * dt
-# number of homogeneous adjoints
-p = 2
-# ====================== time horizon parameters ============================= #
+# -------------------------------- parameters -------------------------------- #
+
+parser = argparse.ArgumentParser(description='Finite Difference Shadowing')
+parser.add_argument('--runup_steps', type=int, default=5000)
+parser.add_argument('--steps_per_segment', type=int, default=500)
+parser.add_argument('--num_segments', type=int, default=10)
+parser.add_argument('--time_per_step', type=float, default=0.001)
+parser.add_argument('--subspace_dimension', type=int, default=2)
+parser.add_argument('--parameter', type=float, default=0.0)
+parser.add_argument('--epsilon', type=float, default=1E-6)
+args = parser.parse_args()
+
+# ---------------------------------------------------------------------------- #
 
 def solver(u, s, nsteps):
     os.chdir('solver')
@@ -36,97 +34,108 @@ def solver(u, s, nsteps):
     os.chdir('..')
     return out, J
 
-n = int(open('solver/n').read())
+def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
+    random.seed(12)
+    W = random.rand(degrees_of_freedom, subspace_dimension)
+    W, _ = linalg.qr(W)
+    w = zeros(degrees_of_freedom)
+    return W, w
 
-# compute check points
-t_chkpts = m0 + dm * arange(K+1)
-J_hist = zeros([K,dm])
+class TimeDilation:
+    def __init__(self, u0):
+        dof = u0.size
+        u0p, _ = solver(u0, args.parameter, 1)
+        self.dxdt = (u0p - u0) / args.time_per_step
+        dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
+        self.P = eye(dof) - outer(dxdt_normalized, dxdt_normalized)
 
-s0, eps = 0, 1E-7
-w0, J0 = solver(ones(n), s0, m0)
+    def contribution(self, v):
+        return dot(self.dxdt, v) / (self.dxdt**2).sum()
 
-# Set Tangent Terminal Conditions
-random.seed(12)
-W = random.rand(n,p)
-[QT,RT] = linalg.qr(W)
-W = QT
+    def project(self, v):
+        return dot(self.P, v)
 
-# Loop over all time segments, solve p homogeneous and 1 inhomogeneous
-# adjoint on each
+class LssTangent:
+    def __init__(self):
+        self.Rs = []
+        self.bs = []
 
-Rs = zeros([K,p,p])
-bs = zeros([K,p])
-gs = zeros([K,p])
-h = zeros(K)
-gs2 = zeros([K,p])
-h2 = zeros(K)
+    def checkpoint(self, V, v):
+        Q, R = linalg.qr(V)
+        b = dot(Q.T, v)
+        self.Rs.append(R)
+        self.bs.append(b)
+        V[:] = Q
+        v -= dot(Q, b)
 
-wh = zeros(n)
+    def solve(self):
+        Rs, bs = array(self.Rs), array(self.bs)
+        assert Rs.ndim == 3 and bs.ndim == 2
+        assert Rs.shape[0] == bs.shape[0]
+        assert Rs.shape[1] == Rs.shape[2] == bs.shape[1]
+        nseg, subdim = bs.shape
+        eyes = eye(subdim, subdim) * ones([nseg, 1, 1])
+        matrix_shape = (subdim * nseg, subdim * (nseg+1))
+        I = sparse.bsr_matrix((eyes, r_[1:nseg+1], r_[:nseg+1]))
+        D = sparse.bsr_matrix((Rs, r_[:nseg], r_[:nseg+1]), shape=matrix_shape)
+        B = (D - I).tocsr()
+        alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(bs)))
+        return alpha.reshape([nseg+1,-1])[:-1]
 
-w1, _ = solver(w0, s0, 1)
-dxdt = (w1 - w0) / dt
+# -------------------------------- main loop --------------------------------- #
 
-for i in range(K):
-    t_strt = t_chkpts[i]
-    t_end = t_chkpts[i+1]
-    # print "segment {0}: [{1},{2}]".format(str(i), t_strt, t_end)
-    # print(w0)
+u0 = loadtxt('solver/u0')
+degrees_of_freedom = u0.size
 
-    dxdt_normalized = dxdt / linalg.norm(dxdt)
-    P = eye(n) - outer(dxdt_normalized, dxdt_normalized)
-    W = dot(P, W)
-    wh = dot(P, wh)
+J_hist = zeros([args.num_segments, args.steps_per_segment])
+G_lss = []
+g_lss = []
+G_dil = []
+g_dil = []
+
+u0, J0 = solver(u0, args.parameter, args.runup_steps)
+time_dil = TimeDilation(u0)
+
+V, v = tangent_initial_condition(degrees_of_freedom, args.subspace_dimension)
+lss = LssTangent()
+for i in range(args.num_segments):
+    V = time_dil.project(V)
+    v = time_dil.project(v)
+
+    u0p, J0 = solver(u0, args.parameter, args.steps_per_segment)
+    J_hist[i] = J0
 
     # solve homogeneous tangents
-    w0p, J0 = solver(w0, s0, t_end - t_strt)
-    J_hist[i] = J0
-    for j in range(p):
-        w1p, J1 = solver(w0 + W[:,j] * eps, s0, t_end - t_strt)
-        W[:,j], gs[i,j] = (w1p - w0p) / eps, (J1.mean() - J0.mean()) / eps
+    G = empty(args.subspace_dimension)
+    for j in range(args.subspace_dimension):
+        u1 = u0 + V[:,j] * args.epsilon
+        u1p, J1 = solver(u1, args.parameter, args.steps_per_segment)
+        V[:,j] = (u1p - u0p) / args.epsilon
+        G[j] = (J1.mean() - J0.mean()) / args.epsilon
 
     # solve inhomogeneous tangent
-    w1p, J1 = solver(w0 + wh * eps, s0 + eps, t_end - t_strt)
-    wh, h[i] = (w1p - w0p) / eps, (J1.mean() - J0.mean()) / eps
+    u1 = u0 + v * args.epsilon
+    u1p, J1 = solver(u1, args.parameter + args.epsilon, args.steps_per_segment)
+    v, g = (u1p - u0p) / args.epsilon, (J1.mean() - J0.mean()) / args.epsilon
 
-    w0 = w0p
+    G_lss.append(G)
+    g_lss.append(g)
 
-    # w1, _ = solver(w0, s0, 1)
-    # dxdt = (w1 - w0) / dt
-    # dxdt_normalized = dxdt / linalg.norm(dxdt)
-    # P = eye(n) - outer(dxdt_normalized, dxdt_normalized)
-    # W = dot(P, W)
-    # wh = dot(P, wh)
+    # time dilation contribution
+    time_dil = TimeDilation(u0p)
+    G_dil.append(time_dil.contribution(V))
+    g_dil.append(time_dil.contribution(v))
 
-    w1, _ = solver(w0, s0, 1)
-    dxdt = (w1 - w0) / dt
-    gs2[i,:] = dot(dxdt, W) / (dxdt*dxdt).sum()
-    h2[i] = dot(dxdt, wh) / (dxdt*dxdt).sum()
+    lss.checkpoint(V, v)
 
-    # QR decomposition
-    [Q,R] = linalg.qr(W)
-    Rs[i,:,:] = R
-    bs[i,:] = dot(Q.T, wh)
+    # replace initial condition
+    u0 = u0p
 
-    # Set terminal conditions for next segment
-    W = Q
-    wh = wh - dot(Q, bs[i,:])
-
-    # print R, bs[i,:], wh
-
-J_mean = J_hist.mean()
-
-# form KKT system and solve
-d = ones(K)
-eyes = eye(p,p) / d[:,newaxis,newaxis]
-B = -sparse.bsr_matrix((eyes, r_[1:K+1], r_[:K+1]))\
-          + sparse.bsr_matrix((Rs, r_[:K],r_[:K+1]),\
-          shape=(K*p, (K+1)*p))
-B = B.tocsr()
-A = B * B.T
-rhs = ravel(bs)
-
-alpha = -(B.T * splinalg.spsolve(A, rhs)).reshape([K+1,-1])[:-1]
-grad0 = (alpha * gs).sum(1) + h
+alpha = lss.solve()
+grad0 = (alpha * G_lss).sum(1) + g_lss
 dJ = J_hist.mean() - J_hist[:,-1]
-grad1 = ((alpha * gs2).sum(1) + h2) / dT * dJ
-print(grad0.mean(), grad1.mean(), grad0.mean() + grad1.mean())
+time_per_segment = args.steps_per_segment * args.time_per_step
+grad1 = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
+
+print(J_hist.mean())
+print(grad0.mean() + grad1.mean())

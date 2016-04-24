@@ -21,4 +21,10 @@ SUBROUTINE Step(x, s)
     x(:) = x(:) + dt * dx(:)
 END SUBROUTINE
 
+REAL(8) FUNCTION Objective(x, s)
+    REAL(8), INTENT(in) :: x(3)
+    REAL(8), INTENT(in) :: s(1)
+
+    Objective = x(3)
+END FUNCTION
 END MODULE

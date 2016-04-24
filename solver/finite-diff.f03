@@ -11,17 +11,17 @@ PROGRAM Verification
     REAL(8) :: J
 
     s = S0
-    DO WHILE (s(1) < S0(1) + 1)
+    DO WHILE (s(1) < S0(1) + 6)
         x(:) = 1.0
         DO iStep = 1, 1000
             CALL Step(x, s)
         END DO
         DO iStep = 1, nSteps
-            J = J + DT * x(NDIM)
+            J = J + DT * Objective(x, s)
             CALL Step(x, s)
         END DO
         J = J / (DT * nSteps)
         PRINT *, s(1), J
-        s(1) = s(1) + 0.01
+        s(1) = s(1) + 0.1
     END DO
 END PROGRAM

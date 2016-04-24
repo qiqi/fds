@@ -31,7 +31,7 @@ PROGRAM Flow
 
     DO iStep = 1, nSteps
         CALL Step(x, s)
-        J(iStep) = x(NDIM)
+        J(iStep) = Objective(x, s)
     END DO
 
     Open(1, file="output.bin", form="unformatted", access="stream", &
