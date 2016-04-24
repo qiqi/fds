@@ -10,8 +10,8 @@ import scipy.sparse.linalg as splinalg
 
 parser = argparse.ArgumentParser(description='Finite Difference Shadowing')
 parser.add_argument('--runup_steps', type=int, default=5000)
-parser.add_argument('--steps_per_segment', type=int, default=500)
-parser.add_argument('--num_segments', type=int, default=10)
+parser.add_argument('--steps_per_segment', type=int, default=1000)
+parser.add_argument('--num_segments', type=int, default=5)
 parser.add_argument('--time_per_step', type=float, default=0.001)
 parser.add_argument('--subspace_dimension', type=int, default=2)
 parser.add_argument('--parameter', type=float, default=0.0)
