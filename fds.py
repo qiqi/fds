@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 # ---------------------------------------------------------------------------- #
 
-def solver(u, s, nsteps):
+def solve(u, s, nsteps):
     os.chdir('solver')
     with open('input.bin', 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
@@ -44,7 +44,7 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
 class TimeDilation:
     def __init__(self, u0):
         dof = u0.size
-        u0p, _ = solver(u0, args.parameter, 1)
+        u0p, _ = solve(u0, args.parameter, 1)
         self.dxdt = (u0p - u0) / args.time_per_step
         dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
         self.P = eye(dof) - outer(dxdt_normalized, dxdt_normalized)
@@ -93,7 +93,7 @@ g_lss = []
 G_dil = []
 g_dil = []
 
-u0, J0 = solver(u0, args.parameter, args.runup_steps)
+u0, J0 = solve(u0, args.parameter, args.runup_steps)
 time_dil = TimeDilation(u0)
 
 V, v = tangent_initial_condition(degrees_of_freedom, args.subspace_dimension)
@@ -102,20 +102,20 @@ for i in range(args.num_segments):
     V = time_dil.project(V)
     v = time_dil.project(v)
 
-    u0p, J0 = solver(u0, args.parameter, args.steps_per_segment)
+    u0p, J0 = solve(u0, args.parameter, args.steps_per_segment)
     J_hist[i] = J0
 
     # solve homogeneous tangents
     G = empty(args.subspace_dimension)
     for j in range(args.subspace_dimension):
         u1 = u0 + V[:,j] * args.epsilon
-        u1p, J1 = solver(u1, args.parameter, args.steps_per_segment)
+        u1p, J1 = solve(u1, args.parameter, args.steps_per_segment)
         V[:,j] = (u1p - u0p) / args.epsilon
         G[j] = (J1.mean() - J0.mean()) / args.epsilon
 
     # solve inhomogeneous tangent
     u1 = u0 + v * args.epsilon
-    u1p, J1 = solver(u1, args.parameter + args.epsilon, args.steps_per_segment)
+    u1p, J1 = solve(u1, args.parameter + args.epsilon, args.steps_per_segment)
     v, g = (u1p - u0p) / args.epsilon, (J1.mean() - J0.mean()) / args.epsilon
 
     G_lss.append(G)
@@ -132,10 +132,10 @@ for i in range(args.num_segments):
     u0 = u0p
 
 alpha = lss.solve()
-grad0 = (alpha * G_lss).sum(1) + g_lss
+grad_lss = (alpha * G_lss).sum(1) + g_lss
 dJ = J_hist.mean() - J_hist[:,-1]
 time_per_segment = args.steps_per_segment * args.time_per_step
-grad1 = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
+grad_dil = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
 
 print(J_hist.mean())
-print(grad0.mean() + grad1.mean())
+print(grad_lss.mean() + grad_dil.mean())
