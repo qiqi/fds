@@ -1,13 +1,19 @@
 import os
+import sys
+my_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(my_path, '..'))
+
 from subprocess import *
 from pylab import *
 from numpy import *
 from fds import finite_difference_shadowing
 
-u0 = loadtxt('solver/u0')
+lorenz_path = os.path.join(my_path, '..', 'solvers', 'lorenz')
+u0 = loadtxt(os.path.join(lorenz_path, 'u0'))
 
 def solve(u, s, nsteps):
-    os.chdir('solver')
+    cwd = os.getcwd()
+    os.chdir(lorenz_path)
     with open('input.bin', 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open('param.bin', 'wb') as f:
@@ -17,17 +23,20 @@ def solve(u, s, nsteps):
         out = frombuffer(f.read(), dtype='>d')
     with open('objective.bin', 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
-    os.chdir('..')
+    os.chdir(cwd)
     return out, J
 
 iplot = 0
 def save_plot():
+    plot_path = os.path.join(my_path, 'lorenz_plots')
+    if not os.path.exists(plot_path):
+        os.mkdir(plot_path)
     global iplot
     iplot += 1
     axis([27,35,65,110])
     xlabel('Design parameter')
     ylabel('Objective function')
-    savefig(str(iplot))
+    savefig(os.path.join(plot_path, str(iplot)))
 
 s = linspace(28, 34, 21)
 
@@ -79,4 +88,4 @@ xlabel('Design parameter')
 ylabel('Derivative of objective function')
 legend(['Conventional finite difference 10000 time units',
         'Shadowing finite difference 15 time units'])
-savefig('0')
+savefig(os.path.join(my_path, 'lorenz_plots', '0'))

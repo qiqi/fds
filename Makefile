@@ -1,5 +1,7 @@
-lorenz:
-	cd solver; make lorenz
+default:	solvers/lorenz/solver solvers/circular/solver
 
-circular:
-	cd solver; make circular
+solvers/lorenz/solver:
+	cd solvers/lorenz; make
+
+solvers/circular/solver:
+	cd solvers/circular; make
