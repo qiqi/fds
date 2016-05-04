@@ -1,6 +1,7 @@
 import os
 import argparse
 from subprocess import *
+from multiprocessing.pool import ThreadPool
 
 from numpy import *
 from scipy import sparse
@@ -80,20 +81,29 @@ def finite_difference_shadowing(
         V = time_dil.project(V)
         v = time_dil.project(v)
 
-        u0p, J0 = solve(u0, parameter, steps_per_segment)
-        J_hist[i] = J0
-
+        threads = ThreadPool()
+        res_0 = threads.apply_async(solve, (u0, parameter, steps_per_segment))
         # solve homogeneous tangents
-        G = empty(subspace_dimension)
+        res_h = []
         for j in range(subspace_dimension):
             u1 = u0 + V[:,j] * epsilon
-            u1p, J1 = solve(u1, parameter, steps_per_segment)
-            V[:,j] = (u1p - u0p) / epsilon
-            G[j] = (J1.mean() - J0.mean()) / epsilon
-
+            res_h.append(threads.apply_async(
+                solve, (u1, parameter, steps_per_segment)))
         # solve inhomogeneous tangent
         u1 = u0 + v * epsilon
-        u1p, J1 = solve(u1, parameter + epsilon, steps_per_segment)
+        res_i = threads.apply_async(
+                solve, (u1, parameter + epsilon, steps_per_segment))
+
+        u0p, J0 = res_0.get()
+        J_hist[i] = J0
+        # get homogeneous tangents
+        G = empty(subspace_dimension)
+        for j in range(subspace_dimension):
+            u1p, J1 = res_h[j].get()
+            V[:,j] = (u1p - u0p) / epsilon
+            G[j] = (J1.mean() - J0.mean()) / epsilon
+        # get inhomogeneous tangent
+        u1p, J1 = res_i.get()
         v, g = (u1p - u0p) / epsilon, (J1.mean() - J0.mean()) / epsilon
 
         G_lss.append(G)

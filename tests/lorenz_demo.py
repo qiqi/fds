@@ -1,29 +1,33 @@
 import os
 import sys
+import shutil
+import tempfile
+from subprocess import *
+
+from pylab import *
+from numpy import *
+
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
-from subprocess import *
-from pylab import *
-from numpy import *
 from fds import finite_difference_shadowing
 
-lorenz_path = os.path.join(my_path, '..', 'solvers', 'lorenz')
-u0 = loadtxt(os.path.join(lorenz_path, 'u0'))
+solver_path = os.path.join(my_path, '..', 'solvers', 'lorenz')
+solver = os.path.join(solver_path, 'solver')
+u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
 def solve(u, s, nsteps):
-    cwd = os.getcwd()
-    os.chdir(lorenz_path)
-    with open('input.bin', 'wb') as f:
+    tmp_path = tempfile.mkdtemp()
+    with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
-    with open('param.bin', 'wb') as f:
+    with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
         f.write(asarray(s, dtype='>d').tobytes())
-    call(["./solver", str(int(nsteps))])
-    with open('output.bin', 'rb') as f:
+    call([solver, str(int(nsteps))], cwd=tmp_path)
+    with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
-    with open('objective.bin', 'rb') as f:
+    with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
-    os.chdir(cwd)
+    shutil.rmtree(tmp_path)
     return out, J
 
 iplot = 0
