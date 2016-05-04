@@ -20,20 +20,6 @@ args = parser.parse_args()
 
 # ---------------------------------------------------------------------------- #
 
-def solve(u, s, nsteps):
-    os.chdir('solver')
-    with open('input.bin', 'wb') as f:
-        f.write(asarray(u, dtype='>d').tobytes())
-    with open('param.bin', 'wb') as f:
-        f.write(asarray(s, dtype='>d').tobytes())
-    call(["./solver", str(int(nsteps))])
-    with open('output.bin', 'rb') as f:
-        out = frombuffer(f.read(), dtype='>d')
-    with open('objective.bin', 'rb') as f:
-        J = frombuffer(f.read(), dtype='>d')
-    os.chdir('..')
-    return out, J
-
 def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     random.seed(12)
     W = random.rand(degrees_of_freedom, subspace_dimension)
@@ -42,10 +28,10 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     return W, w
 
 class TimeDilation:
-    def __init__(self, u0):
+    def __init__(self, solve, u0, parameter, time_per_step):
         dof = u0.size
-        u0p, _ = solve(u0, args.parameter, 1)
-        self.dxdt = (u0p - u0) / args.time_per_step
+        u0p, _ = solve(u0, parameter, 1)
+        self.dxdt = (u0p - u0) / time_per_step
         dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
         self.P = eye(dof) - outer(dxdt_normalized, dxdt_normalized)
 
@@ -84,58 +70,61 @@ class LssTangent:
 
 # -------------------------------- main loop --------------------------------- #
 
-u0 = loadtxt('solver/u0')
-degrees_of_freedom = u0.size
+def finite_difference_shadowing(
+        solve, u0, parameter, time_per_step,
+        subspace_dimension, num_segments,
+        steps_per_segment, runup_steps,
+        epsilon=1E-6):
+    degrees_of_freedom = u0.size
 
-J_hist = zeros([args.num_segments, args.steps_per_segment])
-G_lss = []
-g_lss = []
-G_dil = []
-g_dil = []
+    J_hist = zeros([num_segments, steps_per_segment])
+    G_lss = []
+    g_lss = []
+    G_dil = []
+    g_dil = []
 
-u0, J0 = solve(u0, args.parameter, args.runup_steps)
-time_dil = TimeDilation(u0)
+    u0, J0 = solve(u0, parameter, runup_steps)
+    time_dil = TimeDilation(solve, u0, parameter, time_per_step)
 
-V, v = tangent_initial_condition(degrees_of_freedom, args.subspace_dimension)
-lss = LssTangent()
-for i in range(args.num_segments):
-    V = time_dil.project(V)
-    v = time_dil.project(v)
+    V, v = tangent_initial_condition(degrees_of_freedom, subspace_dimension)
+    lss = LssTangent()
+    for i in range(num_segments):
+        V = time_dil.project(V)
+        v = time_dil.project(v)
 
-    u0p, J0 = solve(u0, args.parameter, args.steps_per_segment)
-    J_hist[i] = J0
+        u0p, J0 = solve(u0, parameter, steps_per_segment)
+        J_hist[i] = J0
 
-    # solve homogeneous tangents
-    G = empty(args.subspace_dimension)
-    for j in range(args.subspace_dimension):
-        u1 = u0 + V[:,j] * args.epsilon
-        u1p, J1 = solve(u1, args.parameter, args.steps_per_segment)
-        V[:,j] = (u1p - u0p) / args.epsilon
-        G[j] = (J1.mean() - J0.mean()) / args.epsilon
+        # solve homogeneous tangents
+        G = empty(subspace_dimension)
+        for j in range(subspace_dimension):
+            u1 = u0 + V[:,j] * epsilon
+            u1p, J1 = solve(u1, parameter, steps_per_segment)
+            V[:,j] = (u1p - u0p) / epsilon
+            G[j] = (J1.mean() - J0.mean()) / epsilon
 
-    # solve inhomogeneous tangent
-    u1 = u0 + v * args.epsilon
-    u1p, J1 = solve(u1, args.parameter + args.epsilon, args.steps_per_segment)
-    v, g = (u1p - u0p) / args.epsilon, (J1.mean() - J0.mean()) / args.epsilon
+        # solve inhomogeneous tangent
+        u1 = u0 + v * epsilon
+        u1p, J1 = solve(u1, parameter + epsilon, steps_per_segment)
+        v, g = (u1p - u0p) / epsilon, (J1.mean() - J0.mean()) / epsilon
 
-    G_lss.append(G)
-    g_lss.append(g)
+        G_lss.append(G)
+        g_lss.append(g)
 
-    # time dilation contribution
-    time_dil = TimeDilation(u0p)
-    G_dil.append(time_dil.contribution(V))
-    g_dil.append(time_dil.contribution(v))
+        # time dilation contribution
+        time_dil = TimeDilation(solve, u0p, parameter, time_per_step)
+        G_dil.append(time_dil.contribution(V))
+        g_dil.append(time_dil.contribution(v))
 
-    lss.checkpoint(V, v)
+        lss.checkpoint(V, v)
 
-    # replace initial condition
-    u0 = u0p
+        # replace initial condition
+        u0 = u0p
 
-alpha = lss.solve()
-grad_lss = (alpha * G_lss).sum(1) + g_lss
-dJ = J_hist.mean() - J_hist[:,-1]
-time_per_segment = args.steps_per_segment * args.time_per_step
-grad_dil = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
+    alpha = lss.solve()
+    grad_lss = (alpha * G_lss).sum(1) + g_lss
+    dJ = J_hist.mean() - J_hist[:,-1]
+    time_per_segment = steps_per_segment * time_per_step
+    grad_dil = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
 
-print(J_hist.mean())
-print(grad_lss.mean() + grad_dil.mean())
+    return J_hist.mean(), grad_lss.mean() + grad_dil.mean()

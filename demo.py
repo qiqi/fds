@@ -1,6 +1,24 @@
+import os
+from subprocess import *
 from pylab import *
 from numpy import *
-from subprocess import check_output
+from fds import finite_difference_shadowing
+
+u0 = loadtxt('solver/u0')
+
+def solve(u, s, nsteps):
+    os.chdir('solver')
+    with open('input.bin', 'wb') as f:
+        f.write(asarray(u, dtype='>d').tobytes())
+    with open('param.bin', 'wb') as f:
+        f.write(asarray(s, dtype='>d').tobytes())
+    call(["./solver", str(int(nsteps))])
+    with open('output.bin', 'rb') as f:
+        out = frombuffer(f.read(), dtype='>d')
+    with open('objective.bin', 'rb') as f:
+        J = frombuffer(f.read(), dtype='>d')
+    os.chdir('..')
+    return out, J
 
 iplot = 0
 def save_plot():
@@ -15,8 +33,8 @@ s = linspace(28, 34, 21)
 
 J, G = [], []
 for si in s:
-    out = check_output(['/usr/bin/python', 'fds.py', '--parameter', str(si-28)])
-    Ji, Gi = out.strip().splitlines()
+    Ji, Gi = finite_difference_shadowing(
+            solve, u0, si-28, 0.001, 1, 5, 1000, 5000)
     J.append(Ji)
     G.append(Gi)
 
@@ -31,29 +49,26 @@ save_plot()
 # twice as long
 J3 = []
 for si in s:
-    out = check_output(['/usr/bin/python', 'fds.py', '--parameter', str(si-28),
-                        '--num_segments', '1', '--steps_per_segment', '15000'])
-    Ji, _ = out.strip().splitlines()
-    J3.append(Ji)
+    u, _ = solve(u0, si-28, 5000)
+    _, Ji = solve(u, si-28, 15000)
+    J3.append(Ji.mean())
 
 J3 = array(J3, float)
 clf()
 plot(s, J3, 'ok')
 save_plot()
 
-# 200 times as long
-J2000 = []
-for si in s:
-    out = check_output(['/usr/bin/python', 'fds.py', '--parameter', str(si-28),
-                        '--num_segments', '1',
-                        '--steps_per_segment', '10000000'])
-    Ji, _ = out.strip().splitlines()
-    J2000.append(Ji)
+for T in [50000, 500000, 5000000]:
+    J2000 = []
+    for si in s:
+        u, _ = solve(u0, si-28, 5000)
+        _, Ji = solve(u, si-28, T)
+        J2000.append(Ji.mean())
 
-J2000 = array(J2000, float)
-clf()
-plot(s, J2000, 'ok')
-save_plot()
+    J2000 = array(J2000, float)
+    clf()
+    plot(s, J2000, 'ok')
+    save_plot()
 
 fd = (J2000[1:] - J2000[:-1]) / (s[1:] - s[:-1])
 clf()
@@ -64,4 +79,4 @@ xlabel('Design parameter')
 ylabel('Derivative of objective function')
 legend(['Conventional finite difference 10000 time units',
         'Shadowing finite difference 15 time units'])
-savefig('5')
+savefig('0')
