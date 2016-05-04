@@ -5,6 +5,8 @@ import tempfile
 from subprocess import *
 from multiprocessing.pool import ThreadPool
 
+import matplotlib
+matplotlib.use('Agg')
 from pylab import *
 from numpy import *
 

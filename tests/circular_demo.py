@@ -4,6 +4,8 @@ import shutil
 import tempfile
 from subprocess import *
 
+import matplotlib
+matplotlib.use('Agg')
 from pylab import *
 from numpy import *
 
