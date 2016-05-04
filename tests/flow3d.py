@@ -15,7 +15,7 @@ sys.path.append(os.path.join(my_path, '..'))
 
 from fds import finite_difference_shadowing
 
-solver_path = os.path.join(os.path.expanduser('~'), 'git', 'les-inwd', 'apps')
+solver_path = os.path.join(my_path, '..', '..', 'les-inwd', 'apps')
 py_script = os.path.join(solver_path, 'jet.py')
 
 random.seed(0)
