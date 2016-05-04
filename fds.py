@@ -6,18 +6,6 @@ from numpy import *
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-# -------------------------------- parameters -------------------------------- #
-
-parser = argparse.ArgumentParser(description='Finite Difference Shadowing')
-parser.add_argument('--runup_steps', type=int, default=5000)
-parser.add_argument('--steps_per_segment', type=int, default=1000)
-parser.add_argument('--num_segments', type=int, default=5)
-parser.add_argument('--time_per_step', type=float, default=0.001)
-parser.add_argument('--subspace_dimension', type=int, default=1)
-parser.add_argument('--parameter', type=float, default=0.0)
-parser.add_argument('--epsilon', type=float, default=1E-6)
-args = parser.parse_args()
-
 # ---------------------------------------------------------------------------- #
 
 def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
@@ -28,7 +16,7 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     return W, w
 
 class TimeDilation:
-    def __init__(self, solve, u0, parameter, time_per_step):
+    def __init__(self, solve, u0, parameter, time_per_step=1):
         dof = u0.size
         u0p, _ = solve(u0, parameter, 1)
         self.dxdt = (u0p - u0) / time_per_step
@@ -71,7 +59,7 @@ class LssTangent:
 # -------------------------------- main loop --------------------------------- #
 
 def finite_difference_shadowing(
-        solve, u0, parameter, time_per_step,
+        solve, u0, parameter,
         subspace_dimension, num_segments,
         steps_per_segment, runup_steps,
         epsilon=1E-6):
@@ -84,7 +72,7 @@ def finite_difference_shadowing(
     g_dil = []
 
     u0, J0 = solve(u0, parameter, runup_steps)
-    time_dil = TimeDilation(solve, u0, parameter, time_per_step)
+    time_dil = TimeDilation(solve, u0, parameter)
 
     V, v = tangent_initial_condition(degrees_of_freedom, subspace_dimension)
     lss = LssTangent()
@@ -112,7 +100,7 @@ def finite_difference_shadowing(
         g_lss.append(g)
 
         # time dilation contribution
-        time_dil = TimeDilation(solve, u0p, parameter, time_per_step)
+        time_dil = TimeDilation(solve, u0p, parameter)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
 
@@ -124,7 +112,10 @@ def finite_difference_shadowing(
     alpha = lss.solve()
     grad_lss = (alpha * G_lss).sum(1) + g_lss
     dJ = J_hist.mean() - J_hist[:,-1]
-    time_per_segment = steps_per_segment * time_per_step
-    grad_dil = ((alpha * G_dil).sum(1) + g_dil) / time_per_segment * dJ
+    grad_dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment * dJ
 
-    return J_hist.mean(), grad_lss.mean() + grad_dil.mean()
+    def mean(a):
+        win = sin(linspace(0, pi, a.size))**2
+        return (a * win).sum() / win.sum()
+
+    return J_hist.mean(), mean(grad_lss) + mean(grad_dil)

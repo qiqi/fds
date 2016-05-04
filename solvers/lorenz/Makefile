@@ -1,4 +1,4 @@
-solver:
+solver:	lorenz.f03 ../common/finite-diff.f03 ../common/solver.f03
 	gfortran -c lorenz.f03
 	gfortran ../common/solver.f03 lorenz.o -o solver
 	gfortran ../common/finite-diff.f03 lorenz.o -o finite-diff

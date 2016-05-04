@@ -8,12 +8,12 @@ from pylab import *
 from numpy import *
 from fds import finite_difference_shadowing
 
-lorenz_path = os.path.join(my_path, '..', 'solvers', 'lorenz')
-u0 = loadtxt(os.path.join(lorenz_path, 'u0'))
+solver_path = os.path.join(my_path, '..', 'solvers', 'circular')
+u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
 def solve(u, s, nsteps):
     cwd = os.getcwd()
-    os.chdir(lorenz_path)
+    os.chdir(solver_path)
     with open('input.bin', 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open('param.bin', 'wb') as f:
@@ -28,22 +28,22 @@ def solve(u, s, nsteps):
 
 iplot = 0
 def save_plot():
-    plot_path = os.path.join(my_path, 'lorenz_plots')
+    plot_path = os.path.join(my_path, 'circular_plots')
     if not os.path.exists(plot_path):
         os.mkdir(plot_path)
     global iplot
     iplot += 1
-    axis([27,35,65,110])
+    axis([-1,7,0,8])
     xlabel('Design parameter')
     ylabel('Objective function')
     savefig(os.path.join(plot_path, str(iplot)))
 
-s = linspace(28, 34, 21)
+s = linspace(0, 6, 21)
 
 J, G = [], []
 for si in s:
     Ji, Gi = finite_difference_shadowing(
-            solve, u0, si-28, 1, 10, 1000, 5000)
+            solve, u0, si, 1, 5, 5000, 10000)
     J.append(Ji)
     G.append(Gi)
 
@@ -55,23 +55,11 @@ ds = 0.25
 plot([s-ds, s+ds], [J-G*ds, J+G*ds], '-r')
 save_plot()
 
-# twice as long
-J3 = []
-for si in s:
-    u, _ = solve(u0, si-28, 5000)
-    _, Ji = solve(u, si-28, 15000)
-    J3.append(Ji.mean())
-
-J3 = array(J3, float)
-clf()
-plot(s, J3, 'ok')
-save_plot()
-
-for T in [50000, 500000, 5000000]:
+for T in [50000]:
     J2000 = []
     for si in s:
-        u, _ = solve(u0, si-28, 5000)
-        _, Ji = solve(u, si-28, T)
+        u, _ = solve(u0, si, 5000)
+        _, Ji = solve(u, si, T)
         J2000.append(Ji.mean())
 
     J2000 = array(J2000, float)
@@ -83,9 +71,9 @@ fd = (J2000[1:] - J2000[:-1]) / (s[1:] - s[:-1])
 clf()
 plot((s[1:] + s[:-1]) / 2, fd, 's')
 plot(s, G, 'o')
-xlim([27,35])
+xlim([-1,7])
 xlabel('Design parameter')
 ylabel('Derivative of objective function')
 legend(['Conventional finite difference {0} time units'.format(T/1000),
-        'Shadowing finite difference 10 time units'])
-savefig(os.path.join(my_path, 'lorenz_plots', '0'))
+        'Shadowing finite difference 10 time units'], loc='lower right')
+savefig(os.path.join(my_path, 'circular_plots', '0'))
