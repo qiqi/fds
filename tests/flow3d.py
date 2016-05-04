@@ -50,20 +50,36 @@ def save_plot(s, J):
 
 s = linspace(0.5, 1.5, 32)
 
-def run(si):
-    u, _ = solve(u0, si, 200)
-    _, Ji = solve(u, si, 500)
-    return Ji
+# -------------------------- run finite difference --------------------------- #
+if not os.path.exists('J_fd.npy'):
+    def run(si):
+        u, _ = solve(u0, si, 200)
+        _, Ji = solve(u, si, 500)
+        return Ji
 
-threads = ThreadPool()
-res = []
+    threads = ThreadPool()
+    res = []
+    for si in s:
+        res.append(threads.apply_async(run, (si,)))
+    J_fd = []
+    for i in range(len(res)):
+        J_fd.append(res[i].get())
+
+    J_fd = array(J_fd, float)
+    clf()
+    save_plot(s, J_fd.mean(1))
+    save('J_fd.npy', J_fd)
+
+# ------------------------------ run shadowing ------------------------------- #
+
+J, G = [], []
 for si in s:
-    res.append(threads.apply_async(run, (si,)))
-J_fd = []
-for i in range(len(res)):
-    J_fd.append(res[i].get())
+    Ji, Gi = finite_difference_shadowing(
+            solve, u0, si-28, 1, 10, 1000, 5000)
+    J.append(Ji)
+    G.append(Gi)
+    with open('finite_difference_shadowing.txt', 'at') as f:
+        f.write('{0} {1} {2}\n'.format(si, Ji, Gi))
 
-J_fd = array(J_fd, float)
-clf()
-save_plot(s, J_fd.mean(1))
-save('J_fd.npy', J_fd)
+J, G = array(J, float), array(G, float)
+save_plot(s, J, G)
