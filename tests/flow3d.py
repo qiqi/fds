@@ -22,19 +22,21 @@ random.seed(0)
 u0 = load(os.path.join(solver_path, 'jet_initial_state.npy'))
 u0 = ravel(u0)
 
-def solve(u0, jet_V, nsteps):
+def solve(u0, jet_V, nsteps, run_id):
     Re = 1000
-    tmp_base = os.path.join(my_path, 'tmp_flow')
-    if not os.path.exists(tmp_base):
-        os.mkdir(tmp_base)
-    tmp_path = tempfile.mkdtemp(dir=tmp_base)
-    u0 = u0.reshape([16, 80, 20, 20])
-    save(os.path.join(tmp_path, 'initial_state.npy'), u0)
-    savetxt(os.path.join(tmp_path, 'parameters.txt'), array([Re, jet_V]))
-    call(['python', py_script, str(Re), str(jet_V), str(int(nsteps))],
-         cwd=tmp_path, stdout=open(os.devnull, 'w'))
-    u1 = load(os.path.join(tmp_path, 'final_state.npy'))
-    J = loadtxt(os.path.join(tmp_path, 'jet_quantities.txt'))
+    base_path = os.path.join(my_path, 'flow3d')
+    if not os.path.exists(base_path):
+        os.mkdir(base_path)
+    solver_path = os.path.join(base_path, run_id)
+    if not os.path.exists(solver_path):
+        os.mkdir(solver_path)
+        u0 = u0.reshape([16, 80, 20, 20])
+        save(os.path.join(solver_path, 'initial_state.npy'), u0)
+        savetxt(os.path.join(solver_path, 'parameters.txt'), array([Re, jet_V]))
+        call(['python', py_script, str(Re), str(jet_V), str(int(nsteps))],
+             cwd=solver_path, stdout=open(os.devnull, 'w'))
+    u1 = load(os.path.join(solver_path, 'final_state.npy'))
+    J = loadtxt(os.path.join(solver_path, 'jet_quantities.txt'))
     J = J.reshape([-1,2])
     J[:,1] = J[:,1]**2 / 2
     return ravel(u1), J
@@ -76,4 +78,4 @@ if False:
     save('J_fd.npy', J_fd)
 
 Ji, Gi = finite_difference_shadowing(
-         solve, u0, 1.0, 14, 20, 100, 0)
+         solve, u0, 1.0, 14, 20, 100, 0, eps=1E-4)
