@@ -66,7 +66,7 @@ def finite_difference_shadowing(
         epsilon=1E-6):
     degrees_of_freedom = u0.size
 
-    J_hist = zeros([num_segments, steps_per_segment])
+    J_hist = []
     G_lss = []
     g_lss = []
     G_dil = []
@@ -95,16 +95,16 @@ def finite_difference_shadowing(
                 solve, (u1, parameter + epsilon, steps_per_segment))
 
         u0p, J0 = res_0.get()
-        J_hist[i] = J0
+        J_hist.append(J0)
         # get homogeneous tangents
-        G = empty(subspace_dimension)
+        G = []
         for j in range(subspace_dimension):
             u1p, J1 = res_h[j].get()
             V[:,j] = (u1p - u0p) / epsilon
-            G[j] = (J1.mean() - J0.mean()) / epsilon
+            G.append((J1.mean(0) - J0.mean(0)) / epsilon)
         # get inhomogeneous tangent
         u1p, J1 = res_i.get()
-        v, g = (u1p - u0p) / epsilon, (J1.mean() - J0.mean()) / epsilon
+        v, g = (u1p - u0p) / epsilon, (J1.mean(0) - J0.mean(0)) / epsilon
 
         G_lss.append(G)
         g_lss.append(g)
@@ -120,12 +120,14 @@ def finite_difference_shadowing(
         u0 = u0p
 
     alpha = lss.solve()
-    grad_lss = (alpha * G_lss).sum(1) + g_lss
-    dJ = J_hist.mean() - J_hist[:,-1]
-    grad_dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment * dJ
+    grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
+    J_hist = array(J_hist)
+    dJ = J_hist.mean((0,1)) - J_hist[:,-1]
+    dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
+    grad_dil = dil[:,newaxis] * dJ
 
     def mean(a):
-        win = sin(linspace(0, pi, a.size))**2
-        return (a * win).sum() / win.sum()
+        win = sin(linspace(0, pi, a.shape[0]))**2
+        return (a * win[:,newaxis]).sum(0) / win.sum()
 
-    return J_hist.mean(), mean(grad_lss) + mean(grad_dil)
+    return J_hist.mean((0,1)), mean(grad_lss) + mean(grad_dil)

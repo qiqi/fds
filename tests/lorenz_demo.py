@@ -30,6 +30,7 @@ def solve(u, s, nsteps):
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
     shutil.rmtree(tmp_path)
+    J = transpose([J, 100 * ones(J.size)])
     return out, J
 
 iplot = 0
@@ -54,11 +55,12 @@ for si in s:
     G.append(Gi)
 
 J, G = array(J, float), array(G, float)
-plot(s, J, 'ok')
+plot(s, J, 'o')
 save_plot()
 
 ds = 0.25
-plot([s-ds, s+ds], [J-G*ds, J+G*ds], '-r')
+for i in range(J.shape[1]):
+    plot([s-ds, s+ds], [J[:,i]-G[:,i]*ds, J[:,i]+G[:,i]*ds], '-r')
 save_plot()
 
 # twice as long
@@ -66,11 +68,11 @@ J3 = []
 for si in s:
     u, _ = solve(u0, si-28, 5000)
     _, Ji = solve(u, si-28, 15000)
-    J3.append(Ji.mean())
+    J3.append(Ji.mean(0))
 
 J3 = array(J3, float)
 clf()
-plot(s, J3, 'ok')
+plot(s, J3, 'o')
 save_plot()
 
 for T in [50000, 500000, 5000000]:
@@ -78,20 +80,20 @@ for T in [50000, 500000, 5000000]:
     for si in s:
         u, _ = solve(u0, si-28, 5000)
         _, Ji = solve(u, si-28, T)
-        J2000.append(Ji.mean())
+        J2000.append(Ji.mean(0))
 
     J2000 = array(J2000, float)
     clf()
-    plot(s, J2000, 'ok')
+    plot(s, J2000, 'o')
     save_plot()
 
-fd = (J2000[1:] - J2000[:-1]) / (s[1:] - s[:-1])
+fd = (J2000[1:] - J2000[:-1]) / (s[1:] - s[:-1])[:,newaxis]
 clf()
 plot((s[1:] + s[:-1]) / 2, fd, 's')
 plot(s, G, 'o')
 xlim([27,35])
 xlabel('Design parameter')
 ylabel('Derivative of objective function')
-legend(['Conventional finite difference {0} time units'.format(T/1000),
-        'Shadowing finite difference 10 time units'])
+legend(['Conventional finite difference {0} time units'.format(T/1000), '',
+        'Shadowing finite difference 10 time units', ''])
 savefig(os.path.join(my_path, 'lorenz_plots', '0'))

@@ -30,7 +30,7 @@ def solve(u, s, nsteps):
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
     shutil.rmtree(tmp_path)
-    return out, J
+    return out, J[:,newaxis]
 
 iplot = 0
 def save_plot():
@@ -58,7 +58,7 @@ plot(s, J, 'ok')
 save_plot()
 
 ds = 0.25
-plot([s-ds, s+ds], [J-G*ds, J+G*ds], '-r')
+plot([s-ds, s+ds], [J[:,0]-G[:,0]*ds, J[:,0]+G[:,0]*ds], '-r')
 save_plot()
 
 for T in [50000]:
