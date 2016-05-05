@@ -21,14 +21,14 @@ class TimeDilation:
         dof = u0.size
         u0p, _ = solve(u0, parameter, 1)
         self.dxdt = (u0p - u0) / time_per_step
-        dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
-        self.P = eye(dof) - outer(dxdt_normalized, dxdt_normalized)
+        self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
 
     def contribution(self, v):
         return dot(self.dxdt, v) / (self.dxdt**2).sum()
 
     def project(self, v):
-        return dot(self.P, v)
+        dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
+        return v - dv.reshape(v.shape)
 
 class LssTangent:
     def __init__(self):
