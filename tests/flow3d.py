@@ -23,7 +23,7 @@ u0 = load(os.path.join(solver_path, 'jet_initial_state.npy'))
 u0 = ravel(u0)
 
 def solve(u0, jet_V, nsteps):
-    Re = 1000
+    Re = 500
     tmp_base = os.path.join(my_path, 'tmp_flow')
     if not os.path.exists(tmp_base):
         os.mkdir(tmp_base)
