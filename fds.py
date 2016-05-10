@@ -57,11 +57,15 @@ class LssTangent:
         alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(bs)))
         return alpha.reshape([nseg+1,-1])[:-1]
 
+def windowed_mean(a):
+    win = sin(linspace(0, pi, a.shape[0]))**2
+    return (a * win[:,newaxis]).sum(0) / win.sum()
+
 # -------------------------------- main loop --------------------------------- #
 
 def finite_difference_shadowing(
         solve, u0, parameter, subspace_dimension, num_segments,
-        steps_per_segment, runup_steps, epsilon=1E-6):
+        steps_per_segment, runup_steps, epsilon=1E-6, verbose=0):
 
     degrees_of_freedom = u0.size
 
@@ -70,6 +74,7 @@ def finite_difference_shadowing(
     g_lss = []
     G_dil = []
     g_dil = []
+    grad_hist = []
 
     u0, J0 = solve(u0, parameter, runup_steps, 'runup')
     time_dil = TimeDilation(solve, u0, parameter, 'time_dilation_initial')
@@ -120,27 +125,31 @@ def finite_difference_shadowing(
 
         lss.checkpoint(V, v)
 
-        savez('lss.npz',
-              G_lss=G_lss,
-              g_lss=g_lss,
-              G_dil=G_dil,
-              g_dil=g_dil,
-              R=lss.Rs,
-              b=lss.bs
-        )
+        alpha = lss.solve()
+        grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
+        J = array(J_hist)
+        dJ = J.mean((0,1)) - J[:,-1]
+        dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
+        grad_dil = dil[:,newaxis] * dJ
+
+        grad_hist.append(mean(grad_lss, 0) + mean(grad_dil, 0))
+
+        if verbose:
+            print('LSS gradient = ', grad_hist[-1])
+        if isinstance(verbose, str):
+            savez('lss.npz',
+                  G_lss=G_lss,
+                  g_lss=g_lss,
+                  G_dil=G_dil,
+                  g_dil=g_dil,
+                  R=lss.Rs,
+                  b=lss.bs,
+                  grad_lss=grad_lss,
+                  grad_dil=grad_dil,
+                  grad_hist=grad_hist
+            )
 
         # replace initial condition
         u0 = u0p
 
-    alpha = lss.solve()
-    grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
-    J_hist = array(J_hist)
-    dJ = J_hist.mean((0,1)) - J_hist[:,-1]
-    dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
-    grad_dil = dil[:,newaxis] * dJ
-
-    def mean(a):
-        win = sin(linspace(0, pi, a.shape[0]))**2
-        return (a * win[:,newaxis]).sum(0) / win.sum()
-
-    return J_hist.mean((0,1)), mean(grad_lss) + mean(grad_dil)
+    return J.mean((0,1)), mean(grad_lss, 0) + mean(grad_dil, 0)
