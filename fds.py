@@ -132,7 +132,7 @@ def finite_difference_shadowing(
         dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
         grad_dil = dil[:,newaxis] * dJ
 
-        grad_hist.append(mean(grad_lss, 0) + mean(grad_dil, 0))
+        grad_hist.append(windowed_mean(grad_lss) + windowed_mean(grad_dil))
 
         if verbose:
             print('LSS gradient = ', grad_hist[-1])
