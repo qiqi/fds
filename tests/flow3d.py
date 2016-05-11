@@ -78,4 +78,4 @@ if False:
     save('J_fd.npy', J_fd)
 
 Ji, Gi = finite_difference_shadowing(
-         solve, u0, 1.0, 14, 20, 100, 0, epsilon=1E-4)
+         solve, u0, 1.0, 128, 50, 100, 0, epsilon=1E-4)

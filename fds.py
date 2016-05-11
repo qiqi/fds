@@ -58,7 +58,7 @@ class LssTangent:
         return alpha.reshape([nseg+1,-1])[:-1]
 
 def windowed_mean(a):
-    win = sin(linspace(0, pi, a.shape[0]))**2
+    win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
 # -------------------------------- main loop --------------------------------- #
