@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import shutil
 import tempfile
 from subprocess import *
@@ -28,13 +29,15 @@ def solve(u0, jet_V, nsteps, run_id):
     if not os.path.exists(base_path):
         os.mkdir(base_path)
     solver_path = os.path.join(base_path, run_id)
-    if not os.path.exists(solver_path):
-        os.mkdir(solver_path)
+    if not os.path.exists(os.path.join(solver_path, 'final_state.npy')):
+        if not os.path.exists(solver_path):
+            os.mkdir(solver_path)
         u0 = u0.reshape([16, 80, 20, 20])
         save(os.path.join(solver_path, 'initial_state.npy'), u0)
         savetxt(os.path.join(solver_path, 'parameters.txt'), array([Re, jet_V]))
         call(['python', py_script, str(Re), str(jet_V), str(int(nsteps))],
              cwd=solver_path, stdout=open(os.devnull, 'w'))
+        time.sleep(0.1)
     u1 = load(os.path.join(solver_path, 'final_state.npy'))
     J = loadtxt(os.path.join(solver_path, 'jet_quantities.txt'))
     J = J.reshape([-1,2])
@@ -57,11 +60,11 @@ def save_plot(s, J):
     savefig(os.path.join(plot_path, str(iplot)))
 
 if False:
-    s = linspace(0.5, 1.5, 32)
+    s = linspace(0.8, 1.2, 21)
 
     def run(si):
-        u, _ = solve(u0, si, 200)
-        _, Ji = solve(u, si, 500)
+        u, _ = solve(u0, si, 200, 'runup_{0:8.6f}'.format(si))
+        _, Ji = solve(u, si, 500, 'fd_{0:8.6f}'.format(si))
         return Ji
 
     threads = ThreadPool()
@@ -78,4 +81,4 @@ if False:
     save('J_fd.npy', J_fd)
 
 Ji, Gi = finite_difference_shadowing(
-         solve, u0, 1.0, 128, 50, 100, 0, epsilon=1E-4)
+         solve, u0, 1.0, 20, 50, 100, 0, epsilon=1E-4)
