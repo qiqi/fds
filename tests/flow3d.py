@@ -16,7 +16,7 @@ sys.path.append(os.path.join(my_path, '..'))
 
 from fds import finite_difference_shadowing
 
-solver_path = os.path.join(my_path, '..', '..', 'les-inwd', 'apps')
+solver_path = os.path.join(my_path, '..', '..', 'les-inwd', 'apps', 'jet')
 py_script = os.path.join(solver_path, 'jet.py')
 
 random.seed(0)
@@ -81,4 +81,4 @@ if False:
     save('J_fd.npy', J_fd)
 
 Ji, Gi = finite_difference_shadowing(
-         solve, u0, 1.0, 20, 50, 100, 0, epsilon=1E-4)
+         solve, u0, 1.0, 20, 50, 100, 0, epsilon=1E-4, verbose=True)
