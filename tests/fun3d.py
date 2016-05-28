@@ -57,8 +57,8 @@ Ji, Gi = finite_difference_shadowing(
             0.25,                   # nominal xmach parameter
             30,                     # number of unstable modes
             50,                     # number of time chunks
-            100,                    # number of time steps per chunk
-            100,                    # run-up time steps
+            1000,                   # number of time steps per chunk
+            1000,                   # run-up time steps
             epsilon=1E-4,
             verbose=True
          )
