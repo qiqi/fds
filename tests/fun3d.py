@@ -13,7 +13,6 @@ from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
-fun3d_bin = os.path.join(my_path, '..', '..', 'fun3d', 'fun3d')
 
 from fds import finite_difference_shadowing
 
@@ -48,6 +47,9 @@ def solve(u0, mach, nsteps, run_id):
     with open(final_data_file, 'rb') as f:
         u1 = frombuffer(f.read(), dtype='>d')
     return ravel(u1), J
+
+# modify to point to fun3d binary
+fun3d_bin = os.path.join(my_path, '..', '..', 'fun3d', 'fun3d')
 
 Ji, Gi = finite_difference_shadowing(
             solve,
