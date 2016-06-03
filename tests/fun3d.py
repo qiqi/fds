@@ -6,9 +6,6 @@ import tempfile
 from subprocess import *
 from multiprocessing.pool import ThreadPool
 
-#import matplotlib
-#matplotlib.use('Agg')
-#from pylab import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
@@ -24,7 +21,7 @@ def lift_drag_from_text(text):
             lift_drag.append([line[1], line[3]])
     return array(lift_drag, float)
 
-def solve(u0, mach, nsteps, run_id):
+def solve(u0, mach, nsteps, run_id, lock):
     base_path = os.path.join(my_path, 'fun3d')
     if not os.path.exists(base_path):
         os.mkdir(base_path)

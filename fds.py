@@ -1,7 +1,7 @@
 import os
 import argparse
 from subprocess import *
-from multiprocessing.pool import ThreadPool
+from multiprocessing import Pool, Manager
 
 from numpy import *
 from scipy import sparse
@@ -17,10 +17,10 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     return W, w
 
 class TimeDilation:
-    def __init__(self, solve, u0, parameter, run_id, time_per_step=1):
+    def __init__(self, run, u0, parameter, run_id, lock):
         dof = u0.size
-        u0p, _ = solve(u0, parameter, 1, run_id)
-        self.dxdt = (u0p - u0) / time_per_step
+        u0p, _ = run(u0, parameter, 1, run_id, lock)
+        self.dxdt = (u0p - u0)   # time step size turns out cancelling out
         self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
 
     def contribution(self, v):
@@ -57,15 +57,105 @@ class LssTangent:
         alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(bs)))
         return alpha.reshape([nseg+1,-1])[:-1]
 
+# -------------------------------- main loop --------------------------------- #
+
+def run_segment(run, u0, V, v, parameter, i_segment, steps,
+                epsilon, simultaneous_runs, lock):
+    '''
+    Run Time Segement i_segment, starting from
+        u0: nonlinear solution
+        V:  homogeneous tangents
+        v:  inhomogeneous tangent
+    for steps time steps, and returns afterwards
+        u0: nonlinear solution
+        V:  homogeneous tangents
+        v:  inhomogeneous tangent
+        J0: history of quantities of interest for the nonlinear solution
+        G:  sensitivities of the homogeneous tangents
+        g:  sensitivity of the inhomogeneous tangent
+    '''
+    threads = Pool(simultaneous_runs)
+    run_id = 'segment{0:02d}_baseline'.format(i_segment)
+    res_0 = threads.apply_async(run, (u0, parameter, steps, run_id, lock))
+    # run homogeneous tangents
+    res_h = []
+    subspace_dimension = V.shape[1]
+    for j in range(subspace_dimension):
+        u1 = u0 + V[:,j] * epsilon
+        run_id = 'segment{0:02d}_init_perturb{1:03d}'.format(i_segment, j)
+        res_h.append(threads.apply_async(
+            run, (u1, parameter, steps, run_id, lock)))
+    # run inhomogeneous tangent
+    u1 = u0 + v * epsilon
+    run_id = 'segment{0:02d}_param_perturb'.format(i_segment)
+    res_i = threads.apply_async(
+            run, (u1, parameter + epsilon, steps, run_id, lock))
+
+    u0p, J0 = res_0.get()
+    # get homogeneous tangents
+    G = []
+    for j in range(subspace_dimension):
+        u1p, J1 = res_h[j].get()
+        V[:,j] = (u1p - u0p) / epsilon
+        G.append((J1.mean(0) - J0.mean(0)) / epsilon)
+    # get inhomogeneous tangent
+    u1p, J1 = res_i.get()
+    v, g = (u1p - u0p) / epsilon, (J1.mean(0) - J0.mean(0)) / epsilon
+    threads.close()
+    threads.join()
+    return u0p, V, v, J0, G, g
+
 def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
-# -------------------------------- main loop --------------------------------- #
+def lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil):
+    alpha = lss.solve()
+    grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
+    J = array(J)
+    dJ = J.mean((0,1)) - J[:,-1]
+    steps_per_segment = J.shape[1]
+    dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
+    grad_dil = dil[:,newaxis] * dJ
+    return windowed_mean(grad_lss) + windowed_mean(grad_dil)
+
+def print_info(verbose, grad_hist, lss, G_lss, g_lss, J_hist, G_dil, g_dil):
+    if verbose:
+        print('LSS gradient = ', grad_hist[-1])
+    if isinstance(verbose, str):
+        savez('lss.npz',
+              G_lss=G_lss,
+              g_lss=g_lss,
+              G_dil=G_dil,
+              g_dil=g_dil,
+              R=lss.Rs,
+              b=lss.bs,
+              grad_hist=grad_hist
+        )
 
 def finite_difference_shadowing(
-        solve, u0, parameter, subspace_dimension, num_segments,
-        steps_per_segment, runup_steps, epsilon=1E-6, verbose=0):
+        run, u0, parameter, subspace_dimension, num_segments,
+        steps_per_segment, runup_steps, epsilon=1E-6, verbose=0,
+        simultaneous_runs=None):
+    '''
+    run: a function in the form
+         u1, J = run(u0, parameter, steps, run_id, lock)
+
+         inputs  - u0:        initial solution, a flat numpy array of doubles.
+                   parameter: design parameter, a single number.
+                   steps:     number of time steps, an int.
+                   run_id:    a unique identifier, a string,
+                              e.g., "segment02_init_perturb003".
+                   lock:      a lock for synchronizing between different runs,
+                              a multiprocessing.Lock object.
+         outputs - u1:        final solution, a flat numpy array of doubles,
+                              must be of the same size as u0.
+                   J:         quantities of interest, a numpy array of shape
+                              (steps, n_qoi), where n_qoi is an arbitrary
+                              but consistent number, # quantities of interest.
+    '''
+
+    lock = Manager().Lock()
 
     degrees_of_freedom = u0.size
 
@@ -76,8 +166,10 @@ def finite_difference_shadowing(
     g_dil = []
     grad_hist = []
 
-    u0, J0 = solve(u0, parameter, runup_steps, 'runup')
-    time_dil = TimeDilation(solve, u0, parameter, 'time_dilation_initial')
+    if runup_steps > 0:
+        u0, _ = run(u0, parameter, runup_steps, 'runup', lock)
+    time_dil = TimeDilation(
+            run, u0, parameter, 'time_dilation_initial', lock)
 
     V, v = tangent_initial_condition(degrees_of_freedom, subspace_dimension)
     lss = LssTangent()
@@ -85,71 +177,21 @@ def finite_difference_shadowing(
         V = time_dil.project(V)
         v = time_dil.project(v)
 
-        threads = ThreadPool()
-        run_id = 'segment{0:02d}_baseline'.format(i)
-        res_0 = threads.apply_async(
-                solve, (u0, parameter, steps_per_segment, run_id))
-        # solve homogeneous tangents
-        res_h = []
-        for j in range(subspace_dimension):
-            u1 = u0 + V[:,j] * epsilon
-            run_id = 'segment{0:02d}_init_perturb{1:03d}'.format(i, j)
-            res_h.append(threads.apply_async(
-                solve, (u1, parameter, steps_per_segment, run_id)))
-        # solve inhomogeneous tangent
-        u1 = u0 + v * epsilon
-        run_id = 'segment{0:02d}_param_perturb'.format(i)
-        res_i = threads.apply_async(
-                solve, (u1, parameter + epsilon, steps_per_segment, run_id))
-
-        u0p, J0 = res_0.get()
+        u0, V, v, J0, G, g = run_segment(
+                run, u0, V, v, parameter, i, steps_per_segment,
+                epsilon, simultaneous_runs, lock)
         J_hist.append(J0)
-        # get homogeneous tangents
-        G = []
-        for j in range(subspace_dimension):
-            u1p, J1 = res_h[j].get()
-            V[:,j] = (u1p - u0p) / epsilon
-            G.append((J1.mean(0) - J0.mean(0)) / epsilon)
-        # get inhomogeneous tangent
-        u1p, J1 = res_i.get()
-        v, g = (u1p - u0p) / epsilon, (J1.mean(0) - J0.mean(0)) / epsilon
-
         G_lss.append(G)
         g_lss.append(g)
 
         # time dilation contribution
-        time_dil = TimeDilation(solve, u0p, parameter,
-                                'time_dilation_{0:02d}'.format(i))
+        time_dil = TimeDilation(run, u0, parameter,
+                                'time_dilation_{0:02d}'.format(i), lock)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
-
         lss.checkpoint(V, v)
 
-        alpha = lss.solve()
-        grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
-        J = array(J_hist)
-        dJ = J.mean((0,1)) - J[:,-1]
-        dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
-        grad_dil = dil[:,newaxis] * dJ
+        grad_hist.append(lss_gradient(lss, G_lss, g_lss, J_hist, G_dil, g_dil))
+        print_info(verbose, grad_hist, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
 
-        grad_hist.append(windowed_mean(grad_lss) + windowed_mean(grad_dil))
-
-        if verbose:
-            print('LSS gradient = ', grad_hist[-1])
-        if isinstance(verbose, str):
-            savez('lss.npz',
-                  G_lss=G_lss,
-                  g_lss=g_lss,
-                  G_dil=G_dil,
-                  g_dil=g_dil,
-                  R=lss.Rs,
-                  b=lss.bs,
-                  grad_lss=grad_lss,
-                  grad_dil=grad_dil,
-                  grad_hist=grad_hist
-            )
-
-        # replace initial condition
-        u0 = u0p
-
-    return J.mean((0,1)), mean(grad_lss, 0) + mean(grad_dil, 0)
+    return array(J_hist).mean((0,1)), grad_hist[-1]

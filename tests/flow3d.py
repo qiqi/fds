@@ -23,7 +23,7 @@ random.seed(0)
 u0 = load(os.path.join(solver_path, 'jet_initial_state.npy'))
 u0 = ravel(u0)
 
-def solve(u0, jet_V, nsteps, run_id):
+def solve(u0, jet_V, nsteps, run_id, lock=None):
     Re = 500
     base_path = os.path.join(my_path, 'flow3d')
     if not os.path.exists(base_path):
