@@ -137,16 +137,16 @@ initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
 u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
              for f in initial_data_files])
 
-Ji, Gi = finite_difference_shadowing(
-            solve,
-            u0,                      # 5 variables per CV
-            0.1,                     # nominal xmach parameter
-            128,                     # number of unstable modes
-            50,                      # number of time chunks
-            200,                     # number of time steps per chunk
-            2000,                    # needs no more run up, since we assume
-                                     # it is already down
-            epsilon=1E-4,
-            verbose=True,
-            simultaneous_runs=SIMULTANEOUS_RUNS
-         )
+if __name__ == '__main__':
+    Ji, Gi = finite_difference_shadowing(
+                solve,
+                u0,   # 5 variables per CV
+                0.1,  # nominal xmach parameter
+                128,  # number of unstable modes
+                50,   # number of time chunks
+                200,  # number of time steps per chunk
+                2000, # additional run up time steps
+                epsilon=1E-4,
+                verbose=True,
+                simultaneous_runs=SIMULTANEOUS_RUNS
+             )
