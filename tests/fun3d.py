@@ -19,6 +19,8 @@ AVAILABLE_NODES_FILE = os.path.join(BASE_PATH, 'available_nodes')
 if os.path.exists(AVAILABLE_NODES_FILE):
     os.remove(AVAILABLE_NODES_FILE)
 
+SLEEP_SECONDS_FOR_IO = 5
+
 # change this to the number of MPI processes for each FUN3D instance
 MPI_NP = 24
 
@@ -128,10 +130,10 @@ def solve(u0, mach, nsteps, run_id, lock):
         outfile = os.path.join(work_path, 'flow.output')
         with open(outfile, 'w', 0) as f:
             Popen(['mpiexec', fun3d_bin,
-#                  '--write_final_field', '--read_initial_field',
-                   '--write_final_field',
+                   '--write_final_field', '--read_initial_field',
                    '--ncyc', str(nsteps)
-                  ], cwd=work_path, env=env, stdout=f, stderr=f).wait)  ??
+                  ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
+            time.sleep(SLEEP_SECONDS_FOR_IO)
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
     J = loadtxt(lift_drag_file)
@@ -141,14 +143,22 @@ def solve(u0, mach, nsteps, run_id, lock):
     assert len(J) == nsteps
     return ravel(u1), J
 
+# read data after run up
+REF_WORK_PATH = os.path.join(
+initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
+                    for i in range(MPI_NP)]
+u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
+             for f in initial_data_files])
+
 Ji, Gi = finite_difference_shadowing(
             solve,
-            random.rand(NUM_CV * 5), # 5 variables per CV
+            u0,                      # 5 variables per CV
             0.1,                     # nominal xmach parameter
             22,                      # number of unstable modes
             50,                      # number of time chunks
             1000,                    # number of time steps per chunk
-            10,                      # run-up time steps
+            0,                       # needs no more run up, since we assume
+                                     # it is already down
             epsilon=1E-4,
             verbose=True,
             simultaneous_runs=SIMULTANEOUS_RUNS
