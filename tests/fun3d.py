@@ -23,9 +23,6 @@ MPI_NP = 24
 # the product of MPI_NP and SIMULTANEOUS_RUNS should be the PBS allocation size
 SIMULTANEOUS_RUNS = 1
 
-# change this to the total number of grid points
-NUM_CV = 116862
-
 # change this a directory with final.data.* files, so that I know
 # how to distribute an initial condition into different ranks
 REF_WORK_PATH = os.path.join(
