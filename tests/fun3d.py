@@ -4,7 +4,6 @@ import time
 import shutil
 import tempfile
 from subprocess import *
-from multiprocessing.pool import ThreadPool
 
 from numpy import *
 
@@ -50,26 +49,24 @@ class grab_from_PBS_NODEFILE:
 
     def grab(self, num_procs):
         with self.lock:
-            if not 'available_nodes' in self.dict:
+            if 'available_nodes' not in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
-                available_nodes = list(set(available_nodes))
-                if len(available_nodes) < SIMULTANEOUS_RUNS:
+                if len(available_nodes) < MPI_NP * SIMULTANEOUS_RUNS:
                     msg = '{0} processees in $PBS_NODEFILE cannot be split' + \
                           'into {1} simultaneous MPI runs of size {2}'
                     raise RuntimeError(msg.format(
                         len(available_nodes), SIMULTANEOUS_RUNS, MPI_NP))
             else:
                 available_nodes = self.dict['available_nodes']
-            if len(available_nodes) < 1:
+            if len(available_nodes) < num_procs:
                 msg = 'Trying to grab {0} processes from {1}'
                 raise ValueError(msg.format(num_procs, len(available_nodes)))
-            self.grabbed_nodes = [available_nodes[0]] * num_procs
-            self.available_nodes = available_nodes[1:]
-            self.dict['available_nodes'] = available_nodes
+            self.grabbed_nodes = available_nodes[:num_procs]
+            self.dict['available_nodes'] = available_nodes[num_procs:]
 
     def release(self):
         with self.lock:
-            self.dict['available_nodes'].append(self.grabbed_nodes[0])
+            self.dict['available_nodes'] += self.grabbed_nodes
 
     def write_to_sub_nodefile(self, filename):
         with open(filename, 'wt') as f:
