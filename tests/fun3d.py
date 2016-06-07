@@ -99,6 +99,7 @@ def lift_drag_from_text(text):
     return array(lift_drag, float)
 
 def solve(u0, mach, nsteps, run_id, lock):
+    print 'Starting solve, mach, nsteps, run_id = ', mach, nsteps, runid
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
                           for i in range(MPI_NP)]
@@ -147,7 +148,7 @@ Ji, Gi = finite_difference_shadowing(
             0.1,                     # nominal xmach parameter
             22,                      # number of unstable modes
             50,                      # number of time chunks
-            1000,                    # number of time steps per chunk
+            50,                      # number of time steps per chunk
             0,                       # needs no more run up, since we assume
                                      # it is already down
             epsilon=1E-4,
