@@ -22,7 +22,7 @@ MPI_NP = 24
 
 # change this to the max number of simultaneous MPI runs
 # the product of MPI_NP and SIMULTANEOUS_RUNS should be the PBS allocation size
-SIMULTANEOUS_RUNS = 2
+SIMULTANEOUS_RUNS = 1
 
 # change this to the total number of grid points
 NUM_CV = 116862
@@ -125,7 +125,7 @@ def solve(u0, mach, nsteps, run_id, lock):
         with open(outfile, 'w', 0) as f:
             Popen(['mpiexec', fun3d_bin,
                    '--write_final_field', '--read_initial_field',
-                   '--ncyc', str(nsteps)
+                   '--ncyc', str(nsteps), '--xmach', str(mach)
                   ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
             time.sleep(SLEEP_SECONDS_FOR_IO)
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
@@ -147,10 +147,10 @@ Ji, Gi = finite_difference_shadowing(
             solve,
             u0,                      # 5 variables per CV
             0.1,                     # nominal xmach parameter
-            22,                      # number of unstable modes
+            128,                     # number of unstable modes
             50,                      # number of time chunks
-            50,                      # number of time steps per chunk
-            0,                       # needs no more run up, since we assume
+            200,                     # number of time steps per chunk
+            2000,                    # needs no more run up, since we assume
                                      # it is already down
             epsilon=1E-4,
             verbose=True,
