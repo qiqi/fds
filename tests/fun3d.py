@@ -52,6 +52,7 @@ class grab_from_PBS_NODEFILE:
         with self.lock:
             if not 'available_nodes' in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
+                available_nodes = list(set(available_nodes))
                 if len(available_nodes) < MPI_NP * SIMULTANEOUS_RUNS:
                     msg = '{0} processees in $PBS_NODEFILE cannot be split' + \
                           'into {1} simultaneous MPI runs of size {2}'
@@ -62,13 +63,13 @@ class grab_from_PBS_NODEFILE:
             if len(available_nodes) < num_procs:
                 msg = 'Trying to grab {0} processes from {1}'
                 raise ValueError(msg.format(num_procs, len(available_nodes)))
-            self.grabbed_nodes = available_nodes[:num_procs]
-            self.available_nodes = available_nodes[num_procs:]
+            self.grabbed_nodes = [available_nodes[0]] * num_procs
+            self.available_nodes = available_nodes[1:]
             self.dict['available_nodes'] = available_nodes
 
     def release(self):
         with self.lock:
-            self.dict['available_nodes'] += self.grabbed_nodes
+            self.dict['available_nodes'].append(grabbed_nodes[0])
 
     def write_to_sub_nodefile(self, filename):
         with open(filename, 'wt') as f:
