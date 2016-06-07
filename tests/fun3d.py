@@ -52,7 +52,7 @@ class grab_from_PBS_NODEFILE:
         with self.lock:
             if not 'available_nodes' in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
-                if len(available_nodes) != MPI_NP * SIMULTANEOUS_RUNS:
+                if len(available_nodes) < MPI_NP * SIMULTANEOUS_RUNS:
                     msg = '{0} processees in $PBS_NODEFILE cannot be split' + \
                           'into {1} simultaneous MPI runs of size {2}'
                     raise RuntimeError(msg.format(
@@ -128,7 +128,7 @@ def solve(u0, mach, nsteps, run_id, lock):
             time.sleep(SLEEP_SECONDS_FOR_IO)
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
-    J = loadtxt(lift_drag_file)
+    J = loadtxt(lift_drag_file).reshape([-1,2])
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in final_data_files])
     print 'len(J) = ', len(J), 'nsteps = ', nsteps
@@ -136,7 +136,6 @@ def solve(u0, mach, nsteps, run_id, lock):
     return ravel(u1), J
 
 # read data after run up
-REF_WORK_PATH = os.path.join(
 initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                     for i in range(MPI_NP)]
 u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
