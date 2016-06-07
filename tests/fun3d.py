@@ -19,12 +19,12 @@ AVAILABLE_NODES_FILE = os.path.join(BASE_PATH, 'available_nodes')
 if os.path.exists(AVAILABLE_NODES_FILE):
     os.remove(AVAILABLE_NODES_FILE)
 
-# change this to the number of MPI processes for each run
-MPI_NP = 2
+# change this to the number of MPI processes for each FUN3D instance
+MPI_NP = 24
 
 # change this to the max number of simultaneous MPI runs
 # the product of MPI_NP and SIMULTANEOUS_RUNS should be the PBS allocation size
-SIMULTANEOUS_RUNS = 24
+SIMULTANEOUS_RUNS = 2
 
 # change this to the total number of grid points
 NUM_CV = 116862
@@ -32,8 +32,7 @@ NUM_CV = 116862
 # change this a directory with final.data.* files, so that I know
 # how to distribute an initial condition into different ranks
 REF_WORK_PATH = os.path.join(
-        os.sep,'u','enielsen','runs','chaos','airfoil','runup')
-REF_WORK_PATH = '.'
+        os.sep,'nobackupp8','enielsen','NILSS','PythonTesting','run_data')
 
 # modify to point to fun3d binary
 fun3d_bin = os.path.join(os.sep,'u','enielsen','GIT','Master','fun3d','optimized','FUN3D_90','nodet_mpi')
@@ -120,30 +119,31 @@ def solve(u0, mach, nsteps, run_id, lock):
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)
         env['PBS_NODEFILE'] = sub_nodefile
-        shutil.copy(os.path.join(my_path,'fun3d.nml'),work_path)
-        shutil.copy(os.path.join(my_path,'rotated.b8.ugrid'),work_path)
-        shutil.copy(os.path.join(my_path,'rotated.mapbc'),work_path)
+        shutil.copy(os.path.join(REF_WORK_PATH,'fun3d.nml'),work_path)
+        shutil.copy(os.path.join(REF_WORK_PATH,'rotated.b8.ugrid'),work_path)
+        shutil.copy(os.path.join(REF_WORK_PATH,'rotated.mapbc'),work_path)
         for file_i, u_i in zip(initial_data_files, distribute_data(u0)):
             with open(file_i, 'wb') as f:
                 f.write(asarray(u_i, dtype='>d').tobytes())
         outfile = os.path.join(work_path, 'flow.output')
         with open(outfile, 'w', 0) as f:
             Popen(['mpiexec', fun3d_bin,
-                   '--write_final_field', '--read_initial_field',
+#                  '--write_final_field', '--read_initial_field',
+                   '--write_final_field',
                    '--ncyc', str(nsteps)
-                  ], cwd=work_path, env=env, stdout=f, stderr=f)
+                  ], cwd=work_path, env=env, stdout=f, stderr=f).wait)  ??
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
     J = loadtxt(lift_drag_file)
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in final_data_files])
-    print len(J), nsteps
+    print 'len(J) = ', len(J), 'nsteps = ', nsteps
     assert len(J) == nsteps
     return ravel(u1), J
 
 Ji, Gi = finite_difference_shadowing(
             solve,
-            random.rand(NUM_CV * 5), # change 10000 to num of CV
+            random.rand(NUM_CV * 5), # 5 variables per CV
             0.1,                     # nominal xmach parameter
             22,                      # number of unstable modes
             50,                      # number of time chunks
