@@ -53,14 +53,14 @@ class grab_from_PBS_NODEFILE:
             if not 'available_nodes' in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
                 available_nodes = list(set(available_nodes))
-                if len(available_nodes) < MPI_NP * SIMULTANEOUS_RUNS:
+                if len(available_nodes) < SIMULTANEOUS_RUNS:
                     msg = '{0} processees in $PBS_NODEFILE cannot be split' + \
                           'into {1} simultaneous MPI runs of size {2}'
                     raise RuntimeError(msg.format(
                         len(available_nodes), SIMULTANEOUS_RUNS, MPI_NP))
             else:
                 available_nodes = self.dict['available_nodes']
-            if len(available_nodes) < num_procs:
+            if len(available_nodes) < 1:
                 msg = 'Trying to grab {0} processes from {1}'
                 raise ValueError(msg.format(num_procs, len(available_nodes)))
             self.grabbed_nodes = [available_nodes[0]] * num_procs
@@ -69,7 +69,7 @@ class grab_from_PBS_NODEFILE:
 
     def release(self):
         with self.lock:
-            self.dict['available_nodes'].append(grabbed_nodes[0])
+            self.dict['available_nodes'].append(self.grabbed_nodes[0])
 
     def write_to_sub_nodefile(self, filename):
         with open(filename, 'wt') as f:
@@ -100,7 +100,7 @@ def lift_drag_from_text(text):
     return array(lift_drag, float)
 
 def solve(u0, mach, nsteps, run_id, lock):
-    print 'Starting solve, mach, nsteps, run_id = ', mach, nsteps, runid
+    print 'Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
                           for i in range(MPI_NP)]
