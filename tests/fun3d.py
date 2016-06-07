@@ -15,10 +15,6 @@ BASE_PATH = os.path.join(my_path, 'fun3d')
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
 
-AVAILABLE_NODES_FILE = os.path.join(BASE_PATH, 'available_nodes')
-if os.path.exists(AVAILABLE_NODES_FILE):
-    os.remove(AVAILABLE_NODES_FILE)
-
 SLEEP_SECONDS_FOR_IO = 5
 
 # change this to the number of MPI processes for each FUN3D instance
@@ -48,13 +44,13 @@ class grab_from_PBS_NODEFILE:
     Needs a lock to prevent concurrent IO to that file.
     Remember to call release when MPI job finishes.
     '''
-    def __init__(self, num_procs, BASE_PATH, lock):
-        self.lock = lock
+    def __init__(self, num_procs, BASE_PATH, lock_and_dict):
+        self.lock, self.dict = lock_and_dict
         self.grab(num_procs)
 
     def grab(self, num_procs):
         with self.lock:
-            if not os.path.exists(AVAILABLE_NODES_FILE):
+            if not 'available_nodes' in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
                 if len(available_nodes) != MPI_NP * SIMULTANEOUS_RUNS:
                     msg = '{0} processees in $PBS_NODEFILE cannot be split' + \
@@ -62,21 +58,17 @@ class grab_from_PBS_NODEFILE:
                     raise RuntimeError(msg.format(
                         len(available_nodes), SIMULTANEOUS_RUNS, MPI_NP))
             else:
-                available_nodes = open(AVAILABLE_NODES_FILE).readlines()
+                available_nodes = self.dict['available_nodes']
             if len(available_nodes) < num_procs:
                 msg = 'Trying to grab {0} processes from {1}'
                 raise ValueError(msg.format(num_procs, len(available_nodes)))
             self.grabbed_nodes = available_nodes[:num_procs]
             self.available_nodes = available_nodes[num_procs:]
-            with open(AVAILABLE_NODES_FILE, 'wt') as f:
-                f.writelines(available_nodes)
+            self.dict['available_nodes'] = available_nodes
 
     def release(self):
         with self.lock:
-            available_nodes = open(AVAILABLE_NODES_FILE).readlines()
-            available_nodes += self.grabbed_nodes
-            with open(AVAILABLE_NODES_FILE, 'wt') as f:
-                f.writelines(available_nodes)
+            self.dict['available_nodes'] += self.grabbed_nodes
 
     def write_to_sub_nodefile(self, filename):
         with open(filename, 'wt') as f:

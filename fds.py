@@ -146,7 +146,8 @@ def finite_difference_shadowing(
                    steps:     number of time steps, an int.
                    run_id:    a unique identifier, a string,
                               e.g., "segment02_init_perturb003".
-                   lock:      a lock for synchronizing between different runs,
+                   lock:      a tuple of (lock, dict) for synchronizing
+                              between different runs,
                               a multiprocessing.Lock object.
          outputs - u1:        final solution, a flat numpy array of doubles,
                               must be of the same size as u0.
@@ -155,7 +156,8 @@ def finite_difference_shadowing(
                               but consistent number, # quantities of interest.
     '''
 
-    lock = Manager().Lock()
+    manager = Manager()
+    lock = (manager.Lock(), manager.dict())
 
     degrees_of_freedom = u0.size
 
