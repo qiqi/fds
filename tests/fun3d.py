@@ -7,26 +7,26 @@ from subprocess import *
 
 from numpy import *
 
+XMACH = 0.1              # nominal xmach parameter
+M_MODES = 128            # number of unstable modes
+K_SEGMENTS = 50          # number of time chunks
+STEPS_PER_SEGMENT = 200  # number of time steps per chunk
+STEPS_RUNUP = 2000       # additional run up time steps
+SLEEP_SECONDS_FOR_IO = 5 # how long to wait for file IO to sync
+MPI_NP = 24              # number of MPI processes for each FUN3D instance
+SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
+
+# change this a directory with final.data.* files, so that I know
+# how to distribute an initial condition into different ranks
+REF_WORK_PATH = os.path.join(
+        os.sep,'nobackupp8','enielsen','NILSS','PythonTesting','run_data')
+
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
 BASE_PATH = os.path.join(my_path, 'fun3d')
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
-
-SLEEP_SECONDS_FOR_IO = 5
-
-# change this to the number of MPI processes for each FUN3D instance
-MPI_NP = 24
-
-# change this to the max number of simultaneous MPI runs
-# the product of MPI_NP and SIMULTANEOUS_RUNS should be the PBS allocation size
-SIMULTANEOUS_RUNS = 1
-
-# change this a directory with final.data.* files, so that I know
-# how to distribute an initial condition into different ranks
-REF_WORK_PATH = os.path.join(
-        os.sep,'nobackupp8','enielsen','NILSS','PythonTesting','run_data')
 
 # modify to point to fun3d binary
 fun3d_bin = os.path.join(os.sep,'u','enielsen','GIT','Master','fun3d','optimized','FUN3D_90','nodet_mpi')
@@ -141,11 +141,11 @@ if __name__ == '__main__':
     Ji, Gi = finite_difference_shadowing(
                 solve,
                 u0,   # 5 variables per CV
-                0.1,  # nominal xmach parameter
-                128,  # number of unstable modes
-                50,   # number of time chunks
-                200,  # number of time steps per chunk
-                2000, # additional run up time steps
+                XMACH,
+                M_MODES,
+                K_SEGMENTS,
+                STEPS_PER_SEGMENT,
+                STEPS_RUNUP,
                 epsilon=1E-4,
                 verbose=True,
                 simultaneous_runs=SIMULTANEOUS_RUNS

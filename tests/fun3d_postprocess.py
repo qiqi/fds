@@ -39,15 +39,14 @@ def solve_no_run_fun3d(u0, mach, nsteps, run_id, lock):
 
 try:
     Ji, Gi = finite_difference_shadowing(
-            solve_no_run_fun3d,
-            u0,                      # (not used) initial solution
-            None,                    # (not used) nominal xmach parameter
-            128,                     # number of unstable modes
-            50,                      # number of time chunks
-            None,                    # (not used) number of time steps per chunk
-            0,                       # postprocessing needs no more run up
-            epsilon=1E-4,
-            verbose='save_data'
+                solve_no_run_fun3d,
+                XMACH,
+                M_MODES,
+                K_SEGMENTS,
+                STEPS_PER_SEGMENT,
+                STEPS_RUNUP,
+                epsilon=1E-4,
+                verbose='save_data'
          )
 except DidNotFinishRunningFUN3D:
     pass  # it's fine, just use what we have so far
