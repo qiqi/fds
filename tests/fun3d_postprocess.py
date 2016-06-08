@@ -40,6 +40,7 @@ def solve_no_run_fun3d(u0, mach, nsteps, run_id, lock):
 try:
     Ji, Gi = finite_difference_shadowing(
                 solve_no_run_fun3d,
+                u0,
                 XMACH,
                 M_MODES,
                 K_SEGMENTS,
