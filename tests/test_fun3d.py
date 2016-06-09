@@ -119,5 +119,5 @@ def test_fun3d():
            )
     assert 1 < J[0] < 4
     assert 10 < J[1] < 40
-    assert 0.05 < G[0] < 0.25
-    assert 2 < G[1] < 8
+    assert -0.1 < G[0] < 0.5
+    assert 1 < G[1] < 8
