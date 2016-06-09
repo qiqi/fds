@@ -12,6 +12,7 @@ Then add the directory to
 
 - [First example -- Van der Pol oscillator in Python](docs/tutorials/vanderpol_python.md)
 - [Lorenz attractor in C](docs/tutorials/lorenz_c.md)
+- [Lorenz 96 in MPI and C](docs/tutorials/lorenz96_mpi.md)
 
 ### Guides 
 - [Chaos and statistical convergence](docs/guides/statistics.md)
