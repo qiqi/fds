@@ -1,7 +1,7 @@
-default:	solvers/lorenz/solver solvers/circular/solver
+default:	tests/solvers/lorenz/solver tests/solvers/circular/solver
 
-solvers/lorenz/solver:
-	cd solvers/lorenz; make
+tests/solvers/lorenz/solver:
+	cd tests/solvers/lorenz; make
 
-solvers/circular/solver:
-	cd solvers/circular; make
+tests/solvers/circular/solver:
+	cd tests/solvers/circular; make
