@@ -1,4 +1,4 @@
-![Travis CI](https://travis-ci.org/qiqi/pascal.svg?branch=master)
+![Travis CI](https://travis-ci.org/qiqi/fds.svg?branch=master)
 
 ### Download and use
 
