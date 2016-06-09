@@ -28,7 +28,8 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
             run, (u1, parameter, steps, run_id, lock)))
     # run inhomogeneous tangent
     u1 = u0 + v * epsilon
-    run_id = 'segment{0:02d}_param_perturb'.format(i_segment)
+    run_id = 'segment{0:02d}_param_perturb{1:03d}'.format(
+             i_segment, subspace_dimension)
     res_i = threads.apply_async(
             run, (u1, parameter + epsilon, steps, run_id, lock))
 

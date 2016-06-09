@@ -1,4 +1,5 @@
 import os
+import pickle
 import argparse
 from multiprocessing import Manager
 
@@ -18,9 +19,9 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     return W, w
 
 class TimeDilation:
-    def __init__(self, run, u0, parameter, run_id, lock):
+    def __init__(self, run, u0, parameter, run_id, interprocess):
         dof = u0.size
-        u0p, _ = run(u0, parameter, 1, run_id, lock)
+        u0p, _ = run(u0, parameter, 1, run_id, interprocess)
         self.dxdt = (u0p - u0)   # time step size turns out cancelling out
         self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
 
@@ -35,6 +36,13 @@ class LssTangent:
     def __init__(self):
         self.Rs = []
         self.bs = []
+
+    def m_segments(self):
+        assert len(self.Rs) == len(self.bs)
+        return len(self.Rs)
+
+    def K_modes(self):
+        return self.Rs[0].shape[0]
 
     def checkpoint(self, V, v):
         Q, R = linalg.qr(V)
@@ -72,80 +80,98 @@ def lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil):
     grad_dil = dil[:,newaxis] * dJ
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
 
-def print_info(verbose, grad_hist, lss, G_lss, g_lss, J_hist, G_dil, g_dil):
-    if verbose:
-        print('LSS gradient = ', grad_hist[-1])
-    if isinstance(verbose, str):
-        savez('lss.npz',
-              G_lss=G_lss,
-              g_lss=g_lss,
-              G_dil=G_dil,
-              g_dil=g_dil,
-              R=lss.Rs,
-              b=lss.bs,
-              grad_hist=grad_hist
-        )
+def checkpoint(checkpoint_file, V, v, lss, G_lss, g_lss, J, G_dil, g_dil):
+    print(lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil))
+    with open(checkpoint_file, 'wb') as f:
+        pickle.dump({
+            'V': V, 'v': v,
+            'lss': lss, 'G_lss': G_lss, 'g_lss': g_lss,
+            'J': J, 'G_dil': G_dil, 'g_dil': g_dil
+        }, f)
 
-def finite_difference_shadowing(
-        run, u0, parameter, subspace_dimension, num_segments,
-        steps_per_segment, runup_steps, epsilon=1E-6, verbose=0,
-        simultaneous_runs=None):
-    '''
-    run: a function in the form
-         u1, J = run(u0, parameter, steps, run_id, lock)
-
-         inputs  - u0:        initial solution, a flat numpy array of doubles.
-                   parameter: design parameter, a single number.
-                   steps:     number of time steps, an int.
-                   run_id:    a unique identifier, a string,
-                              e.g., "segment02_init_perturb003".
-                   lock:      a tuple of (lock, dict) for synchronizing
-                              between different runs,
-                              a multiprocessing.Lock object.
-         outputs - u1:        final solution, a flat numpy array of doubles,
-                              must be of the same size as u0.
-                   J:         quantities of interest, a numpy array of shape
-                              (steps, n_qoi), where n_qoi is an arbitrary
-                              but consistent number, # quantities of interest.
-    '''
+def continue_finite_difference_shadowing(
+        run, u0, parameter, V, v, lss,
+        G_lss, g_lss, J_hist, G_dil, g_dil,
+        num_segments, steps_per_segment, epsilon=1E-6,
+        checkpoint_path=None, simultaneous_runs=None):
+    """
+    """
+    assert lss.m_segments() == len(G_lss) \
+                            == len(g_lss) \
+                            == len(J_hist) \
+                            == len(G_dil) \
+                            == len(g_dil)
     manager = Manager()
-    lock = (manager.Lock(), manager.dict())
+    interprocess = (manager.Lock(), manager.dict())
 
-    degrees_of_freedom = u0.size
-
-    J_hist = []
-    G_lss = []
-    g_lss = []
-    G_dil = []
-    g_dil = []
-    grad_hist = []
-
-    if runup_steps > 0:
-        u0, _ = run(u0, parameter, runup_steps, 'runup', lock)
     time_dil = TimeDilation(
-            run, u0, parameter, 'time_dilation_initial', lock)
+            run, u0, parameter, 'time_dilation_initial', interprocess)
 
-    V, v = tangent_initial_condition(degrees_of_freedom, subspace_dimension)
-    lss = LssTangent()
-    for i in range(num_segments):
+    for i in range(lss.m_segments(), num_segments):
         V = time_dil.project(V)
         v = time_dil.project(v)
 
         u0, V, v, J0, G, g = run_segment(
                 run, u0, V, v, parameter, i, steps_per_segment,
-                epsilon, simultaneous_runs, lock)
+                epsilon, simultaneous_runs, interprocess)
         J_hist.append(J0)
         G_lss.append(G)
         g_lss.append(g)
 
         # time dilation contribution
         time_dil = TimeDilation(run, u0, parameter,
-                                'time_dilation_{0:02d}'.format(i), lock)
+                                'time_dilation_{0:02d}'.format(i), interprocess)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
         lss.checkpoint(V, v)
 
-        grad_hist.append(lss_gradient(lss, G_lss, g_lss, J_hist, G_dil, g_dil))
-        print_info(verbose, grad_hist, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+        if checkpoint_path:
+            filename = 'm{0}_segment{1}'.format(lss.K_modes, lss.m_segments)
+            checkpoint(os.path.join(checkpoint_path, filename),
+                       V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+    return u0, V, v
 
-    return array(J_hist).mean((0,1)), grad_hist[-1]
+def finite_difference_shadowing(
+        run, u0, parameter, subspace_dimension, num_segments,
+        steps_per_segment, runup_steps, epsilon=1E-6,
+        checkpoint_path=None, simultaneous_runs=None):
+    '''
+    run: a function in the form
+         u1, J = run(u0, parameter, steps, run_id, interprocess)
+
+         inputs  - u0:           init solution, a flat numpy array of doubles.
+                   parameter:    design parameter, a single number.
+                   steps:        number of time steps, an int.
+                   run_id:       a unique identifier, a string,
+                                 e.g., "segment02_init_perturb003".
+                   interprocess: a tuple of (lock, dict) for
+                                 synchronizing between different runs.
+                                 lock: a multiprocessing.Manager.Lock object.
+                                 dict: a multiprocessing.Manager.dict object.
+         outputs - u1:           final solution, a flat numpy array of doubles,
+                                 must be of the same size as u0.
+                   J:            quantities of interest, a numpy array of shape
+                                 (steps, n_qoi), where n_qoi is an arbitrary
+                                 but consistent number, # quantities of interest.
+    '''
+    manager = Manager()
+    interprocess = (manager.Lock(), manager.dict())
+
+    if runup_steps > 0:
+        u0, _ = run(u0, parameter, runup_steps, 'runup', interprocess)
+
+    V, v = tangent_initial_condition(u0.size, subspace_dimension)
+    lss = LssTangent()
+    G_lss, g_lss = [], []
+    J_hist = []
+    G_dil, g_dil = [], []
+
+    continue_finite_difference_shadowing(
+            run, u0, parameter,
+            V, v,
+            lss, G_lss, g_lss,
+            J_hist, G_dil, g_dil,
+            num_segments, steps_per_segment, epsilon,
+            checkpoint_path, simultaneous_runs)
+    G = lss_gradient(lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+    return array(J_hist).mean((0,1)), G
