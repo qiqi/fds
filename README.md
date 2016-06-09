@@ -1,5 +1,11 @@
 ### Download and use
 
+#### Using git
+```
+git clone https://github.com/qiqi/fds.git
+```
+Then add the directory to 
+
 ### Tutorials
 
 - [First example -- Van der Pol oscillator in Python](docs/tutorials/vanderpol_python.md)
@@ -13,3 +19,5 @@
 ### Reference
 - [The least squares shadowing algorithm](docs/ref/lss_algorithm.md)
 - [Function reference](docs/ref/function_ref.md)
+
+- [License](LICENSE.md)
