@@ -85,7 +85,7 @@ def solve(u0, mach, nsteps, run_id, lock):
             with open(file_i, 'wb') as f:
                 f.write(asarray(u_i, dtype='>d').tobytes())
         outfile = os.path.join(work_path, 'flow.output')
-        with open(outfile, 'w', 0) as f:
+        with open(outfile, 'w', 8) as f:
             Popen(['mpiexec', fun3d_bin,
                    '--write_final_field', '--read_initial_field',
                    '--ncyc', str(nsteps), '--xmach', str(mach)
