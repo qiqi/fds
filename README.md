@@ -1,3 +1,5 @@
+![Travis CI](https://travis-ci.org/qiqi/pascal.svg?branch=master)
+
 ### Download and use
 
 #### Using git
