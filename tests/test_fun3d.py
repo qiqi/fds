@@ -32,7 +32,7 @@ if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
 
 # modify to point to fun3d binary
-fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d.py')
+fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
 
 if 'PBS_NODEFILE' not in os.environ:
     os.environ['PBS_NODEFILE'] = os.path.join(REF_WORK_PATH, 'PBS_NODEFILE')
