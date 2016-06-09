@@ -2,4 +2,3 @@ numpy >= 1.10
 scipy >= 0.14
 pytest
 pytest-cov
-mpi4py
