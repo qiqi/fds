@@ -13,7 +13,7 @@ before_install:
     - sudo apt-get update
     - sudo apt-get install liblapack-dev gfortran openmpi-bin libopenmpi-dev python-mpi4py python-numpy
 
-install: pip install -r requirements.txt
+install: travis_wait 30 pip install -r requirements.txt
 
 # command to run tests
 script:
