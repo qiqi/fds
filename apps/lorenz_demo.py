@@ -12,9 +12,9 @@ from numpy import *
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
-from fds import finite_difference_shadowing
+from fds import *
 
-solver_path = os.path.join(my_path, '..', 'solvers', 'lorenz')
+solver_path = os.path.join(my_path, '..', 'tests', 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
 u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
@@ -49,8 +49,7 @@ s = linspace(28, 34, 21)
 
 J, G = [], []
 for si in s:
-    Ji, Gi = finite_difference_shadowing(
-            solve, u0, si-28, 1, 10, 1000, 5000)
+    Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000)
     J.append(Ji)
     G.append(Gi)
 

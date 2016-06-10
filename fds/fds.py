@@ -1,6 +1,7 @@
 import os
 import pickle
 import argparse
+from collections import namedtuple
 from multiprocessing import Manager
 
 from numpy import *
@@ -70,7 +71,10 @@ def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
-def lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil):
+Checkpoint = namedtuple('Checkpoint', 'u0 V v lss G_lss g_lss J G_dil g_dil')
+
+def lss_gradient(checkpoint):
+    _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
     alpha = lss.solve()
     grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
     J = array(J)
@@ -80,27 +84,31 @@ def lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil):
     grad_dil = dil[:,newaxis] * dJ
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
 
-def checkpoint(checkpoint_file, V, v, lss, G_lss, g_lss, J, G_dil, g_dil):
-    print(lss_gradient(lss, G_lss, g_lss, J, G_dil, g_dil))
+def save_checkpoint(checkpoint_file, cp):
+    print(lss_gradient(cp))
     with open(checkpoint_file, 'wb') as f:
-        pickle.dump({
-            'V': V, 'v': v,
-            'lss': lss, 'G_lss': G_lss, 'g_lss': g_lss,
-            'J': J, 'G_dil': G_dil, 'g_dil': g_dil
-        }, f)
+        pickle.dump(cp, f)
 
-def continue_finite_difference_shadowing(
-        run, u0, parameter, V, v, lss,
-        G_lss, g_lss, J_hist, G_dil, g_dil,
-        num_segments, steps_per_segment, epsilon=1E-6,
-        checkpoint_path=None, simultaneous_runs=None):
-    """
-    """
-    assert lss.m_segments() == len(G_lss) \
+def load_checkpoint(checkpoint_file):
+    return pickle.load(open(checkpoint_file, 'rb'))
+
+def verify_checkpoint(checkpoint):
+    u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
+    return lss.m_segments() == len(G_lss) \
                             == len(g_lss) \
                             == len(J_hist) \
                             == len(G_dil) \
                             == len(g_dil)
+
+def continue_shadowing(
+        run, parameter, checkpoint,
+        num_segments, steps_per_segment, epsilon=1E-6,
+        checkpoint_path=None, simultaneous_runs=None):
+    """
+    """
+    assert verify_checkpoint(checkpoint)
+    u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
+
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 
@@ -125,13 +133,14 @@ def continue_finite_difference_shadowing(
         g_dil.append(time_dil.contribution(v))
         lss.checkpoint(V, v)
 
+        data = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
         if checkpoint_path:
-            filename = 'm{0}_segment{1}'.format(lss.K_modes, lss.m_segments)
-            checkpoint(os.path.join(checkpoint_path, filename),
-                       V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
-    return u0, V, v
+            filename = 'm{0}_segment{1}'.format(lss.K_modes(), lss.m_segments())
+            save_checkpoint(os.path.join(checkpoint_path, filename), data)
+    G = lss_gradient(data)
+    return array(J_hist).mean((0,1)), G
 
-def finite_difference_shadowing(
+def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, simultaneous_runs=None):
@@ -162,16 +171,8 @@ def finite_difference_shadowing(
 
     V, v = tangent_initial_condition(u0.size, subspace_dimension)
     lss = LssTangent()
-    G_lss, g_lss = [], []
-    J_hist = []
-    G_dil, g_dil = [], []
-
-    continue_finite_difference_shadowing(
-            run, u0, parameter,
-            V, v,
-            lss, G_lss, g_lss,
-            J_hist, G_dil, g_dil,
+    checkpoint = Checkpoint(u0, V, v, lss, [], [], [], [], [])
+    return continue_shadowing(
+            run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, simultaneous_runs)
-    G = lss_gradient(lss, G_lss, g_lss, J_hist, G_dil, g_dil)
-    return array(J_hist).mean((0,1)), G

@@ -12,7 +12,7 @@ from numpy import *
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
-from fds import finite_difference_shadowing, grab_from_PBS_NODEFILE
+from fds import *
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
@@ -99,24 +99,39 @@ def solve(u0, mach, nsteps, run_id, lock):
     assert len(J) == nsteps
     return ravel(u1), J
 
+def most_recent_checkpoint(m):
+    filter_func = lambda f: f.startswith('m{0}_segment'.format(m))
+    files = sorted(filter(filter_func, os.listdir(BASE_PATH)))
+    if len(files):
+        return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
+
 #if __name__ == '__main__':
 def test_fun3d():
     initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                         for i in range(MPI_NP)]
     u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in initial_data_files])
-    J, G = finite_difference_shadowing(
-                solve,
-                u0,
-                XMACH,
-                M_MODES,
-                K_SEGMENTS,
-                STEPS_PER_SEGMENT,
-                STEPS_RUNUP,
-                epsilon=1E-4,
-                checkpoint_path=BASE_PATH,
-                simultaneous_runs=SIMULTANEOUS_RUNS
-           )
+    shadowing(solve,
+              u0,
+              XMACH,
+              M_MODES,
+              2,
+              STEPS_PER_SEGMENT,
+              STEPS_RUNUP,
+              epsilon=1E-4,
+              checkpoint_path=BASE_PATH,
+              simultaneous_runs=SIMULTANEOUS_RUNS)
+
+    checkpoint = most_recent_checkpoint(M_MODES)
+    J, G = continue_shadowing(solve,
+                              XMACH,
+                              checkpoint,
+                              K_SEGMENTS,
+                              STEPS_PER_SEGMENT,
+                              epsilon=1E-4,
+                              checkpoint_path=BASE_PATH,
+                              simultaneous_runs=SIMULTANEOUS_RUNS)
+
     assert 1 < J[0] < 4
     assert 10 < J[1] < 40
     assert -0.1 < G[0] < 0.5

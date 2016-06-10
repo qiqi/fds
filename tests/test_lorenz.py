@@ -9,7 +9,7 @@ from numpy import *
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
-from fds import finite_difference_shadowing
+from fds import *
 
 solver_path = os.path.join(my_path, 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
@@ -35,8 +35,7 @@ def test_gradient():
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):
         print(i)
-        Ji, Gi = finite_difference_shadowing(
-                solve, u0, si-28, 1, 10, 1000, 5000)
+        Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000)
         J[i,:] = Ji
         G[i,:] = Gi
     assert all(abs(J[:,1] - 100) < 1E-12)
