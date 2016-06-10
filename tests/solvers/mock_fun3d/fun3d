@@ -55,5 +55,5 @@ for i in range(args.ncyc):
 
 if args.write_final_field:
     with open('final.data.{0}'.format(mpi_rank), 'wb') as f:
-        f.write(asarray(x, dtype='>d').tobytes())
+        f.write(asarray(x, dtype='>d').tostring())
 
