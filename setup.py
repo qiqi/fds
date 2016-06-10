@@ -27,7 +27,7 @@ setup(
     author_email='qiqi.wang@gmail.com',
 
     # Choose your license
-    license='GPL',
+    license='GPL3',
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -56,7 +56,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='stencil update differential equation parallel',
+    keywords='sensitivity analysis chaotic simulation',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().

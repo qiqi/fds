@@ -100,7 +100,8 @@ def solve(u0, mach, nsteps, run_id, lock):
 def most_recent_checkpoint(m):
     filter_func = lambda f: f.startswith('m{0}_segment'.format(m))
     files = sorted(filter(filter_func, os.listdir(BASE_PATH)))
-    return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
+    if len(files):
+        return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
 
 initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                     for i in range(MPI_NP)]
