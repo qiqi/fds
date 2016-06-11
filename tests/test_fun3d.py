@@ -29,8 +29,9 @@ SIMULTANEOUS_RUNS = 2    # max number of simultaneous MPI runs
 REF_WORK_PATH = os.path.join(my_path, 'solvers', 'mock_fun3d')
 
 BASE_PATH = os.path.join(my_path, 'fun3d')
-if not os.path.exists(BASE_PATH):
-    os.mkdir(BASE_PATH)
+if os.path.exists(BASE_PATH):
+    shutil.rmtree(BASE_PATH)
+os.mkdir(BASE_PATH)
 
 # modify to point to fun3d binary
 fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
@@ -74,7 +75,7 @@ def solve(u0, mach, nsteps, run_id, lock):
             not os.path.exists(lift_drag_file):
         if not os.path.exists(work_path):
             os.mkdir(work_path)
-        sub_nodes = grab_from_PBS_NODEFILE(MPI_NP, lock)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, lock)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)

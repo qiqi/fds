@@ -70,7 +70,7 @@ def solve(u0, mach, nsteps, run_id, lock):
             not os.path.exists(lift_drag_file):
         if not os.path.exists(work_path):
             os.mkdir(work_path)
-        sub_nodes = grab_from_PBS_NODEFILE(MPI_NP, lock)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, lock)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)

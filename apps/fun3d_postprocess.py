@@ -29,4 +29,4 @@ n_exp = 5
 print(' '.join(['segs'] + ['Lyap exp {:<2d}'.format(i) for i in range(n_exp)]))
 for i in range(1, len(L)):
     print(' '.join(['{:<4d}'.format(i)] +
-                    ['{:<+11.2e}'.format(lam) for lam in exp_mean(L[:i, :5])]))
+                   ['{:<+11.2e}'.format(lam) for lam in exp_mean(L[:i, :5])]))
