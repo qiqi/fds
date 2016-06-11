@@ -15,13 +15,13 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 
 XMACH = 0.1              # nominal xmach parameter
-M_MODES = 128            # number of unstable modes
-K_SEGMENTS = 50          # number of time chunks
+M_MODES = 16             # number of unstable modes
+K_SEGMENTS = 200         # number of time chunks
 STEPS_PER_SEGMENT = 200  # number of time steps per chunk
-STEPS_RUNUP = 2000       # additional run up time steps
+STEPS_RUNUP = 0          # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 5 # how long to wait for file IO to sync
 MPI_NP = 24              # number of MPI processes for each FUN3D instance
-SIMULTANEOUS_RUNS = 2    # max number of simultaneous MPI runs
+SIMULTANEOUS_RUNS = 18   # max number of simultaneous MPI runs
 
 # change this a directory with final.data.* files, so that I know
 # how to distribute an initial condition into different ranks
@@ -84,7 +84,7 @@ def solve(u0, mach, nsteps, run_id, lock):
                 f.write(asarray(u_i, dtype='>d').tobytes())
         outfile = os.path.join(work_path, 'flow.output')
         with open(outfile, 'w', 8) as f:
-            Popen(['mpiexec', '-np', str(MPI_NP), fun3d_bin,
+            Popen(['mpiexec', '-n', str(MPI_NP), fun3d_bin,
                    '--write_final_field', '--read_initial_field',
                    '--ncyc', str(nsteps), '--xmach', str(mach)
                   ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
