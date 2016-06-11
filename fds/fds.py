@@ -4,10 +4,10 @@ from multiprocessing import Manager
 
 from numpy import *
 
+from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation
 from .segment import run_segment
 from .lsstan import LssTangent
-from .checkpoint import Checkpoint, save_checkpoint, verify_checkpoint
 
 # ---------------------------------------------------------------------------- #
 

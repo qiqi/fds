@@ -13,6 +13,7 @@ my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
+from fds.checkpoint import *
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes

@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os
 import sys
 import time
@@ -13,6 +11,7 @@ my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
+from fds.checkpoint import *
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
@@ -103,14 +102,13 @@ def most_recent_checkpoint(m):
     if len(files):
         return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
 
-initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
-                    for i in range(MPI_NP)]
-u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
-             for f in initial_data_files])
-
-checkpoint = most_recent_checkpoint(M_MODES)
-
 if __name__ == '__main__':
+    initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
+                        for i in range(MPI_NP)]
+    u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
+                 for f in initial_data_files])
+
+    checkpoint = most_recent_checkpoint(M_MODES)
     if checkpoint is None:
         J, G = shadowing(
                     solve,

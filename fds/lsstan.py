@@ -36,3 +36,8 @@ class LssTangent:
         alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(bs)))
         return alpha.reshape([nseg+1,-1])[:-1]
 
+    def lyapunov_exponents(self):
+        Rs = array(self.Rs)
+        i = arange(self.K_modes())
+        diags = Rs[:,i,i]
+        return log(abs(diags))
