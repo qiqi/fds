@@ -1,14 +1,13 @@
 import os
-import pickle
 import argparse
-from collections import namedtuple
 from multiprocessing import Manager
 
 from numpy import *
-from scipy import sparse
-import scipy.sparse.linalg as splinalg
 
+from .timedilation import TimeDilation
 from .segment import run_segment
+from .lsstan import LssTangent
+from .checkpoint import Checkpoint, save_checkpoint, verify_checkpoint
 
 # ---------------------------------------------------------------------------- #
 
@@ -19,59 +18,9 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     w = zeros(degrees_of_freedom)
     return W, w
 
-class TimeDilation:
-    def __init__(self, run, u0, parameter, run_id, interprocess):
-        dof = u0.size
-        u0p, _ = run(u0, parameter, 1, run_id, interprocess)
-        self.dxdt = (u0p - u0)   # time step size turns out cancelling out
-        self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
-
-    def contribution(self, v):
-        return dot(self.dxdt, v) / (self.dxdt**2).sum()
-
-    def project(self, v):
-        dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
-        return v - dv.reshape(v.shape)
-
-class LssTangent:
-    def __init__(self):
-        self.Rs = []
-        self.bs = []
-
-    def m_segments(self):
-        assert len(self.Rs) == len(self.bs)
-        return len(self.Rs)
-
-    def K_modes(self):
-        return self.Rs[0].shape[0]
-
-    def checkpoint(self, V, v):
-        Q, R = linalg.qr(V)
-        b = dot(Q.T, v)
-        self.Rs.append(R)
-        self.bs.append(b)
-        V[:] = Q
-        v -= dot(Q, b)
-
-    def solve(self):
-        Rs, bs = array(self.Rs), array(self.bs)
-        assert Rs.ndim == 3 and bs.ndim == 2
-        assert Rs.shape[0] == bs.shape[0]
-        assert Rs.shape[1] == Rs.shape[2] == bs.shape[1]
-        nseg, subdim = bs.shape
-        eyes = eye(subdim, subdim) * ones([nseg, 1, 1])
-        matrix_shape = (subdim * nseg, subdim * (nseg+1))
-        I = sparse.bsr_matrix((eyes, r_[1:nseg+1], r_[:nseg+1]))
-        D = sparse.bsr_matrix((Rs, r_[:nseg], r_[:nseg+1]), shape=matrix_shape)
-        B = (D - I).tocsr()
-        alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(bs)))
-        return alpha.reshape([nseg+1,-1])[:-1]
-
 def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
-
-Checkpoint = namedtuple('Checkpoint', 'u0 V v lss G_lss g_lss J G_dil g_dil')
 
 def lss_gradient(checkpoint):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
@@ -83,22 +32,6 @@ def lss_gradient(checkpoint):
     dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
     grad_dil = dil[:,newaxis] * dJ
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
-
-def save_checkpoint(checkpoint_file, cp):
-    print(lss_gradient(cp))
-    with open(checkpoint_file, 'wb') as f:
-        pickle.dump(cp, f)
-
-def load_checkpoint(checkpoint_file):
-    return pickle.load(open(checkpoint_file, 'rb'))
-
-def verify_checkpoint(checkpoint):
-    u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
-    return lss.m_segments() == len(G_lss) \
-                            == len(g_lss) \
-                            == len(J_hist) \
-                            == len(G_dil) \
-                            == len(g_dil)
 
 def continue_shadowing(
         run, parameter, checkpoint,
@@ -133,11 +66,13 @@ def continue_shadowing(
         g_dil.append(time_dil.contribution(v))
         lss.checkpoint(V, v)
 
-        data = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
         if checkpoint_path:
+            cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+            print(lss_gradient(cp))
             filename = 'm{0}_segment{1}'.format(lss.K_modes(), lss.m_segments())
-            save_checkpoint(os.path.join(checkpoint_path, filename), data)
-    G = lss_gradient(data)
+            save_checkpoint(os.path.join(checkpoint_path, filename), cp)
+    cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+    G = lss_gradient(cp)
     return array(J_hist).mean((0,1)), G
 
 def shadowing(

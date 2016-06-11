@@ -109,25 +109,27 @@ u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
              for f in initial_data_files])
 
 checkpoint = most_recent_checkpoint(M_MODES)
-if checkpoint is None:
-    J, G = shadowing(
-                solve,
-                u0,   # 5 variables per CV
-                XMACH,
-                M_MODES,
-                K_SEGMENTS,
-                STEPS_PER_SEGMENT,
-                STEPS_RUNUP,
-                epsilon=1E-4,
-                checkpoint_path=BASE_PATH,
-                simultaneous_runs=SIMULTANEOUS_RUNS
-             )
-else:
-    J, G = continue_shadowing(solve,
-                              XMACH,
-                              checkpoint,
-                              K_SEGMENTS,
-                              STEPS_PER_SEGMENT,
-                              epsilon=1E-4,
-                              checkpoint_path=BASE_PATH,
-                              simultaneous_runs=SIMULTANEOUS_RUNS)
+
+if __name__ == '__main__':
+    if checkpoint is None:
+        J, G = shadowing(
+                    solve,
+                    u0,   # 5 variables per CV
+                    XMACH,
+                    M_MODES,
+                    K_SEGMENTS,
+                    STEPS_PER_SEGMENT,
+                    STEPS_RUNUP,
+                    epsilon=1E-4,
+                    checkpoint_path=BASE_PATH,
+                    simultaneous_runs=SIMULTANEOUS_RUNS
+                 )
+    else:
+        J, G = continue_shadowing(solve,
+                                  XMACH,
+                                  checkpoint,
+                                  K_SEGMENTS,
+                                  STEPS_PER_SEGMENT,
+                                  epsilon=1E-4,
+                                  checkpoint_path=BASE_PATH,
+                                  simultaneous_runs=SIMULTANEOUS_RUNS)
