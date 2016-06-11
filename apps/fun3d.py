@@ -119,7 +119,7 @@ if checkpoint is None:
                 STEPS_PER_SEGMENT,
                 STEPS_RUNUP,
                 epsilon=1E-4,
-                verbose=True,
+                checkpoint_path=BASE_PATH,
                 simultaneous_runs=SIMULTANEOUS_RUNS
              )
 else:
