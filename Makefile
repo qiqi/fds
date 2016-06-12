@@ -11,3 +11,6 @@ tests/solvers/vanderpol/solver:
 
 tests/solvers/mock_fun3d/final.data.0:
 	cd tests/solvers/mock_fun3d; make
+
+doc:
+	pandoc README.md > index.html
