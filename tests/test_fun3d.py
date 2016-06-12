@@ -63,7 +63,7 @@ def lift_drag_from_text(text):
             lift_drag.append([line[1], line[3]])
     return array(lift_drag, float)
 
-def solve(u0, mach, nsteps, run_id, lock):
+def solve(u0, mach, nsteps, run_id, interprocess):
     print('Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id)
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
@@ -75,7 +75,7 @@ def solve(u0, mach, nsteps, run_id, lock):
             not os.path.exists(lift_drag_file):
         if not os.path.exists(work_path):
             os.mkdir(work_path)
-        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, lock)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)

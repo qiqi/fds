@@ -17,6 +17,7 @@ cp = most_recent_checkpoint(M_MODES)
 verify_checkpoint(cp)
 
 L = cp.lss.lyapunov_exponents()
+print(L.shape)
 
 def exp_mean(x):
     n = len(x)

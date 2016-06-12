@@ -33,12 +33,38 @@ def lss_gradient(checkpoint):
     grad_dil = dil[:,newaxis] * dJ
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
 
+class RunWrapper:
+    def __init__(self, run):
+        self.run = run
+
+    def variable_args(self, u0, parameter, steps, run_id, interprocess):
+        try:
+            return self.run(u0, parameter, steps,
+                            run_id=run_id, interprocess=interprocess)
+        except TypeError:
+            pass # does not expect run_id or interprocess argument
+        try:
+            return self.run(u0, parameter, steps, run_id=run_id)
+        except TypeError:
+            pass # does not expect run_id
+        try:
+            return self.run(u0, parameter, steps, interprocess=interprocess)
+        except TypeError:
+            pass # expects neither run_id nor interprocess
+        return self.run(u0, parameter, steps)
+
+    def __call__(self, u0, parameter, steps, run_id, interprocess):
+        u1, J = self.variable_args(u0, parameter, steps, run_id, interprocess)
+        return (array(u1).reshape(array(u0).shape),
+                array(J).reshape([steps, -1]))
+
 def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, simultaneous_runs=None):
     """
     """
+    run = RunWrapper(run)
     assert verify_checkpoint(checkpoint)
     u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
 
@@ -98,6 +124,7 @@ def shadowing(
                                  (steps, n_qoi), where n_qoi is an arbitrary
                                  but consistent number, # quantities of interest.
     '''
+    run = RunWrapper(run)
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 

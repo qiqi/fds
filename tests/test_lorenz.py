@@ -15,7 +15,7 @@ solver_path = os.path.join(my_path, 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
 u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
-def solve(u, s, nsteps, run_id=None, lock=None):
+def solve(u, s, nsteps):
     tmp_path = tempfile.mkdtemp()
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
