@@ -71,8 +71,8 @@ def continue_shadowing(
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 
-    time_dil = TimeDilation(
-            run, u0, parameter, 'time_dilation_initial', interprocess)
+    time_dil = TimeDilation(run, u0, parameter, 'time_dilation_initial',
+                            simultaneous_runs, interprocess)
 
     for i in range(lss.K_segments(), num_segments):
         V = time_dil.project(V)
@@ -86,8 +86,9 @@ def continue_shadowing(
         g_lss.append(g)
 
         # time dilation contribution
-        time_dil = TimeDilation(run, u0, parameter,
-                                'time_dilation_{0:02d}'.format(i), interprocess)
+        time_dil = TimeDilation(
+                run, u0, parameter, 'time_dilation_{0:02d}'.format(i),
+                simultaneous_runs, interprocess)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
         lss.checkpoint(V, v)

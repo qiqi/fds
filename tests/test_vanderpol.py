@@ -31,6 +31,6 @@ def solve(u, s, nsteps):
 
 #if __name__ == '__main__':
 def test_gradient():
-    J, G = shadowing(solve, u0, 1, 1, 10, 500, 2000)
+    J, G = shadowing(solve, u0, 4, 1, 10, 500, 2000)
     assert 1.5 < J < 2.5
-    assert 0.05 < G < 0.15
+    assert 0.03 < G < 0.035
