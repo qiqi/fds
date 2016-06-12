@@ -10,7 +10,7 @@ Then add the directory to
 
 ### Tutorials
 
-- [First example -- Van der Pol oscillator in Python](docs/tutorials/vanderpol_python.html)
+- [First example -- Van der Pol oscillator in Python](http://qiqi.github.io/fds/docs/tutorials/vanderpol_python.html)
 - [Lorenz attractor in C](docs/tutorials/lorenz_c.md)
 - [Lorenz 96 in MPI and C](docs/tutorials/lorenz96_mpi.md)
 

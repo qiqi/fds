@@ -7,11 +7,11 @@ class LssTangent:
         self.Rs = []
         self.bs = []
 
-    def m_segments(self):
+    def K_segments(self):
         assert len(self.Rs) == len(self.bs)
         return len(self.Rs)
 
-    def K_modes(self):
+    def m_modes(self):
         return self.Rs[0].shape[0]
 
     def checkpoint(self, V, v):

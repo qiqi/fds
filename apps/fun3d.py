@@ -96,19 +96,13 @@ def solve(u0, mach, nsteps, run_id, lock):
     assert len(J) == nsteps
     return ravel(u1), J
 
-def most_recent_checkpoint(m):
-    filter_func = lambda f: f.startswith('m{0}_segment'.format(m))
-    files = sorted(filter(filter_func, os.listdir(BASE_PATH)))
-    if len(files):
-        return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
-
 if __name__ == '__main__':
     initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                         for i in range(MPI_NP)]
     u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in initial_data_files])
 
-    checkpoint = most_recent_checkpoint(M_MODES)
+    checkpoint = load_last_checkpoint(M_MODES)
     if checkpoint is None:
         J, G = shadowing(
                     solve,

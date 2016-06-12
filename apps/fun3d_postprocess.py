@@ -7,12 +7,6 @@ my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(my_path)
 from fun3d import *
 
-def most_recent_checkpoint(m):
-    filter_func = lambda f: f.startswith('m{0}_segment'.format(m))
-    files = sorted(filter(filter_func, os.listdir(BASE_PATH)))
-    if len(files):
-        return load_checkpoint(os.path.join(BASE_PATH, files[-1]))
-
 cp = most_recent_checkpoint(M_MODES)
 verify_checkpoint(cp)
 

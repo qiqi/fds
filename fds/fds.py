@@ -74,7 +74,7 @@ def continue_shadowing(
     time_dil = TimeDilation(
             run, u0, parameter, 'time_dilation_initial', interprocess)
 
-    for i in range(lss.m_segments(), num_segments):
+    for i in range(lss.K_segments(), num_segments):
         V = time_dil.project(V)
         v = time_dil.project(v)
 
@@ -95,8 +95,7 @@ def continue_shadowing(
         if checkpoint_path:
             cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
             print(lss_gradient(cp))
-            filename = 'm{0}_segment{1}'.format(lss.K_modes(), lss.m_segments())
-            save_checkpoint(os.path.join(checkpoint_path, filename), cp)
+            save_checkpoint(checkpoint_path, cp)
     cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
     G = lss_gradient(cp)
     return array(J_hist).mean((0,1)), G

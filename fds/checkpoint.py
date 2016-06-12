@@ -1,10 +1,16 @@
+import os
 import pickle
 from collections import namedtuple
 
 Checkpoint = namedtuple('Checkpoint', 'u0 V v lss G_lss g_lss J G_dil g_dil')
 
-def save_checkpoint(checkpoint_file, cp):
-    with open(checkpoint_file, 'wb') as f:
+def save_checkpoint(checkpoint_path, cp):
+    '''
+    save a checkpoint file under the path checkpoint_path,
+    naming convention is mXX_segmentYYY, where XX and YY are given by cp.lss
+    '''
+    filename = 'm{0}_segment{1}'.format(cp.lss.m_modes(), cp.lss.K_segments())
+    with open(os.path.join(checkpoint_path, filename), 'wb') as f:
         pickle.dump(cp, f)
 
 def load_checkpoint(checkpoint_file):
@@ -12,8 +18,27 @@ def load_checkpoint(checkpoint_file):
 
 def verify_checkpoint(checkpoint):
     u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
-    return lss.m_segments() == len(G_lss) \
+    return lss.K_segments() == len(G_lss) \
                             == len(g_lss) \
                             == len(J_hist) \
                             == len(G_dil) \
                             == len(g_dil)
+
+def load_last_checkpoint(checkpoint_path, m):
+    '''
+    load checkpoint in path checkpoint_path, with file name mXX_segmentYYY,
+    where XX matches the given m, and YY is the largest
+    '''
+    def m_modes(filename):
+        m, _ = filename.split('_segment')
+        assert m.startswith('m')
+        return int(m[1:])
+
+    def segments(filename):
+        _, segments = filename.split('_segment')
+        return int(segments)
+
+    files = filter(lambda f : m_modes(f) == m, os.listdir(checkpoint_path))
+    files = sorted(files, key=lambda f : segments(f))
+    if len(files):
+        return load_checkpoint(os.path.join(checkpoint_path, files[-1]))
