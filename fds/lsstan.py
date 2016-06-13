@@ -38,6 +38,6 @@ class LssTangent:
 
     def lyapunov_exponents(self):
         Rs = array(self.Rs)
-        i = arange(self.K_modes())
+        i = arange(self.m_modes())
         diags = Rs[:,i,i]
         return log(abs(diags))

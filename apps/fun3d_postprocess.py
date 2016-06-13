@@ -7,7 +7,7 @@ my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(my_path)
 from fun3d import *
 
-cp = most_recent_checkpoint(M_MODES)
+cp = load_last_checkpoint(BASE_PATH, M_MODES)
 verify_checkpoint(cp)
 
 L = cp.lss.lyapunov_exponents()

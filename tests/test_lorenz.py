@@ -36,10 +36,32 @@ def test_gradient():
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):
         print(i)
-        Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000)
+        Ji, Gi = shadowing(solve, u0, si-28, 2, 10, 1000, 5000)
         J[i,:] = Ji
         G[i,:] = Gi
     assert all(abs(J[:,1] - 100) < 1E-12)
     assert all(abs(G[:,1]) < 1E-12)
     assert all(abs(J[:,0] - ((s-31)**2 + 85)) < 20)
     assert all(abs(G[:,0] - (2 * (s-31))) < 2)
+
+def test_lyapunov():
+#if __name__ == '__main__':
+    cp_path = os.path.join(my_path, 'lorenz_lyapunov')
+    if os.path.exists(cp_path):
+        shutil.rmtree(cp_path)
+    os.mkdir(cp_path)
+    m = 2
+    J, G = shadowing(solve, u0, 0, m, 20, 1000, 5000, checkpoint_path=cp_path)
+    cp = checkpoint.load_last_checkpoint(cp_path, m)
+    L = cp.lss.lyapunov_exponents()
+
+    def exp_mean(x):
+        n = len(x)
+        w = 1 - exp(range(1,n+1) / sqrt(n))
+        x = array(x)
+        w = w.reshape([-1] + [1] * (x.ndim - 1))
+        return (x * w).sum(0) / w.sum()
+
+    lam1, lam2 = exp_mean(L[:,:5])
+    assert 0.5 < lam1 < 1.5
+    assert -15 < lam2 < -5

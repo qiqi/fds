@@ -30,13 +30,19 @@ def load_last_checkpoint(checkpoint_path, m):
     where XX matches the given m, and YY is the largest
     '''
     def m_modes(filename):
-        m, _ = filename.split('_segment')
-        assert m.startswith('m')
-        return int(m[1:])
+        try:
+            m, _ = filename.split('_segment')
+            assert m.startswith('m')
+            return int(m[1:])
+        except:
+            return None
 
     def segments(filename):
-        _, segments = filename.split('_segment')
-        return int(segments)
+        try:
+            _, segments = filename.split('_segment')
+            return int(segments)
+        except:
+            return None
 
     files = filter(lambda f : m_modes(f) == m, os.listdir(checkpoint_path))
     files = sorted(files, key=lambda f : segments(f))
