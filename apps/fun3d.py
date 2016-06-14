@@ -66,13 +66,15 @@ def distribute_data(u):
     assert u.size == 0
     return u_distributed
 
-def lift_drag_from_text(text):
+def lift_drag_from_text(text, xmach):
     lift_drag = []
     for line in text.split('\n'):
         line = line.strip().split()
         if len(line) == 4 and line[0] == 'Lift' and line[2] == 'Drag':
-            lift_drag.append([line[1], line[3]])
-    return array(lift_drag, float)
+            cl, cd = float(line[1]), float(line[3])
+            q = 0.5 * xmach**2   # assuming density 1, is that right?
+            lift_drag.append([cl, cd, q * cl, q * cd])
+    return array(lift_drag)
 
 def solve(u0, s, nsteps, run_id, lock):
     if args.xmach:
@@ -111,7 +113,8 @@ def solve(u0, s, nsteps, run_id, lock):
                    '--alpha', str(alpha)
                   ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
             time.sleep(SLEEP_SECONDS_FOR_IO)
-        savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
+        lift_drag = lift_drag_from_text(open(outfile).read(), xmach)
+        savetxt(lift_drag_file, lift_drag)
         sub_nodes.release()
     J = loadtxt(lift_drag_file).reshape([-1,2])
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
