@@ -3,6 +3,7 @@ import sys
 import time
 import shutil
 import tempfile
+import argparse
 from subprocess import *
 
 from numpy import *
@@ -13,6 +14,7 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
+ALPHA = 20               # nominal angle of attach
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
 K_SEGMENTS = 200         # number of time chunks
@@ -27,7 +29,21 @@ SIMULTANEOUS_RUNS = 18   # max number of simultaneous MPI runs
 REF_WORK_PATH = os.path.join(
         os.sep,'nobackupp8','enielsen','NILSS','PythonTesting','run_data')
 
-BASE_PATH = os.path.join(my_path, 'fun3d')
+parser = argparse.ArgumentParser()
+parser.add_argument('--xmach', action='store_true')
+parser.add_argument('--alpha', action='store_true')
+args = parser.parse_args()
+
+if not (args.xmach or args.alpha):
+    sys.stderr.write('Must specify --xmach or --alpha\n')
+    sys.exit(-1)
+
+if args.xmach:
+    BASE_PATH = os.path.join(my_path, 'fun3d_xmach')
+    S_BASELINE = XMACH
+elif args.alpha:
+    BASE_PATH = os.path.join(my_path, 'fun3d_alpha')
+    S_BASELINE = ALPHA
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
 
@@ -58,8 +74,13 @@ def lift_drag_from_text(text):
             lift_drag.append([line[1], line[3]])
     return array(lift_drag, float)
 
-def solve(u0, mach, nsteps, run_id, lock):
-    print('Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id)
+def solve(u0, s, nsteps, run_id, lock):
+    if args.xmach:
+        xmach, alpha = s, ALPHA
+    elif args.alpha:
+        xmach, alpha = XMACH, s
+    print('Starting solve, xmach, alpha, nsteps, run_id = ',
+                           xmach, alpha, nsteps, run_id)
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
                           for i in range(MPI_NP)]
@@ -85,7 +106,9 @@ def solve(u0, mach, nsteps, run_id, lock):
         with open(outfile, 'w', 8) as f:
             Popen(['mpiexec', '-n', str(MPI_NP), fun3d_bin,
                    '--write_final_field', '--read_initial_field',
-                   '--ncyc', str(nsteps), '--xmach', str(mach)
+                   '--ncyc', str(nsteps),
+                   '--xmach', str(xmach)
+                   '--alpha', str(alpha)
                   ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
             time.sleep(SLEEP_SECONDS_FOR_IO)
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
@@ -107,7 +130,7 @@ if __name__ == '__main__':
         J, G = shadowing(
                     solve,
                     u0,   # 5 variables per CV
-                    XMACH,
+                    S_BASELINE,
                     M_MODES,
                     K_SEGMENTS,
                     STEPS_PER_SEGMENT,
@@ -118,7 +141,7 @@ if __name__ == '__main__':
                  )
     else:
         J, G = continue_shadowing(solve,
-                                  XMACH,
+                                  S_BASELINE,
                                   checkpoint,
                                   K_SEGMENTS,
                                   STEPS_PER_SEGMENT,
