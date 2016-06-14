@@ -76,7 +76,7 @@ def lift_drag_from_text(text, xmach):
             lift_drag.append([cl, cd, q * cl, q * cd])
     return array(lift_drag)
 
-def solve(u0, s, nsteps, run_id, lock):
+def solve(u0, s, nsteps, run_id, interprocess):
     if args.xmach:
         xmach, alpha = s, ALPHA
     elif args.alpha:
@@ -93,7 +93,7 @@ def solve(u0, s, nsteps, run_id, lock):
             not os.path.exists(lift_drag_file):
         if not os.path.exists(work_path):
             os.mkdir(work_path)
-        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, lock)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)
@@ -116,7 +116,7 @@ def solve(u0, s, nsteps, run_id, lock):
         lift_drag = lift_drag_from_text(open(outfile).read(), xmach)
         savetxt(lift_drag_file, lift_drag)
         sub_nodes.release()
-    J = loadtxt(lift_drag_file).reshape([-1,2])
+    J = loadtxt(lift_drag_file).reshape([-1,4])
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in final_data_files])
     assert len(J) == nsteps
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in initial_data_files])
 
-    checkpoint = load_last_checkpoint(M_MODES)
+    checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
     if checkpoint is None:
         J, G = shadowing(
                     solve,
