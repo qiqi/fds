@@ -107,7 +107,7 @@ def solve(u0, s, nsteps, run_id, lock):
             Popen(['mpiexec', '-n', str(MPI_NP), fun3d_bin,
                    '--write_final_field', '--read_initial_field',
                    '--ncyc', str(nsteps),
-                   '--xmach', str(xmach)
+                   '--xmach', str(xmach),
                    '--alpha', str(alpha)
                   ], cwd=work_path, env=env, stdout=f, stderr=f).wait()
             time.sleep(SLEEP_SECONDS_FOR_IO)
