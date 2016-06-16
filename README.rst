@@ -1,4 +1,4 @@
-figure:: https://travis-ci.org/qiqi/fds.svg?branch=master
+.. figure:: https://travis-ci.org/qiqi/fds.svg?branch=master
 
    Travis CI
 
