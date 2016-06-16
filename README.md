@@ -36,5 +36,4 @@ sudo pip install fds
 ### Reference
 - [The least squares shadowing algorithm](docs/ref/lss_algorithm.md)
 - [Function reference](docs/ref/function_ref.md)
-
 - [License](LICENSE.md)

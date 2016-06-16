@@ -1,7 +1,7 @@
 MODULE Equations
     IMPLICIT NONE
 
-    REAL(8), PARAMETER :: DT = 0.1, S0(1) = (/4.0/)
+    REAL(8), PARAMETER :: DT = 0.01, S0(1) = (/4.0/)
     INTEGER, PARAMETER :: NDIM = 2, NPARAMS = 1
 
     CONTAINS

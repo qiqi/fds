@@ -15,10 +15,10 @@ solver_path = os.path.join(my_path, 'solvers', 'circular')
 solver = os.path.join(solver_path, 'solver')
 u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
-BASE_DIR = os.path.join(my_path, 'checkpoint_test')
-if os.path.exists(BASE_DIR):
-    shutil.rmtree(BASE_DIR)
-os.mkdir(BASE_DIR)
+BASE_PATH = os.path.join(my_path, 'checkpoint_test')
+if os.path.exists(BASE_PATH):
+    shutil.rmtree(BASE_PATH)
+os.mkdir(BASE_PATH)
 
 def solve(u, s, nsteps):
     tmp_path = tempfile.mkdtemp()
@@ -37,10 +37,19 @@ def solve(u, s, nsteps):
 def test_checkpoint():
     s = 1
     m_modes = 2
-    segments = 20
-    shadowing(solve, u0, s, m_modes, segments, 100, 0, checkpoint_path=BASE_DIR)
-    cp = checkpoint.load_last_checkpoint(BASE_DIR, m_modes)
-    assert cp.lss.K_segments() == segments
+    segments0, segments1 = 10, 20
+
+    random.seed(0)
+    shadowing(solve, u0, s, m_modes, segments0, 100, 0,
+              checkpoint_path=BASE_PATH)
+    cp = checkpoint.load_last_checkpoint(BASE_PATH, m_modes)
+    assert cp.lss.K_segments() == segments0
     assert cp.lss.m_modes() == m_modes
-    J, G = continue_shadowing(solve, s, cp, segments + 10, 100)
-    assert abs(G - 1) < 0.1
+    J2, G2 = continue_shadowing(solve, s, cp, segments1, 100,
+                                checkpoint_path=BASE_PATH)
+
+    random.seed(0)
+    J1, G1 = shadowing(solve, u0, s, m_modes, segments1, 100, 0,
+                       checkpoint_path=BASE_PATH)
+    assert J1 == J2
+    assert G1 == G2

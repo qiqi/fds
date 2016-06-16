@@ -2,22 +2,35 @@ import sys
 from numpy import *
 from multiprocessing import Pool
 
+def set_order_of_accuracy(order_of_accuracy):
+    if order_of_accuracy < 2:
+        order_of_accuracy = 2
+        sys.stderr.write('Order of accuracy too low, setting to 2 instead\n')
+    TimeDilation.order_of_accuracy = order_of_accuracy
+
+def compute_dxdt_of_order(u, order):
+    assert order >= 1
+    A = array([arange(order + 1) ** i for i in range(order + 1)])
+    b = zeros(order + 1)
+    b[1] = 1
+    c = linalg.solve(A, b)
+    return dot(c, u[:order+1])
+
 def compute_dxdt(u):
     '''
     time step size turns out cancelling out
     '''
-    assert len(u) == 3 # second order accuracy for now
-    dxdt_1st_order = u[1] - u[0]
-    dxdt_2nd_order = (-u[2] + 4 * u[1] - 3 * u[0]) / 2
-    difference = linalg.norm(ravel(dxdt_2nd_order - dxdt_1st_order))
-    relative_difference = difference / linalg.norm(ravel(dxdt_2nd_order))
+    dxdt_higher_order = compute_dxdt_of_order(u, len(u) - 1)
+    dxdt_lower_order = compute_dxdt_of_order(u, len(u) - 2)
+    difference = linalg.norm(ravel(dxdt_higher_order - dxdt_lower_order))
+    relative_difference = difference / linalg.norm(ravel(dxdt_higher_order))
     if relative_difference > 0.01:
         sys.stderr.write('Warning: dxdt in time dilation inaccurate. ')
         sys.stderr.write('Relative error = {0}\n'.format(relative_difference))
-    return dxdt_2nd_order
+    return dxdt_higher_order
 
 class TimeDilation:
-    order_of_accuracy = 2
+    order_of_accuracy = 3
 
     def __init__(self, run, u0, parameter, run_id,
                  simultaneous_runs, interprocess):

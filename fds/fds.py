@@ -71,7 +71,8 @@ def continue_shadowing(
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 
-    time_dil = TimeDilation(run, u0, parameter, 'time_dilation_initial',
+    run_id = 'time_dilation_{0:02d}'.format(lss.K_segments())
+    time_dil = TimeDilation(run, u0, parameter, run_id,
                             simultaneous_runs, interprocess)
 
     for i in range(lss.K_segments(), num_segments):
@@ -86,19 +87,19 @@ def continue_shadowing(
         g_lss.append(g)
 
         # time dilation contribution
-        time_dil = TimeDilation(
-                run, u0, parameter, 'time_dilation_{0:02d}'.format(i),
-                simultaneous_runs, interprocess)
+        run_id = 'time_dilation_{0:02d}'.format(i+1)
+        time_dil = TimeDilation(run, u0, parameter, run_id,
+                                simultaneous_runs, interprocess)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
         lss.checkpoint(V, v)
 
+        checkpoint = Checkpoint(
+                u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+        print(lss_gradient(checkpoint))
         if checkpoint_path:
-            cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
-            print(lss_gradient(cp))
-            save_checkpoint(checkpoint_path, cp)
-    cp = Checkpoint(u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
-    G = lss_gradient(cp)
+            save_checkpoint(checkpoint_path, checkpoint)
+    G = lss_gradient(checkpoint)
     return array(J_hist).mean((0,1)), G
 
 def shadowing(
