@@ -1,4 +1,10 @@
+from numpy import *
 from multiprocessing import Pool
+
+def trapez_mean(J, dim):
+    J = rollaxis(J, dim)
+    J_m1 = 2 * J[0] - J[1]
+    return (J.sum(0) + J[:-1].sum(0) + J_m1) / (2 * J.shape[0])
 
 def run_segment(run, u0, V, v, parameter, i_segment, steps,
                 epsilon, simultaneous_runs, interprocess):
@@ -40,10 +46,10 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
     for j in range(subspace_dimension):
         u1p, J1 = res_h[j].get()
         V[:,j] = (u1p - u0p) / epsilon
-        G.append((J1.mean(0) - J0.mean(0)) / epsilon)
+        G.append(trapez_mean(J1 - J0, 0) / epsilon)
     # get inhomogeneous tangent
     u1p, J1 = res_i.get()
-    v, g = (u1p - u0p) / epsilon, (J1.mean(0) - J0.mean(0)) / epsilon
+    v, g = (u1p - u0p) / epsilon, trapez_mean(J1 - J0, 0) / epsilon
     threads.close()
     threads.join()
     return u0p, V, v, J0, G, g

@@ -1,7 +1,11 @@
 .. figure:: https://travis-ci.org/qiqi/fds.svg?branch=master
    :alt: Travis CI
 
-   Travis CI
+.. toctree::
+   :maxdepth: 5
+
+   tutorials/src/vanderpol_python/vanderpol
+
 
 What's it for
 ~~~~~~~~~~~~~
@@ -33,8 +37,7 @@ using pip, simply type
 Tutorials
 ~~~~~~~~~
 
--  `First example -- Van der Pol oscillator in
-   Python <http://qiqi.github.io/fds/docs/tutorials/vanderpol_python.html>`__
+-  `First example -- Van der Pol oscillator in Python <tutorials/src/vanderpol_python/vanderpol>`__
 -  `Lorenz attractor in C <docs/tutorials/lorenz_c.md>`__
 -  `Lorenz 96 in MPI and C <docs/tutorials/lorenz96_mpi.md>`__
 

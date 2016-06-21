@@ -29,7 +29,20 @@ def compute_dxdt(u):
         sys.stderr.write('Relative error = {0}\n'.format(relative_difference))
     return dxdt_higher_order
 
-class TimeDilation:
+class TimeDilationBase:
+    def contribution(self, v):
+        return dot(self.dxdt, v) / (self.dxdt**2).sum()
+
+    def project(self, v):
+        dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
+        return v - dv.reshape(v.shape)
+
+class TimeDilationExact(TimeDilationBase):
+    def __init__(self, run_ddt, u0, parameter):
+        self.dxdt = run_ddt(u0, parameter)
+        self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
+
+class TimeDilation(TimeDilationBase):
     order_of_accuracy = 3
 
     def __init__(self, run, u0, parameter, run_id,
@@ -45,10 +58,3 @@ class TimeDilation:
         threads.join()
         self.dxdt = compute_dxdt(u)
         self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
-
-    def contribution(self, v):
-        return dot(self.dxdt, v) / (self.dxdt**2).sum()
-
-    def project(self, v):
-        dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
-        return v - dv.reshape(v.shape)

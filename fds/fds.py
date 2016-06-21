@@ -1,12 +1,13 @@
 import os
 import argparse
+from copy import deepcopy
 from multiprocessing import Manager
 
 from numpy import *
 
 from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
-from .timedilation import TimeDilation
-from .segment import run_segment
+from .timedilation import TimeDilation, TimeDilationExact
+from .segment import run_segment, trapez_mean
 from .lsstan import LssTangent
 
 # ---------------------------------------------------------------------------- #
@@ -22,12 +23,21 @@ def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
-def lss_gradient(checkpoint):
+def lss_gradient(checkpoint, num_segments=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
+    if num_segments:
+        lss = deepcopy(lss)
+        lss.bs = lss.bs[:num_segments]
+        lss.Rs = lss.Rs[:num_segments]
+        G_lss = G_lss[:num_segments]
+        g_lss = g_lss[:num_segments]
+        J = J[:num_segments]
+        G_dil = G_dil[:num_segments]
+        g_dil = g_dil[:num_segments]
     alpha = lss.solve()
     grad_lss = (alpha[:,:,newaxis] * array(G_lss)).sum(1) + array(g_lss)
     J = array(J)
-    dJ = J.mean((0,1)) - J[:,-1]
+    dJ = trapez_mean(J.mean(0), 0) - J[:,-1]
     steps_per_segment = J.shape[1]
     dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
     grad_dil = dil[:,newaxis] * dJ
@@ -61,7 +71,8 @@ class RunWrapper:
 def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
-        checkpoint_path=None, simultaneous_runs=None):
+        checkpoint_path=None, simultaneous_runs=None,
+        run_ddt=None):
     """
     """
     run = RunWrapper(run)
@@ -72,8 +83,11 @@ def continue_shadowing(
     interprocess = (manager.Lock(), manager.dict())
 
     run_id = 'time_dilation_{0:02d}'.format(lss.K_segments())
-    time_dil = TimeDilation(run, u0, parameter, run_id,
-                            simultaneous_runs, interprocess)
+    if run_ddt:
+        time_dil = TimeDilationExact(run_ddt, u0, parameter)
+    else:
+        time_dil = TimeDilation(run, u0, parameter, run_id,
+                                simultaneous_runs, interprocess)
 
     for i in range(lss.K_segments(), num_segments):
         V = time_dil.project(V)
@@ -88,10 +102,17 @@ def continue_shadowing(
 
         # time dilation contribution
         run_id = 'time_dilation_{0:02d}'.format(i+1)
-        time_dil = TimeDilation(run, u0, parameter, run_id,
-                                simultaneous_runs, interprocess)
+        if run_ddt:
+            time_dil = TimeDilationExact(run_ddt, u0, parameter)
+        else:
+            time_dil = TimeDilation(run, u0, parameter, run_id,
+                                    simultaneous_runs, interprocess)
         G_dil.append(time_dil.contribution(V))
         g_dil.append(time_dil.contribution(v))
+
+        V = time_dil.project(V)
+        v = time_dil.project(v)
+
         lss.checkpoint(V, v)
 
         checkpoint = Checkpoint(
@@ -105,7 +126,7 @@ def continue_shadowing(
 def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
-        checkpoint_path=None, simultaneous_runs=None):
+        checkpoint_path=None, simultaneous_runs=None, run_ddt=None):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -138,4 +159,4 @@ def shadowing(
     return continue_shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
-            checkpoint_path, simultaneous_runs)
+            checkpoint_path, simultaneous_runs, run_ddt)
