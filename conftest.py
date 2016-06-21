@@ -1,4 +1,4 @@
 # content of conftest.py
 import sys
 
-collect_ignore = ["setup.py", "apps"]
+collect_ignore = ["setup.py", "apps", "debug"]
