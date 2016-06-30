@@ -41,15 +41,16 @@ def test_checkpoint():
 
     random.seed(0)
     shadowing(solve, u0, s, m_modes, segments0, 100, 0,
-              checkpoint_path=BASE_PATH)
+              checkpoint_path=BASE_PATH, checkpoint_interval=5)
     cp = checkpoint.load_last_checkpoint(BASE_PATH, m_modes)
     assert cp.lss.K_segments() == segments0
     assert cp.lss.m_modes() == m_modes
     J2, G2 = continue_shadowing(solve, s, cp, segments1, 100,
-                                checkpoint_path=BASE_PATH)
+                                checkpoint_path=BASE_PATH,
+                                checkpoint_interval=5)
 
     random.seed(0)
     J1, G1 = shadowing(solve, u0, s, m_modes, segments1, 100, 0,
-                       checkpoint_path=BASE_PATH)
+                       checkpoint_path=BASE_PATH, checkpoint_interval=5)
     assert J1 == J2
     assert G1 == G2
