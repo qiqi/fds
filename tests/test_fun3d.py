@@ -20,7 +20,7 @@ M_MODES = 16             # number of unstable modes
 K_SEGMENTS = 5           # number of time chunks
 STEPS_PER_SEGMENT = 100  # number of time steps per chunk
 STEPS_RUNUP = 2000       # additional run up time steps
-SLEEP_SECONDS_FOR_IO = 0 # how long to wait for file IO to sync
+SLEEP_SECONDS_FOR_IO = 1 # how long to wait for file IO to sync
 MPI_NP = 4               # number of MPI processes for each FUN3D instance
 SIMULTANEOUS_RUNS = 2    # max number of simultaneous MPI runs
 

@@ -72,7 +72,7 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, simultaneous_runs=None,
-        run_ddt=None):
+        run_ddt=None, return_checkpoint=False):
     """
     """
     run = RunWrapper(run)
@@ -83,7 +83,7 @@ def continue_shadowing(
     interprocess = (manager.Lock(), manager.dict())
 
     run_id = 'time_dilation_{0:02d}'.format(lss.K_segments())
-    if run_ddt:
+    if run_ddt is not None:
         time_dil = TimeDilationExact(run_ddt, u0, parameter)
     else:
         time_dil = TimeDilation(run, u0, parameter, run_id,
@@ -102,7 +102,7 @@ def continue_shadowing(
 
         # time dilation contribution
         run_id = 'time_dilation_{0:02d}'.format(i+1)
-        if run_ddt:
+        if run_ddt is not None:
             time_dil = TimeDilationExact(run_ddt, u0, parameter)
         else:
             time_dil = TimeDilation(run, u0, parameter, run_id,
@@ -120,13 +120,17 @@ def continue_shadowing(
         print(lss_gradient(checkpoint))
         if checkpoint_path:
             save_checkpoint(checkpoint_path, checkpoint)
-    G = lss_gradient(checkpoint)
-    return array(J_hist).mean((0,1)), G
+    if return_checkpoint:
+        return checkpoint
+    else:
+        G = lss_gradient(checkpoint)
+        return array(J_hist).mean((0,1)), G
 
 def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
-        checkpoint_path=None, simultaneous_runs=None, run_ddt=None):
+        checkpoint_path=None, simultaneous_runs=None, run_ddt=None,
+        return_checkpoint=False):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -159,4 +163,4 @@ def shadowing(
     return continue_shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
-            checkpoint_path, simultaneous_runs, run_ddt)
+            checkpoint_path, simultaneous_runs, run_ddt, return_checkpoint)

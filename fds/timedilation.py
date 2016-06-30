@@ -31,16 +31,26 @@ def compute_dxdt(u):
 
 class TimeDilationBase:
     def contribution(self, v):
-        return dot(self.dxdt, v) / (self.dxdt**2).sum()
+        if self.dxdt is None:
+            return 0 if array(v).ndim == 1 else zeros(array(v).shape[1])
+        else:
+            return dot(self.dxdt, v) / (self.dxdt**2).sum()
 
     def project(self, v):
-        dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
-        return v - dv.reshape(v.shape)
+        if self.dxdt_normalized is None:
+            return v
+        else:
+            dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
+            return v - dv.reshape(v.shape)
 
 class TimeDilationExact(TimeDilationBase):
     def __init__(self, run_ddt, u0, parameter):
-        self.dxdt = run_ddt(u0, parameter)
-        self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
+        if run_ddt is not 0:
+            self.dxdt = run_ddt(u0, parameter)
+            self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
+        else:
+            self.dxdt = None
+            self.dxdt_normalized = None
 
 class TimeDilation(TimeDilationBase):
     order_of_accuracy = 3
