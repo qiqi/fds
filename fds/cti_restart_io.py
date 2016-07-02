@@ -10,9 +10,12 @@ NO_CHANGE = None
 
 UGP_IO_MAGIC_NUMBER = 123581321
 UGP_IO_EOF = 51
+UGP_IO_I0 = 11
 UGP_IO_NO_D1 = 32
 UGP_IO_NO_D2 = 33
 UGP_IO_FAZONE_NO_D2 = 114
+
+UGP_IO_HEADER_NAME_LEN = 52
 
 def read_header(fp):
     '''
@@ -23,13 +26,38 @@ def read_header(fp):
             idata (integer array of size 16, meaning depends on record type)
             rdata (double array of size 16, meaning depends on record type)
     '''
-    UGP_IO_HEADER_NAME_LEN = 52
     name = ctypes.create_string_buffer(fp.read(UGP_IO_HEADER_NAME_LEN)).value
     iid, skip, zero = struct.unpack('iii', fp.read(12))
     assert zero == 0
     idata = frombuffer(fp.read(16*4), 'i')
     rdata = frombuffer(fp.read(16*8), 'd')
     return name, iid, skip, idata, rdata
+
+def same_skip_in_header(fp, skip):
+    loc = fp.tell()
+    _, _, old_skip, _, _ = read_header(fp)
+    fp.seek(loc)
+    return old_skip == skip
+
+def write_header(fp, name, iid, skip, idata, rdata):
+    '''
+    Header structure according to core/CTIDefs.hpp
+    returns name (str)
+            iid (integer, record type according to core/CTIDefs.hpp
+            skip (integer, distance in bytes to next record)
+            idata (integer array of size 16, meaning depends on record type)
+            rdata (double array of size 16, meaning depends on record type)
+    '''
+    assert same_skip_in_header(fp, skip)
+    name = fromstring(name, dtype='b')
+    fp.write(name.tobytes())
+    fp.write(zeros(UGP_IO_HEADER_NAME_LEN - name.size, dtype='b').tobytes())
+    fp.write(struct.pack('iii', iid, skip, 0))
+    idata = ascontiguousarray(idata, dtype='i')
+    rdata = ascontiguousarray(rdata, dtype='d')
+    assert idata.shape == rdata.shape == (16,)
+    fp.write(idata.tobytes())
+    fp.write(rdata.tobytes())
 
 def load_les(fname, verbose=True):
     '''
@@ -52,7 +80,10 @@ def load_les(fname, verbose=True):
         fp.seek(offset)
         name, iid, skip, idata, rdata = read_header(fp)
         offset += skip
-        if iid == UGP_IO_NO_D1:
+        if iid == UGP_IO_I0:
+            data[name] = idata[0]
+            if verbose: print(name, data[name])
+        elif iid == UGP_IO_NO_D1:
             size = idata[0]
             if verbose: print(name, size)
             data[name] = frombuffer(fp.read(size*8), 'd')
@@ -102,7 +133,14 @@ def save_les(fname, data, verbose=True):
         fp.seek(offset)
         name, iid, skip, idata, rdata = read_header(fp)
         offset += skip
-        if iid == UGP_IO_NO_D1:
+        if iid == UGP_IO_I0:
+            if verbose: print(name, data[name])
+            fp.seek(offset - skip)
+            idata = idata.copy()
+            idata[0] = unsaved[name]
+            del unsaved[name]
+            write_header(fp, name, iid, skip, idata, rdata)
+        elif iid == UGP_IO_NO_D1:
             size = idata[0]
             if verbose: print(name, size)
             save_data_field(fp, size, unsaved, name)
@@ -117,10 +155,11 @@ def save_les(fname, data, verbose=True):
             save_data_field(fp, size*3, unsaved, name)
     if len(unsaved):
         sys.stderr.write('Warning: cannot find names in les file:\n')
-        sys.stderr.write(unsaved.keys())
-        sys.stderr.write('\n')
+        for key in unsaved:
+            sys.stderr.write('\t' + key + '\n')
 
 if __name__ == '__main__':
     'smoke test'
     data = load_les('result.les')
+    data['STEP'] = 0
     save_les('result.les', data)
