@@ -15,14 +15,14 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-XMACH = 0.1              # nominal xmach parameter
-M_MODES = 16             # number of unstable modes
-K_SEGMENTS = 5           # number of time chunks
-STEPS_PER_SEGMENT = 100  # number of time steps per chunk
-STEPS_RUNUP = 200        # additional run up time steps
-SLEEP_SECONDS_FOR_IO = 0 # how long to wait for file IO to sync
-MPI_NP = 4               # number of MPI processes for each FUN3D instance
-SIMULTANEOUS_RUNS = 2    # max number of simultaneous MPI runs
+XMACH = 0.1                # nominal xmach parameter
+M_MODES = 16               # number of unstable modes
+K_SEGMENTS = 5             # number of time chunks
+STEPS_PER_SEGMENT = 100    # number of time steps per chunk
+STEPS_RUNUP = 200          # additional run up time steps
+SLEEP_SECONDS_FOR_IO = 0.2 # how long to wait for file IO to sync
+MPI_NP = 4                 # number of MPI processes for each FUN3D instance
+SIMULTANEOUS_RUNS = 2      # max number of simultaneous MPI runs
 
 # change this a directory with final.data.* files, so that I know
 # how to distribute an initial condition into different ranks

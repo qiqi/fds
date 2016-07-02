@@ -4,6 +4,10 @@ import struct
 import ctypes
 from numpy import *
 
+__all__ = ['NO_CHANGE', 'save_les', 'load_les']
+
+NO_CHANGE = None
+
 UGP_IO_MAGIC_NUMBER = 123581321
 UGP_IO_EOF = 51
 UGP_IO_NO_D1 = 32
@@ -66,11 +70,13 @@ def load_les(fname, verbose=True):
 def save_data_field(fp, size, data, name):
     '''
     Checks the size of data[name], saves it to fp, then delete the data entry.
+    if data[name] is NO_CHANGE, the do not change this record in file.
     Raises AssertionError if things are not right
     '''
     assert name in data
-    assert size == data[name].size
-    fp.write(ascontiguousarray(data[name], dtype='d').tobytes())
+    if data[name] is not NO_CHANGE:
+        assert size == data[name].size
+        fp.write(ascontiguousarray(data[name], dtype='d').tobytes())
     del data[name]
 
 def save_les(fname, data, verbose=True):

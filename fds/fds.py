@@ -58,7 +58,7 @@ class RunWrapper:
         except TypeError as e4:
             tb4 = traceback.format_exc() # failed
         for e, tb in [(e1, tb1), (e2, tb2), (e3, tb3), (e4, tb4)]:
-            print tb
+            print(tb)
         raise TypeError
 
     def __call__(self, u0, parameter, steps, run_id, interprocess):
