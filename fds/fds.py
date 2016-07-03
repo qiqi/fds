@@ -1,6 +1,7 @@
 import os
 import argparse
 from copy import deepcopy
+import traceback
 from multiprocessing import Manager
 
 from numpy import *
@@ -51,22 +52,35 @@ class RunWrapper:
         try:
             return self.run(u0, parameter, steps,
                             run_id=run_id, interprocess=interprocess)
-        except TypeError:
-            pass # does not expect run_id or interprocess argument
+        except TypeError as e1:
+            # does not expect run_id or interprocess argument
+            tb1 = traceback.format_exc()
         try:
             return self.run(u0, parameter, steps, run_id=run_id)
-        except TypeError:
-            pass # does not expect run_id
+        except TypeError as e2:
+            tb2 = traceback.format_exc() # does not expect run_id
         try:
             return self.run(u0, parameter, steps, interprocess=interprocess)
-        except TypeError:
-            pass # expects neither run_id nor interprocess
-        return self.run(u0, parameter, steps)
+        except TypeError as e3:
+            tb3 = traceback.format_exc() # expects neither run_id nor interprocess
+        try:
+            return self.run(u0, parameter, steps)
+        except TypeError as e4:
+            tb4 = traceback.format_exc() # failed
+        for e, tb in [(e1, tb1), (e2, tb2), (e3, tb3), (e4, tb4)]:
+            print(tb)
+        raise TypeError
 
     def __call__(self, u0, parameter, steps, run_id, interprocess):
-        u1, J = self.variable_args(u0, parameter, steps, run_id, interprocess)
-        return (array(u1).reshape(array(u0).shape),
-                array(J).reshape([steps, -1]))
+        try:
+            u1, J = self.variable_args(
+                    u0, parameter, steps, run_id, interprocess)
+            return (array(u1).reshape(array(u0).shape),
+                    array(J).reshape([steps, -1]))
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(tb)
+            raise e
 
 def continue_shadowing(
         run, parameter, checkpoint,
