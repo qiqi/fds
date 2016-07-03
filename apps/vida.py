@@ -16,14 +16,15 @@ from fds import *
 from fds.checkpoint import *
 from fds.cti_restart_io import *
 
-INLET_U = 0.053826972    # nominal inlet velocity
-M_MODES = 4              # number of unstable modes
-K_SEGMENTS = 100         # number of time chunks
-STEPS_PER_SEGMENT = 500  # number of time steps per chunk
-STEPS_RUNUP = 10         # additional run up time steps
-SLEEP_SECONDS_FOR_IO = 5 # how long to wait for file IO to sync
-MPI_NP = 576             # number of MPI processes for each FUN3D instance
-SIMULTANEOUS_RUNS = 2    # max number of simultaneous MPI runs
+INLET_U = 0.053826972     # nominal inlet velocity
+M_MODES = 4               # number of unstable modes
+K_SEGMENTS = 100          # number of time chunks
+STEPS_PER_SEGMENT = 500   # number of time steps per chunk
+STEPS_RUNUP = 10          # additional run up time steps
+SLEEP_SECONDS_FOR_IO = 18 # how long to wait for file IO to sync
+MPI_NP = 576              # number of MPI processes for each instance
+# MPI_NP = 48               # number of MPI processes for each instance
+SIMULTANEOUS_RUNS = 3     # max number of simultaneous MPI runs
 
 STATE_VARS = ['bullet_nose:RHOU_BC', 'RHOUM', 'PHIM', 'RHOUM0',
  'bullet_base:RHOU_BC', 'P', 'U', 'outlet:RHOU_BC', 'out_wall:RHOU_BC',
@@ -46,7 +47,8 @@ if not os.path.exists(BASE_PATH):
 vida_bin = os.path.join(REF_WORK_PATH, 'vida.exe')
 
 def make_data(u):
-    assert u.ndim == 1
+    if u.ndim != 1:
+        raise ValueError('make_data u.ndim = {0} != 1'.format(u.ndim))
     data, start = {}, 0
     for name in STATE_VARS:
         size = REF_STATE[name].size
@@ -55,7 +57,8 @@ def make_data(u):
     for name in DUMMY_VARS:
         data[name] = NO_CHANGE
     data['STEP'] = 1
-    assert start == u.size
+    if start != u.size:
+        raise ValueError('make_data u.size = {0} != {2}'.format(u.size, start))
     return data
 
 def solve(u0, inlet_u, nsteps, run_id, interprocess):
@@ -89,9 +92,9 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
             time.sleep(SLEEP_SECONDS_FOR_IO)
         sub_nodes.release()
     J = hstack([loadtxt(f) for f in stats_files])
+    J = J.reshape([nsteps, -1, 4])[:,:,3]
     solution = load_les(final_data_file, verbose=False)
     u1 = hstack([ravel(solution[state]) for state in STATE_VARS])
-    assert len(J) == nsteps
     return ravel(u1), J
 
 if __name__ == '__main__':

@@ -62,9 +62,15 @@ class RunWrapper:
         raise TypeError
 
     def __call__(self, u0, parameter, steps, run_id, interprocess):
-        u1, J = self.variable_args(u0, parameter, steps, run_id, interprocess)
-        return (array(u1).reshape(array(u0).shape),
-                array(J).reshape([steps, -1]))
+        try:
+            u1, J = self.variable_args(
+                    u0, parameter, steps, run_id, interprocess)
+            return (array(u1).reshape(array(u0).shape),
+                    array(J).reshape([steps, -1]))
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(tb)
+            raise e
 
 def continue_shadowing(
         run, parameter, checkpoint,

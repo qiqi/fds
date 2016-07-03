@@ -28,7 +28,8 @@ def read_header(fp):
     '''
     name = ctypes.create_string_buffer(fp.read(UGP_IO_HEADER_NAME_LEN)).value
     iid, skip, zero = struct.unpack('iii', fp.read(12))
-    assert zero == 0
+    if zero != 0:
+        raise IOError('Byte 4-7 in CTIHeader "skip" is expected to be 0')
     idata = frombuffer(fp.read(16*4), 'i')
     rdata = frombuffer(fp.read(16*8), 'd')
     return name, iid, skip, idata, rdata
@@ -48,14 +49,16 @@ def write_header(fp, name, iid, skip, idata, rdata):
             idata (integer array of size 16, meaning depends on record type)
             rdata (double array of size 16, meaning depends on record type)
     '''
-    assert same_skip_in_header(fp, skip)
+    if not same_skip_in_header(fp, skip):
+        raise ValueError('Cannot overwrite CTIHeader with a different "skip"')
     name = fromstring(name, dtype='b')
     fp.write(name.tobytes())
     fp.write(zeros(UGP_IO_HEADER_NAME_LEN - name.size, dtype='b').tobytes())
     fp.write(struct.pack('iii', iid, skip, 0))
     idata = ascontiguousarray(idata, dtype='i')
     rdata = ascontiguousarray(rdata, dtype='d')
-    assert idata.shape == rdata.shape == (16,)
+    if not idata.shape == rdata.shape == (16,):
+        raise ValueError('CTIHeader idata and rdata both must be shape (16,)')
     fp.write(idata.tobytes())
     fp.write(rdata.tobytes())
 
@@ -72,7 +75,8 @@ def load_les(fname, verbose=True):
     '''
     fp = open(fname, 'rb')
     magic_number, io_version = struct.unpack('ii', fp.read(8))
-    assert magic_number == UGP_IO_MAGIC_NUMBER
+    if magic_number != UGP_IO_MAGIC_NUMBER:
+        raise IOError('Magic number error in read_les')
     if verbose:
         print('loading {0}, io_version={1}'.format(fname, io_version))
     data, iid, offset = {}, 0, 8
@@ -90,7 +94,8 @@ def load_les(fname, verbose=True):
         elif iid == UGP_IO_NO_D2:
             size, dim = idata[:2]
             if verbose: print(name, size, dim)
-            assert dim == 3
+            if dim != 3:
+                raise IOError('dim!=3 in UGP_IO_NO_D2, load_les')
             data[name] = frombuffer(fp.read(size*3*8), 'd').reshape([size, 3])
         elif iid == UGP_IO_FAZONE_NO_D2:
             size, dim = idata[0], 3
@@ -102,11 +107,17 @@ def save_data_field(fp, size, data, name):
     '''
     Checks the size of data[name], saves it to fp, then delete the data entry.
     if data[name] is NO_CHANGE, the do not change this record in file.
-    Raises AssertionError if things are not right
+    Raises ValueError if things are not right
     '''
-    assert name in data
+    if name not in data:
+        raise ValueError(
+                'Saving field {0} not in data with fields {1}'.format(
+                    name, data.keys()))
     if data[name] is not NO_CHANGE:
-        assert size == data[name].size
+        if size != data[name].size:
+            raise ValueError(
+                'Saving field {0} size mismatch {1}!={2}'.format(
+                    name, size, data[name].size))
         fp.write(ascontiguousarray(data[name], dtype='d').tobytes())
     del data[name]
 
@@ -124,7 +135,8 @@ def save_les(fname, data, verbose=True):
     '''
     fp = open(fname, 'r+b')
     magic_number, io_version = struct.unpack('ii', fp.read(8))
-    assert magic_number == UGP_IO_MAGIC_NUMBER
+    if magic_number != UGP_IO_MAGIC_NUMBER:
+        raise IOError('Magic number error in save_les')
     if verbose:
         print('saving to {0}, io_version={1}'.format(fname, io_version))
     iid, offset = 0, 8
@@ -147,7 +159,8 @@ def save_les(fname, data, verbose=True):
         elif iid == UGP_IO_NO_D2:
             size, dim = idata[:2]
             if verbose: print(name, size, dim)
-            assert dim == 3
+            if dim != 3:
+                raise IOError('dim!=3 in UGP_IO_NO_D2, save_les')
             save_data_field(fp, size*3, unsaved, name)
         elif iid == UGP_IO_FAZONE_NO_D2:
             size, dim = idata[0], 3
