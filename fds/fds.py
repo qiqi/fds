@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 from copy import deepcopy
 import traceback
@@ -68,7 +69,7 @@ class RunWrapper:
         except TypeError as e4:
             tb4 = traceback.format_exc() # failed
         for e, tb in [(e1, tb1), (e2, tb2), (e3, tb3), (e4, tb4)]:
-            print(tb)
+            sys.stderr.write(str(tb) + '\n')
         raise TypeError
 
     def __call__(self, u0, parameter, steps, run_id, interprocess):
@@ -79,7 +80,7 @@ class RunWrapper:
                     array(J).reshape([steps, -1]))
         except Exception as e:
             tb = traceback.format_exc()
-            print(tb)
+            sys.stderr.write(str(tb) + '\n')
             raise e
 
 def continue_shadowing(
