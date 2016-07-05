@@ -22,8 +22,8 @@ K_SEGMENTS = 100          # number of time chunks
 STEPS_PER_SEGMENT = 500   # number of time steps per chunk
 STEPS_RUNUP = 10          # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 18 # how long to wait for file IO to sync
-MPI_NP = 576              # number of MPI processes for each instance
-# MPI_NP = 48               # number of MPI processes for each instance
+# MPI_NP = 576              # number of MPI processes for each instance
+MPI_NP = 192              # number of MPI processes for each instance
 SIMULTANEOUS_RUNS = 3     # max number of simultaneous MPI runs
 
 STATE_VARS = ['bullet_nose:RHOU_BC', 'RHOUM', 'PHIM', 'RHOUM0',
@@ -39,7 +39,7 @@ STATS_FILES = open(os.path.join(REF_WORK_PATH, 'probe_files')).read().strip().sp
 REF_DATA_FILE = os.path.join(REF_WORK_PATH, 'initial.les')
 REF_STATE = load_les(REF_DATA_FILE, verbose=False)
 
-BASE_PATH = os.path.join(my_path, 'vida')
+BASE_PATH = os.path.join(my_path, 'vida_new')
 S_BASELINE = INLET_U
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
@@ -71,10 +71,11 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
                    for fname in STATS_FILES]
     if not os.path.exists(final_data_file) or \
             not all([os.path.exists(f) for f in stats_files]):
-        if not os.path.exists(work_path):
-            os.mkdir(work_path)
-            for subdir in 'STATS ISOS PROBES ZONES LOGS MONITOR SOLUT CUTS'.split():
-                os.mkdir(os.path.join(work_path, subdir))
+        if os.path.exists(work_path):
+            shutil.rmtree(work_path)
+        os.mkdir(work_path)
+        for subdir in 'STATS ISOS PROBES ZONES LOGS MONITOR SOLUT CUTS'.split():
+            os.mkdir(os.path.join(work_path, subdir))
         sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
@@ -89,7 +90,7 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
         with open(outfile, 'w', 8) as f:
             Popen(['mpiexec', '-n', str(MPI_NP), vida_bin],
                   cwd=work_path, env=env, stdout=f, stderr=f).wait()
-            time.sleep(SLEEP_SECONDS_FOR_IO)
+        time.sleep(SLEEP_SECONDS_FOR_IO)
         sub_nodes.release()
     J = hstack([loadtxt(f) for f in stats_files])
     J = J.reshape([nsteps, -1, 4])[:,:,3]
