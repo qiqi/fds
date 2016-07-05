@@ -2,6 +2,8 @@ from numpy import *
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
+from .timeseries import windowed_mean
+
 class LssTangent:
     def __init__(self):
         self.Rs = []
@@ -44,11 +46,22 @@ class LssTangent:
         return log(abs(diags))
 
     def lyapunov_covariant_vectors(self):
-        ai = eye(self.m_modes())
-        a = [ai]
+        exponents = self.lyapunov_exponents().mean(0)
+        multiplier = exp(exponents)
+        vi = eye(self.m_modes())
+        v = [vi]
         for Ri in reversed(self.Rs):
-            ai = linalg.solve(Ri, ai)
-            a.insert(0, ai)
-        a = array(a)
-        a /= abs(a).mean((0,1))
-        return rollaxis(a, 2)
+            vi = linalg.solve(Ri, vi) * multiplier
+            v.insert(0, vi)
+        v = array(v)
+        return rollaxis(v, 2)
+
+    def lyapunov_covariant_magnitude_and_sin_angle(self):
+        v = self.lyapunov_covariant_vectors()
+        v_magnitude = sqrt((v**2).sum(2))
+        vv = (v[:,newaxis] * v[newaxis,:]).sum(3)
+        cos_angle = (vv / v_magnitude).transpose([1,0,2]) / v_magnitude
+        i = arange(cos_angle.shape[0])
+        cos_angle[i,i,:] = 1
+        sin_angle = sqrt(1 - cos_angle**2)
+        return v_magnitude, sin_angle

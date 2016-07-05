@@ -34,10 +34,17 @@ def solve(u, s, nsteps):
     shutil.rmtree(tmp_path)
     return out, J[:,newaxis]
 
+def put_garbage_files_in(path, m_modes):
+    files = 'jf234fsd_segment', 'm{0}_segment_dsgh324fs'.format(m_modes)
+    for f in files:
+        open(os.path.join(path, f), 'w').close()
+
 def test_checkpoint():
     s = 1
     m_modes = 2
     segments0, segments1 = 10, 20
+
+    put_garbage_files_in(BASE_PATH, m_modes)
 
     random.seed(0)
     shadowing(solve, u0, s, m_modes, segments0, 100, 0,

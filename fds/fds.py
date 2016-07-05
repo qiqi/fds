@@ -10,6 +10,7 @@ from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean
 from .lsstan import LssTangent
+from .timeseries import windowed_mean
 
 # ---------------------------------------------------------------------------- #
 
@@ -19,10 +20,6 @@ def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     W, _ = linalg.qr(W)
     w = zeros(degrees_of_freedom)
     return W, w
-
-def windowed_mean(a):
-    win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
-    return (a * win[:,newaxis]).sum(0) / win.sum()
 
 def lss_gradient(checkpoint, num_segments=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint

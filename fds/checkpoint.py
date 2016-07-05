@@ -44,7 +44,8 @@ def load_last_checkpoint(checkpoint_path, m):
         except:
             return None
 
-    files = filter(lambda f : m_modes(f) == m, os.listdir(checkpoint_path))
-    files = sorted(files, key=lambda f : segments(f))
+    files = filter(lambda f : m_modes(f) == m and segments(f) is not None,
+                   os.listdir(checkpoint_path))
+    files = sorted(files, key=segments)
     if len(files):
         return load_checkpoint(os.path.join(checkpoint_path, files[-1]))
