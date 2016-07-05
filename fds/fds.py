@@ -130,6 +130,7 @@ def continue_shadowing(
         checkpoint = Checkpoint(
                 u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
         print(lss_gradient(checkpoint))
+        sys.stdout.flush()
         if checkpoint_path and (i+1) % checkpoint_interval == 0:
             save_checkpoint(checkpoint_path, checkpoint)
     if return_checkpoint:

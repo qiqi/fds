@@ -101,6 +101,7 @@ def load_les(fname, verbose=True):
             size, dim = idata[0], 3
             if verbose: print(name, size)
             data[name] = frombuffer(fp.read(size*3*8), 'd').reshape([size, 3])
+    sys.stdout.flush()
     return data
 
 def save_data_field(fp, size, data, name):
@@ -166,6 +167,7 @@ def save_les(fname, data, verbose=True):
             size, dim = idata[0], 3
             if verbose: print(name, size)
             save_data_field(fp, size*3, unsaved, name)
+    sys.stdout.flush()
     if len(unsaved):
         sys.stderr.write('Warning: cannot find names in les file:\n')
         for key in unsaved:

@@ -1,4 +1,9 @@
 import os
+import sys
+import subprocess
+
+def get_hostname():
+    return subprocess.check_output('hostname').decode().strip()
 
 class grab_from_PBS_NODEFILE:
     '''
@@ -6,14 +11,22 @@ class grab_from_PBS_NODEFILE:
     Needs a lock and a shared dictionary to prevent concurrent IO
     Remember to call release when MPI job finishes.
     '''
-    def __init__(self, num_procs, lock_and_dict):
+    def __init__(self, num_procs, lock_and_dict, exclude_this_node=False):
         self.lock, self.dict = lock_and_dict
-        self.grab(num_procs)
+        self.grab(num_procs, exclude_this_node)
 
-    def grab(self, num_procs):
+    def grab(self, num_procs, exclude_this_node=False):
         with self.lock:
             if 'available_nodes' not in self.dict:
                 available_nodes = open(os.environ['PBS_NODEFILE']).readlines()
+                if exclude_this_node:
+                    hostname = get_hostname()
+                    print('Excluding {0} from {1} ranks'.format(
+                        hostname, len(available_nodes)))
+                    available_nodes = filter(lambda n: n.strip() not in hostname,
+                                             available_nodes)
+                    print('Now {0} ranks left'.format(len(available_nodes)))
+                    sys.stdout.flush()
             else:
                 available_nodes = self.dict['available_nodes']
             if len(available_nodes) < num_procs:

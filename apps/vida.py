@@ -64,6 +64,7 @@ def make_data(u):
 def solve(u0, inlet_u, nsteps, run_id, interprocess):
     print('Starting solve, inlet_u, nsteps, run_id = ',
                            inlet_u, nsteps, run_id)
+    sys.stdout.flush()
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_file = os.path.join(work_path, 'initial.les')
     final_data_file = os.path.join(work_path, 'result.les')
@@ -76,7 +77,7 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
         os.mkdir(work_path)
         for subdir in 'STATS ISOS PROBES ZONES LOGS MONITOR SOLUT CUTS'.split():
             os.mkdir(os.path.join(work_path, subdir))
-        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess, True)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)
