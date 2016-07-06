@@ -32,7 +32,7 @@ def read_header(fp):
         raise IOError('Byte 4-7 in CTIHeader "skip" is expected to be 0')
     idata = frombuffer(fp.read(16*4), 'i')
     rdata = frombuffer(fp.read(16*8), 'd')
-    return name, iid, skip, idata, rdata
+    return name.decode(), iid, skip, idata, rdata
 
 def same_skip_in_header(fp, skip):
     loc = fp.tell()
@@ -101,6 +101,8 @@ def load_les(fname, verbose=True):
             size, dim = idata[0], 3
             if verbose: print(name, size)
             data[name] = frombuffer(fp.read(size*3*8), 'd').reshape([size, 3])
+        else:
+            if verbose: print('skipping ', name, iid)
     sys.stdout.flush()
     return data
 

@@ -56,16 +56,18 @@ class RunWrapper:
         try:
             return self.run(u0, parameter, steps, run_id=run_id)
         except TypeError as e2:
-            tb2 = traceback.format_exc() # does not expect run_id
+            # does not expect run_id
+            tb2 = traceback.format_exc()
         try:
             return self.run(u0, parameter, steps, interprocess=interprocess)
         except TypeError as e3:
-            tb3 = traceback.format_exc() # expects neither run_id nor interprocess
+            # expects neither run_id nor interprocess
+            tb3 = traceback.format_exc()
         try:
             return self.run(u0, parameter, steps)
         except TypeError as e4:
             tb4 = traceback.format_exc() # failed
-        for e, tb in [(e1, tb1), (e2, tb2), (e3, tb3), (e4, tb4)]:
+        for tb in (tb1, tb2, tb3, tb4):
             sys.stderr.write(str(tb) + '\n')
         raise TypeError
 

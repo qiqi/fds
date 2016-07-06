@@ -23,8 +23,8 @@ class grab_from_PBS_NODEFILE:
                     hostname = get_hostname()
                     print('Excluding {0} from {1} ranks'.format(
                         hostname, len(available_nodes)))
-                    available_nodes = filter(lambda n: n.strip() not in hostname,
-                                             available_nodes)
+                    available_nodes = list(filter(
+                        lambda n: n.strip() not in hostname, available_nodes))
                     print('Now {0} ranks left'.format(len(available_nodes)))
                     sys.stdout.flush()
             else:

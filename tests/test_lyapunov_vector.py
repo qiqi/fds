@@ -1,8 +1,5 @@
 import os
 import sys
-import shutil
-import tempfile
-from subprocess import *
 
 from numpy import *
 from scipy.integrate import odeint
@@ -34,10 +31,6 @@ def solve(u, s, nsteps):
 
 #if __name__ == '__main__':
 def test_lyapunov():
-    cp_path = os.path.join(my_path, 'lorenz_lyapunov')
-    if os.path.exists(cp_path):
-        shutil.rmtree(cp_path)
-    os.mkdir(cp_path)
     m, steps_per_segment, n_segment = 5, 50, 50
     u = ones(5)
     cp = shadowing(solve, u, 28, m, n_segment, steps_per_segment, 100,
