@@ -5,6 +5,9 @@ import numpy as np
 import shutil
 import h5py
 
+my_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(my_path, '..'))
+
 from adFVM import config
 config.hdf5 = True
 from adFVM.field import IOField
@@ -13,7 +16,7 @@ try:
 except ImportError:
     raise Exception('add adFVM/apps/ to PYTHONPATH')
 
-prefix = '/home/qiqi/git/adFVM/'
+source = '/home/qiqi/git/adFVM/'
 case = source + 'cases/cylinder/'
 program = source + 'apps/problem.py'
 problem = 'cylinder.py'

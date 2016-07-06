@@ -1,5 +1,6 @@
 from . import fds as core
 from . import pbs
+from . import slurm
 from . import lsstan
 from . import timedilation
 from . import segment
