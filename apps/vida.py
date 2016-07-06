@@ -23,7 +23,7 @@ STEPS_PER_SEGMENT = 500   # number of time steps per chunk
 STEPS_RUNUP = 10          # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 18 # how long to wait for file IO to sync
 # MPI_NP = 576            # number of MPI processes for each instance
-MPI_NP = 96               # number of MPI processes for each instance
+MPI_NP = 192              # number of MPI processes for each instance
 SIMULTANEOUS_RUNS = 3     # max number of simultaneous MPI runs
 
 STATE_VARS = ['bullet_nose:RHOU_BC', 'RHOUM', 'PHIM', 'RHOUM0',
@@ -39,7 +39,7 @@ STATS_FILES = open(os.path.join(REF_WORK_PATH, 'probe_files')).read().strip().sp
 REF_DATA_FILE = os.path.join(REF_WORK_PATH, 'initial.les')
 REF_STATE = load_les(REF_DATA_FILE, verbose=False)
 
-BASE_PATH = os.path.join(my_path, 'vida_new')
+BASE_PATH = os.path.join(my_path, 'vida')
 S_BASELINE = INLET_U
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
@@ -70,11 +70,13 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
     final_data_file = os.path.join(work_path, 'result.les')
     stats_files = [os.path.join(work_path, 'PROBES', fname)
                    for fname in STATS_FILES]
-    if not os.path.exists(final_data_file) or \
+    while not os.path.exists(final_data_file) or \
             not all([os.path.exists(f) for f in stats_files]):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
         os.mkdir(work_path)
+        print('Solving in ' + work_path)
+        sys.stdout.flush()
         for subdir in 'STATS ISOS PROBES ZONES LOGS MONITOR SOLUT CUTS'.split():
             os.mkdir(os.path.join(work_path, subdir))
         sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess, True)
@@ -93,6 +95,12 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
                   cwd=work_path, env=env, stdout=f, stderr=f).wait()
         time.sleep(SLEEP_SECONDS_FOR_IO)
         sub_nodes.release()
+        if not os.path.exists(final_data_file) or \
+                not all([os.path.exists(f) for f in stats_files]):
+            failed_path = work_path + '_failed'
+            if os.path.exists(failed_path):
+                shutil.rmtree(failed_path)
+            shutil.move(work_path, failed_path)
     J = hstack([loadtxt(f) for f in stats_files])
     J = J.reshape([nsteps, -1, 4])[:,:,3]
     solution = load_les(final_data_file, verbose=False)
