@@ -22,8 +22,8 @@ K_SEGMENTS = 100          # number of time chunks
 STEPS_PER_SEGMENT = 500   # number of time steps per chunk
 STEPS_RUNUP = 10          # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 18 # how long to wait for file IO to sync
-# MPI_NP = 576              # number of MPI processes for each instance
-MPI_NP = 192              # number of MPI processes for each instance
+# MPI_NP = 576            # number of MPI processes for each instance
+MPI_NP = 96               # number of MPI processes for each instance
 SIMULTANEOUS_RUNS = 3     # max number of simultaneous MPI runs
 
 STATE_VARS = ['bullet_nose:RHOU_BC', 'RHOUM', 'PHIM', 'RHOUM0',
