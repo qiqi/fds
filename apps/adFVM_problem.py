@@ -3,12 +3,15 @@ import sys
 import subprocess
 import numpy as np
 import shutil
-
-import config
-config.hdf5 = True
-from pyRCF import RCF
-from field import IOField
 import h5py
+
+from adFVM import config
+config.hdf5 = True
+from adFVM.field import IOField
+try:
+    from pyRCF import RCF
+except:
+    print('add adFVM.git/apps to PYTHONPATH')
 
 prefix = '/home/talnikar/adFVM/'
 case = prefix + 'cases/cylinder/'
