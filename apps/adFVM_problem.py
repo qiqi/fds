@@ -10,23 +10,26 @@ config.hdf5 = True
 from adFVM.field import IOField
 try:
     from pyRCF import RCF
-except:
-    print('add adFVM.git/apps to PYTHONPATH')
+except ImportError:
+    raise Exception('add adFVM/apps/ to PYTHONPATH')
 
-prefix = '/home/talnikar/adFVM/'
-case = prefix + 'cases/cylinder/'
-program = prefix + 'problem.py'
+source = '/home/talnikar/adFVM/'
+case = source + 'cases/cylinder/'
+program = source + 'apps/problem.py'
 problem = 'cylinder.py'
 nProcessors = 1
 time = 0.0
-solver = RCF(case)
+
+with config.suppressOutput():
+    solver = RCF(case)
 mesh = solver.mesh
 meshO = mesh.origMesh
 
 def getInternalFields(time):
-    fields = solver.initFields(time)
+    with config.suppressOutput():
+        fields = solver.initFields(time)
     fields = solver.stackFields(fields, np)
-    return fields[:meshO.nInternalCells]
+    return fields[:meshO.nInternalCells].ravel()
 
 def runCase(initFields, parameters, nSteps, run_id):
 
@@ -34,7 +37,7 @@ def runCase(initFields, parameters, nSteps, run_id):
     caseDir = '{}/temp/{}/'.format(case, run_id)
     mesh.case = caseDir
     if not os.path.exists(caseDir):
-        os.mkdir(caseDir)
+        os.makedirs(caseDir)
     problemFile = caseDir + problem
     shutil.copyfile(case + problem, problemFile)
     shutil.copyfile(case + 'mesh.hdf5', caseDir + 'mesh.hdf5')
@@ -43,19 +46,18 @@ def runCase(initFields, parameters, nSteps, run_id):
 
     # write initial field
     #initFields = distributeData(initGlobalFields)
-    #sys.stdout = os.devnull
+    initFields = initFields.reshape((meshO.nInternalCells, 5))
     fields = solver.unstackFields(initFields, IOField)
     fields = solver.primitive(*fields)
-    IOField.openHandle(time)
-    for phi in fields:
-        phiO = IOField.read(phi.name)
-        phiO.partialComplete()
-        phiO.field[:meshO.nInternalCells] = phi.field
-        phiO.write()
-    IOField.closeHandle()
-    #sys.stdout = sys.__stdout__
+    with config.suppressOutput():
+        with IOField.handle(time):
+            for phi in fields:
+                phiO = IOField.read(phi.name)
+                phiO.partialComplete()
+                phiO.field[:meshO.nInternalCells] = phi.field
+                phiO.write()
 
-    # modify problem.py
+    # modify problem file
     with open(problemFile, 'r') as f:
         lines = f.readlines()
     with open(problemFile, 'w') as f:
@@ -78,6 +80,7 @@ def runCase(initFields, parameters, nSteps, run_id):
     finalFields = getInternalFields(lastTime)
     # read objective values
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
+    #print caseDir
 
     return finalFields, objectiveSeries
 
