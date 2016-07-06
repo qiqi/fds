@@ -3,7 +3,9 @@ import sys
 import subprocess
 
 def get_hostname():
-    return subprocess.check_output('hostname').decode().strip()
+    p = subprocess.Popen('hostname', stdout=subprocess.PIPE)
+    output, _ = p.communicate()
+    return output.decode().strip()
 
 class grab_from_PBS_NODEFILE:
     '''

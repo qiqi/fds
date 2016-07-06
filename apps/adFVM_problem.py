@@ -13,7 +13,7 @@ try:
 except:
     print('add adFVM.git/apps to PYTHONPATH')
 
-prefix = '/home/talnikar/adFVM/'
+prefix = '/home/qiqi/git/adFVM/'
 case = prefix + 'cases/cylinder/'
 program = prefix + 'problem.py'
 problem = 'cylinder.py'
