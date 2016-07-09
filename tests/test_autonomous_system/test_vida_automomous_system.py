@@ -12,7 +12,7 @@ sys.path.append(os.path.join(my_path, '../..'))
 from fds.cti_restart_io import *
 
 ref_fname = os.path.join(my_path, '..', 'data', 'cti-sample-restart-file.les')
-initial_state = load_les(ref_fname, verbose=False)
+initial_state = load_les(ref_fname, verbose=True)
 base_dir = os.path.join(my_path, 'vida')
 
 def run_vida_in(run_dir, state, steps):
@@ -23,25 +23,25 @@ def run_vida_in(run_dir, state, steps):
     fname = os.path.join(run_dir, 'initial.les')
     shutil.copy(ref_fname, fname)
     state['STEP'] = 1
-    save_les(fname, state, verbose=False)
+    save_les(fname, state, verbose=True)
     with open(os.path.join(run_dir, 'vida.in'), 'w') as f:
         f.write(template.substitute(NSTEPS=str(steps+1)))
     with open(os.path.join(run_dir, 'vida.out'), 'w') as f:
         subprocess.check_call('/home/qiqi/BulletBody-ref/vida.exe',
                               cwd=run_dir, stdout=f, stderr=f)
     fname = os.path.join(run_dir, 'result.les')
-    return load_les(fname, verbose=False)
+    return load_les(fname, verbose=True)
 
 if __name__ == '__main__':
     if os.path.exists(base_dir):
         shutil.rmtree(base_dir)
     os.mkdir(base_dir)
-    intermediate_state = run_vida_in(os.path.join(base_dir, 'first_5_steps'),
-                                     initial_state, 5)
-    final_state_1 = run_vida_in(os.path.join(base_dir, 'second_5_steps'),
-                                     intermediate_state, 5)
-    final_state_2 = run_vida_in(os.path.join(base_dir, 'all_10_steps_at_once'),
-                                     initial_state, 10)
+    intermediate_state = run_vida_in(os.path.join(base_dir, 'first_50_steps'),
+                                     initial_state, 50)
+    final_state_1 = run_vida_in(os.path.join(base_dir, 'second_50_steps'),
+                                     intermediate_state, 50)
+    final_state_2 = run_vida_in(os.path.join(base_dir, 'all_100_steps_at_once'),
+                                     initial_state, 100)
     for k in final_state_1:
         if k != 'STEP':
             if (final_state_1[k] == final_state_2[k]).all():

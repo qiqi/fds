@@ -11,6 +11,7 @@ NO_CHANGE = None
 UGP_IO_MAGIC_NUMBER = 123581321
 UGP_IO_EOF = 51
 UGP_IO_I0 = 11
+UGP_IO_D0 = 12
 UGP_IO_NO_D1 = 32
 UGP_IO_NO_D2 = 33
 UGP_IO_FAZONE_NO_D2 = 114
@@ -87,6 +88,9 @@ def load_les(fname, verbose=True):
         if iid == UGP_IO_I0:
             data[name] = idata[0]
             if verbose: print(name, data[name])
+        elif iid == UGP_IO_D0:
+            data[name] = rdata[0]
+            if verbose: print(name, data[name])
         elif iid == UGP_IO_NO_D1:
             size = idata[0]
             if verbose: print(name, size)
@@ -153,6 +157,14 @@ def save_les(fname, data, verbose=True):
             fp.seek(offset - skip)
             idata = idata.copy()
             idata[0] = unsaved[name]
+            del unsaved[name]
+            write_header(fp, name, iid, skip, idata, rdata)
+        elif iid == UGP_IO_D0:
+            if verbose: print(name, data[name])
+            data[name] = rdata[0]
+            fp.seek(offset - skip)
+            rdata = rdata.copy()
+            rdata[0] = unsaved[name]
             del unsaved[name]
             write_header(fp, name, iid, skip, idata, rdata)
         elif iid == UGP_IO_NO_D1:
