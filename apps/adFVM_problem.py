@@ -5,34 +5,43 @@ import numpy as np
 import shutil
 import h5py
 
-my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
-
 from adFVM import config
-config.hdf5 = True
-from adFVM.field import IOField
-try:
-    from pyRCF import RCF
-except ImportError:
-    raise Exception('add adFVM/apps/ to PYTHONPATH')
 
-source = '/home/qiqi/git/adFVM/'
+config.hdf5 = True
+source = '/home/talnikar/adFVM/'
+problem = 'cylinder.py'
+nProcessors = 4
+time = 3.0
+
+fieldNames = ['rho', 'rhoU', 'rhoE']
 case = source + 'cases/cylinder/'
 program = source + 'apps/problem.py'
-problem = 'cylinder.py'
-nProcessors = 1
-time = 0.0
 
-with config.suppressOutput():
-    solver = RCF(case)
-mesh = solver.mesh
-meshO = mesh.origMesh
+def getTime(time):
+    stime = str(time)
+    if time.is_integer():
+        stime = str(int(time))
+    return stime
+stime = getTime(time)
 
-def getInternalFields(time):
-    with config.suppressOutput():
-        fields = solver.initFields(time)
-    fields = solver.stackFields(fields, np)
-    return fields[:meshO.nInternalCells].ravel()
+internalCells = []
+with h5py.File(case + 'mesh.hdf5', 'r') as mesh:
+    nCount = mesh['parallel/end'][:]-mesh['parallel/start'][:]
+    nInternalCells = nCount[:,4]
+    nGhostCells = nCount[:,2]-nCount[:,3]
+    start = 0
+    for i in range(0, nProcessors):
+        n = nInternalCells[i] 
+        internalCells.append(np.arange(start, start + n))
+        start += n + nGhostCells[i]
+internalCells = np.concatenate(internalCells)
+
+def getInternalFields(case, time):
+    fields = []
+    with h5py.File(case + getTime(time) + '.hdf5', 'r') as phi:
+        for name in fieldNames:
+            fields.append(phi[name + '/field'][:][internalCells])
+    return np.hstack(fields).ravel()
 
 def runCase(initFields, parameters, nSteps, run_id):
 
@@ -44,21 +53,18 @@ def runCase(initFields, parameters, nSteps, run_id):
     problemFile = caseDir + problem
     shutil.copyfile(case + problem, problemFile)
     shutil.copyfile(case + 'mesh.hdf5', caseDir + 'mesh.hdf5')
-    shutil.copyfile(case + '0.hdf5', caseDir + '0.hdf5')
+    shutil.copyfile(case + stime + '.hdf5', caseDir + stime + '.hdf5')
     outputFile = caseDir  + 'output.log'
 
     # write initial field
     #initFields = distributeData(initGlobalFields)
-    initFields = initFields.reshape((meshO.nInternalCells, 5))
-    fields = solver.unstackFields(initFields, IOField)
-    fields = solver.primitive(*fields)
-    with config.suppressOutput():
-        with IOField.handle(time):
-            for phi in fields:
-                phiO = IOField.read(phi.name)
-                phiO.partialComplete()
-                phiO.field[:meshO.nInternalCells] = phi.field
-                phiO.write()
+    initFields = initFields.reshape((initFields.shape[0]/5, 5))
+    fields = initFields[:,[0]], initFields[:,1:4], initFields[:,[4]]
+    with h5py.File(caseDir + stime + '.hdf5', 'r+') as phi:
+        for index, name in enumerate(fieldNames):
+            field = phi[name + '/field'][:]
+            field[internalCells] = fields[index]
+            phi[name + '/field'][:] = field
 
     # modify problem file
     with open(problemFile, 'r') as f:
@@ -79,8 +85,9 @@ def runCase(initFields, parameters, nSteps, run_id):
         raise Exception('Execution failed, check error log:', outputFile)
 
     # read final fields
-    lastTime = mesh.getTimes()[-1]
-    finalFields = getInternalFields(lastTime)
+    times = [float(x[:-5]) for x in os.listdir(caseDir) if config.isfloat(x[:-5]) and x.endswith('.hdf5')]
+    lastTime = sorted(times)[-1]
+    finalFields = getInternalFields(caseDir, lastTime)
     # read objective values
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
     #print caseDir
@@ -89,10 +96,10 @@ def runCase(initFields, parameters, nSteps, run_id):
 
 from fds import shadowing
 
-u0 = getInternalFields(time)
+u0 = getInternalFields(case, time)
 parameters = 1.0
 dims = 2
 segments = 10
 steps = 10
-#runCase(u0, parameters, steps, 'random')
-shadowing(runCase, u0, parameters, dims, segments, steps, 0)
+runCase(u0, parameters, steps, 'random')
+#shadowing(runCase, u0, parameters, dims, segments, steps, 0)
