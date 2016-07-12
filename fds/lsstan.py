@@ -39,6 +39,12 @@ class LssTangent:
         # alpha1 = splinalg.lsqr(B, ravel(bs), iter_lim=10000)
         return alpha.reshape([nseg+1,-1])[:-1]
 
+    def solve_ivp(self):
+        a = [zeros(self.bs[0].shape)]
+        for i in range(len(self.bs)):
+            a.append(dot(self.Rs[i], a[-1]) + self.bs[i])
+        return array(a)[:-1]
+
     def lyapunov_exponents(self):
         R = array(self.Rs)
         i = arange(self.m_modes())
