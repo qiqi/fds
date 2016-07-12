@@ -33,14 +33,15 @@ def assert_states(state):
 #if __name__ == '__main__':
 def test_cti_io():
     fname = os.path.join(my_path, 'data', 'cti-sample-restart-file.les')
-    state = load_les(fname, verbose=False)
+    state = load_les(fname, verbose=True)
     assert state['STEP'] == 10
     assert_states(state)
     state['STEP'] = 1
+    state['something_random'] = 0
     tmp_fname = os.path.join(my_path, 'tmp_data.les')
     assert not os.path.exists(tmp_fname)
     shutil.copy(fname, tmp_fname)
-    save_les(tmp_fname, state, verbose=False)
+    save_les(tmp_fname, state, verbose=True)
     state = load_les(tmp_fname, verbose=False)
     assert state['STEP'] == 1
     assert_states(state)

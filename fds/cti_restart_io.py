@@ -189,8 +189,8 @@ def save_les(fname, data, verbose=True):
         for key in unsaved:
             sys.stderr.write('\t' + key + '\n')
 
-if __name__ == '__main__':
-    'smoke test'
-    data = load_les('result.les')
-    data['STEP'] = 0
-    save_les('result.les', data)
+# if __name__ == '__main__':
+#     'smoke test'
+#     data = load_les('result.les')
+#     data['STEP'] = 0
+#     save_les('result.les', data)
