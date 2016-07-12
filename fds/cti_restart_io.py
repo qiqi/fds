@@ -152,7 +152,9 @@ def save_les(fname, data, verbose=True):
         fp.seek(offset)
         name, iid, skip, idata, rdata = read_header(fp)
         offset += skip
-        if iid == UGP_IO_I0:
+        if name not in unsaved:
+            continue
+        elif iid == UGP_IO_I0:
             if verbose: print(name, data[name])
             fp.seek(offset - skip)
             idata = idata.copy()
