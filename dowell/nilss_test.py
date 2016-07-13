@@ -17,27 +17,40 @@ n_modes = 3
 k_segments = 10
 n_steps = 1000
 n_runup = 50000
+filt = 10.0
 
 s = linspace(-8.0, -6.0, 11) * 9.869604401089358
 
 J, G = [], []
+Jf, Gf =[], []
 for si in s:
     print("Starting " + str(si))
     u0 = zeros(8)
     u0[0] = 0.01
-    Ji, Gi = shadowing(solve, u0, si, n_modes, k_segments, n_steps, n_runup, epsilon=1e-8)
+    Ji, Gi = shadowing(solve, u0, si, n_modes, k_segments, n_steps, n_runup, epsilon=1e-6,filt=0.0)
     J.append(Ji)
     G.append(Gi)
+    print("Starting " + str(si) + " with filt")
+    Jfi, Gfi = shadowing(solve, u0, si, n_modes, k_segments, n_steps, n_runup, epsilon=1e-6,filt=filt)
+    Jf.append(Jfi)
+    Gf.append(Gfi)
     print("Finished " + str(si))
 
 J, G = array(J, float), array(G, float)
+Jf, Gf = array(Jf, float), array(Gf, float)
+
 plot(s, J, 'o')
 save_plot()
 
-ds = 1.0
+ds = 1.5
 for i in range(J.shape[1]):
     plot([s-ds, s+ds], [J[:,i]-G[:,i]*ds, J[:,i]+G[:,i]*ds], '-r')
+    plot([s-ds, s+ds], [Jf[:,i]-Gf[:,i]*ds, Jf[:,i]+Gf[:,i]*ds], '-b')
 save_plot()
+
+
+
+
 
 '''
 # twice as long

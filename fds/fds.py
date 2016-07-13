@@ -145,7 +145,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        run_ddt=None, return_checkpoint=False,filt=0.0):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -173,7 +173,7 @@ def shadowing(
         u0, _ = run(u0, parameter, runup_steps, 'runup', interprocess)
 
     V, v = tangent_initial_condition(u0.size, subspace_dimension)
-    lss = LssTangent()
+    lss = LssTangent(filt=filt)
     checkpoint = Checkpoint(u0, V, v, lss, [], [], [], [], [])
     return continue_shadowing(
             run, parameter, checkpoint,

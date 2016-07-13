@@ -10,7 +10,7 @@ s = -9.0 * 9.869604401089358
 u0 = zeros(8)
 u0[0] = 0.01
 J, G = shadowing(solve, u0, s, n_modes, k_segments, n_steps, n_runup,
-                 checkpoint_path='.',checkpoint_interval=20)
+                 checkpoint_path='.',checkpoint_interval=20,filt=1e-5)
 
 cp = load_last_checkpoint('.', n_modes)
 verify_checkpoint(cp)

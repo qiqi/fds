@@ -5,9 +5,10 @@ import scipy.sparse.linalg as splinalg
 from .timeseries import windowed_mean
 
 class LssTangent:
-    def __init__(self):
+    def __init__(self,filt=0.0):
         self.Rs = []
         self.bs = []
+        self.filt = filt
 
     def K_segments(self):
         assert len(self.Rs) == len(self.bs)
@@ -35,7 +36,9 @@ class LssTangent:
         I = sparse.bsr_matrix((eyes, r_[1:nseg+1], r_[:nseg+1]))
         D = sparse.bsr_matrix((R, r_[:nseg], r_[:nseg+1]), shape=matrix_shape)
         B = (D - I).tocsr()
-        alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(b)))
+        #alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(b)))
+        alpha = -(B.T * splinalg.spsolve(B * B.T + self.filt*sparse.identity(nseg*subdim,format='csr'), ravel(b)))
+        
         # alpha1 = splinalg.lsqr(B, ravel(bs), iter_lim=10000)
         return alpha.reshape([nseg+1,-1])[:-1]
 
