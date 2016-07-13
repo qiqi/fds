@@ -128,7 +128,7 @@ stepPrimal(const double * u0, double * u, double dt)
 // This function initializes this module, must be called from Python
 // before using any other functionality.
 void
-run_primal(double * u, double * s, int n_steps, int n_grid, double dt)
+run_primal(double * u, double * s, double * J, int n_steps, int n_grid, double dt)
 {
     S_CONST[0] = s[0];
     S_CONST[1] = s[1];
@@ -144,14 +144,8 @@ run_primal(double * u, double * s, int n_steps, int n_grid, double dt)
 
     for (int i = 0; i < n_steps; ++ i)
     {
+        J[i] = Obj(u,4);
         stepPrimal(u, u, dt);
-    
-        // objective function
-        //for (int j = 0; j < 5; ++ j)
-        //{
-        //    Jbar[j] = Jbar[j] + (DT_STEP/T_TOTAL) * Obj(u,j);
-        //}
-
     
     }
 }

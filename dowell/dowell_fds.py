@@ -24,10 +24,9 @@ def solve(u, s, nsteps, run_id=None, lock=None):
     dt = 0.001 #time step
 
     out = u.copy()
-    dowell.c_run_primal(out, s, nsteps, n_grid, dt)
-
-    shutil.rmtree(tmp_path)
     J = zeros(nsteps)
+    dowell.c_run_primal(out, s, J, nsteps, n_grid, dt)
+    shutil.rmtree(tmp_path)
     return out, J
 
 iplot = 0

@@ -19,16 +19,27 @@ main()
     u0[0] = 0.01;
 
     int n_steps = 10000;
-    run_primal(u0, s, n_steps, n_grid, dt);
+    double J[10000] = {0.0};
+    run_primal(u0, s, J, n_steps, n_grid, dt);
 
 	
     // Print final solution to file
+    //FILE *fp;
+    //fp = fopen("u_fin.dat", "w");
+    //for(int j = 0; j < N_GRID; j++) {
+    //    fprintf(fp,"%d %f \n",j, u0[j]);
+    //}
+	//fclose(fp);
+
+    // Print objective function to file
     FILE *fp;
-    fp = fopen("u_fin.dat", "w");
-    for(int j = 0; j < N_GRID; j++) {
-        fprintf(fp,"%d %f \n",j, u0[j]);
+    fp = fopen("obj.dat", "w");
+    for(int j = 0; j < n_steps; j++) {
+        fprintf(fp,"%d %f \n",j, J[j]);
     }
 	fclose(fp);
+
+
 
     return 0;
 }
