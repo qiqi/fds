@@ -3,18 +3,24 @@ import sys
 import subprocess
 import numpy as np
 import shutil
+import glob
 import h5py
 
-from adFVM import config
+def isfloat(s):
+    try:
+        f = float(s)
+        return True
+    except ValueError:
+        return False
 
-config.hdf5 = True
 source = '/home/talnikar/adFVM/'
-problem = 'cylinder.py'
+problem = 'periodic_wake.py'
 nProcessors = 4
-time = 3.0
+nRuns = 2
+time = 2.0
 
 fieldNames = ['rho', 'rhoU', 'rhoE']
-case = source + 'cases/cylinder/'
+case = source + 'cases/periodic_wake/'
 program = source + 'apps/problem.py'
 
 def getTime(time):
@@ -50,14 +56,13 @@ def runCase(initFields, parameters, nSteps, run_id):
     mesh.case = caseDir
     if not os.path.exists(caseDir):
         os.makedirs(caseDir)
-    problemFile = caseDir + problem
-    shutil.copyfile(case + problem, problemFile)
-    shutil.copyfile(case + 'mesh.hdf5', caseDir + 'mesh.hdf5')
-    shutil.copyfile(case + stime + '.hdf5', caseDir + stime + '.hdf5')
-    outputFile = caseDir  + 'output.log'
+    shutil.copy(case + problem, caseDir)
+    shutil.copy(case + 'mesh.hdf5', caseDir)
+    shutil.copy(case + stime + '.hdf5', caseDir)
+    for pkl in glob.glob(case + '*.pkl'):
+        shutil.copy(pkl, caseDir)
 
     # write initial field
-    #initFields = distributeData(initGlobalFields)
     initFields = initFields.reshape((initFields.shape[0]/5, 5))
     fields = initFields[:,[0]], initFields[:,1:4], initFields[:,[4]]
     with h5py.File(caseDir + stime + '.hdf5', 'r+') as phi:
@@ -67,6 +72,7 @@ def runCase(initFields, parameters, nSteps, run_id):
             phi[name + '/field'][:] = field
 
     # modify problem file
+    problemFile = caseDir + problem
     with open(problemFile, 'r') as f:
         lines = f.readlines()
     with open(problemFile, 'w') as f:
@@ -74,9 +80,10 @@ def runCase(initFields, parameters, nSteps, run_id):
             writeLine = line.replace('NSTEPS', str(nSteps))
             writeLine = writeLine.replace('STARTTIME', str(time))
             writeLine = writeLine.replace('CASEDIR', '\'{}\''.format(caseDir))
-            #writeLine = line.replace('PARAMETERS', parameters)
+            writeLine = writeLine.replace('PARAMETERS', str(parameters))
             f.write(writeLine)
 
+    outputFile = caseDir  + 'output.log'
     with open(outputFile, 'w') as f:
         returncode = subprocess.call(['mpirun', '-np', str(nProcessors),
                           program, problemFile, 'orig'],
@@ -85,21 +92,21 @@ def runCase(initFields, parameters, nSteps, run_id):
         raise Exception('Execution failed, check error log:', outputFile)
 
     # read final fields
-    times = [float(x[:-5]) for x in os.listdir(caseDir) if config.isfloat(x[:-5]) and x.endswith('.hdf5')]
+    times = [float(x[:-5]) for x in os.listdir(caseDir) if isfloat(x[:-5]) and x.endswith('.hdf5')]
     lastTime = sorted(times)[-1]
     finalFields = getInternalFields(caseDir, lastTime)
     # read objective values
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
-    #print caseDir
+    print caseDir
 
-    return finalFields, objectiveSeries
+    return finalFields, objectiveSeries[:-1]
 
 from fds import shadowing
 
 u0 = getInternalFields(case, time)
-parameters = 1.0
-dims = 2
-segments = 10
-steps = 10
-runCase(u0, parameters, steps, 'random')
-#shadowing(runCase, u0, parameters, dims, segments, steps, 0)
+parameters = 100.0
+dims = 50
+segments = 20
+steps = 50
+#runCase(u0, parameters, steps, 'random')
+shadowing(runCase, u0, parameters, dims, segments, steps, 0, simultaneous_runs=nRuns)
