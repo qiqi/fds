@@ -16,11 +16,11 @@ from fds import *
 from fds.checkpoint import *
 from fds.cti_restart_io import *
 
-INLET_U = 0.053826972     # nominal inlet velocity
-M_MODES = 4               # number of unstable modes
+INLET_U = 0.06920611      # nominal inlet velocity
+M_MODES = 10              # number of unstable modes
 K_SEGMENTS = 100          # number of time chunks
 STEPS_PER_SEGMENT = 500   # number of time steps per chunk
-STEPS_RUNUP = 10          # additional run up time steps
+STEPS_RUNUP = 200         # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 18 # how long to wait for file IO to sync
 # MPI_NP = 576            # number of MPI processes for each instance
 MPI_NP = 192              # number of MPI processes for each instance
