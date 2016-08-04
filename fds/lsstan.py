@@ -17,11 +17,11 @@ class LssTangent:
         return self.Rs[0].shape[0]
 
     def checkpoint(self, V, v):
-        Q, R = linalg.qr(V)
+        Q, R = linalg.qr(V.T)
         b = dot(Q.T, v)
         self.Rs.append(R)
         self.bs.append(b)
-        V[:] = Q
+        V[:] = Q.T
         v -= dot(Q, b)
 
     def solve(self):

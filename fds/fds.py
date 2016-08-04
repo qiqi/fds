@@ -17,8 +17,8 @@ from .timeseries import windowed_mean
 
 def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
     random.seed(12)
-    W = random.rand(degrees_of_freedom, subspace_dimension)
-    W, _ = linalg.qr(W)
+    W = random.rand(subspace_dimension, degrees_of_freedom)
+    W = linalg.qr(W.T)[0].T
     w = zeros(degrees_of_freedom)
     return W, w
 

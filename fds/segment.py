@@ -27,9 +27,9 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
             run, (u0, parameter, steps, run_id, interprocess))
     # run homogeneous tangents
     res_h = []
-    subspace_dimension = V.shape[1]
+    subspace_dimension = len(V)
     for j in range(subspace_dimension):
-        u1 = u0 + V[:,j] * epsilon
+        u1 = u0 + V[j] * epsilon
         run_id = 'segment{0:02d}_init_perturb{1:03d}'.format(i_segment, j)
         res_h.append(threads.apply_async(
             run, (u1, parameter, steps, run_id, interprocess)))
@@ -45,7 +45,7 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
     G = []
     for j in range(subspace_dimension):
         u1p, J1 = res_h[j].get()
-        V[:,j] = (u1p - u0p) / epsilon
+        V[j] = (u1p - u0p) / epsilon
         G.append(trapez_mean(J1 - J0, 0) / epsilon)
     # get inhomogeneous tangent
     u1p, J1 = res_i.get()

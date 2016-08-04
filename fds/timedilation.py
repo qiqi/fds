@@ -32,15 +32,15 @@ def compute_dxdt(u):
 class TimeDilationBase:
     def contribution(self, v):
         if self.dxdt is None:
-            return 0 if array(v).ndim == 1 else zeros(array(v).shape[1])
+            return 0 if array(v).ndim == 1 else zeros(len(v))
         else:
-            return dot(self.dxdt, v) / (self.dxdt**2).sum()
+            return dot(v, self.dxdt) / (self.dxdt**2).sum()
 
     def project(self, v):
         if self.dxdt_normalized is None:
             return v
         else:
-            dv = outer(self.dxdt_normalized, dot(self.dxdt_normalized, v))
+            dv = outer(dot(v, self.dxdt_normalized), self.dxdt_normalized)
             return v - dv.reshape(v.shape)
 
 class TimeDilationExact(TimeDilationBase):
