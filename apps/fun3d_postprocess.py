@@ -15,7 +15,7 @@ print(L.shape)
 
 def exp_mean(x):
     n = len(x)
-    w = 1 - exp(range(1,n+1) / sqrt(n))
+    w = 1 - exp(-arange(1,n+1) / sqrt(n))
     x = array(x)
     w = w.reshape([-1] + [1] * (x.ndim - 1))
     return (x * w).sum(0) / w.sum()

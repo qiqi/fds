@@ -10,3 +10,11 @@ def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
+def exp_cum_mean(x):
+    x, x_mean = array(x), []
+    for n in range(1, len(x) + 1):
+        w = 1 - exp(-arange(1,n+1) / sqrt(n))
+        x = array(x)
+        w = w.reshape([-1] + [1] * (x.ndim - 1))
+        x_mean.append((x[:n] * w).sum(0) / w.sum())
+    return array(x_mean)

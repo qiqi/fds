@@ -35,7 +35,8 @@ class LssTangent:
         I = sparse.bsr_matrix((eyes, r_[1:nseg+1], r_[:nseg+1]))
         D = sparse.bsr_matrix((R, r_[:nseg], r_[:nseg+1]), shape=matrix_shape)
         B = (D - I).tocsr()
-        alpha = -(B.T * splinalg.spsolve(B * B.T, ravel(b)))
+        Schur = B * B.T #+ 1E-5 * sparse.eye(B.shape[0])
+        alpha = -(B.T * splinalg.spsolve(Schur, ravel(b)))
         # alpha1 = splinalg.lsqr(B, ravel(bs), iter_lim=10000)
         return alpha.reshape([nseg+1,-1])[:-1]
 
