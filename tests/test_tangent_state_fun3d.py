@@ -5,6 +5,7 @@ import sys
 import time
 import shutil
 import tempfile
+import itertools
 from subprocess import *
 
 from numpy import *
@@ -14,6 +15,7 @@ sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 from fds.checkpoint import *
+from fds.states import PrimalState
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
@@ -39,21 +41,9 @@ fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
 if 'PBS_NODEFILE' not in os.environ:
     os.environ['PBS_NODEFILE'] = os.path.join(REF_WORK_PATH, 'PBS_NODEFILE')
 
-def distribute_data(u):
-    if not hasattr(distribute_data, 'doubles_for_each_rank'):
-        distribute_data.doubles_for_each_rank = []
-        for i in range(MPI_NP):
-            final_data_file = os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
-            with open(final_data_file, 'rb') as f:
-                ui = frombuffer(f.read(), dtype='>d')
-                distribute_data.doubles_for_each_rank.append(ui.size)
-    u_distributed = []
-    for n in distribute_data.doubles_for_each_rank:
-        assert u.size >= n
-        u_distributed.append(u[:n])
-        u = u[n:]
-    assert u.size == 0
-    return u_distributed
+def files(u):
+    for i in itertools.count():
+        yield '.'.join(u, str(i))
 
 def lift_drag_from_text(text):
     lift_drag = []
@@ -83,9 +73,8 @@ def solve(u0, mach, nsteps, run_id, interprocess):
         shutil.copy(os.path.join(REF_WORK_PATH,'fun3d.nml'),work_path)
         shutil.copy(os.path.join(REF_WORK_PATH,'rotated.b8.ugrid'),work_path)
         shutil.copy(os.path.join(REF_WORK_PATH,'rotated.mapbc'),work_path)
-        for file_i, u_i in zip(initial_data_files, distribute_data(u0)):
-            with open(file_i, 'wb') as f:
-                f.write(asarray(u_i, dtype='>d').tobytes())
+        for file_i, u_i in zip(initial_data_files, files(u0)):
+            shutil.copy(u_i, file_i)
         outfile = os.path.join(work_path, 'flow.output')
         with open(outfile, 'w', 8) as f:
             Popen(['mpiexec', '-np', str(MPI_NP), fun3d_bin,
@@ -96,17 +85,17 @@ def solve(u0, mach, nsteps, run_id, interprocess):
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
     J = loadtxt(lift_drag_file).reshape([-1,2])
-    u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
-                 for f in final_data_files])
+    u1 = PrimalState(os.path.join(work_path, 'final.data'))
     assert len(J) == nsteps
     return ravel(u1), J
 
-#if __name__ == '__main__':
-def test_fun3d():
-    initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
-                        for i in range(MPI_NP)]
-    u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
-                 for f in initial_data_files])
+if __name__ == '__main__':
+#def test_fun3d():
+    u0 = PrimalState(os.path.join(REF_WORK_PATH, 'final.data'))
+    # initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
+    #                     for i in range(MPI_NP)]
+    # u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
+    #              for f in initial_data_files])
     shadowing(solve,
               u0,
               XMACH,
