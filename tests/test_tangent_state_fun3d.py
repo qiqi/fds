@@ -5,7 +5,6 @@ import sys
 import time
 import shutil
 import tempfile
-import itertools
 from subprocess import *
 
 from numpy import *
@@ -41,9 +40,18 @@ fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
 if 'PBS_NODEFILE' not in os.environ:
     os.environ['PBS_NODEFILE'] = os.path.join(REF_WORK_PATH, 'PBS_NODEFILE')
 
-def files(u):
-    for i in itertools.count():
-        yield '.'.join(u, str(i))
+def files(state):
+    for i in range(MPI_NP):
+        yield '.'.join([state.name, str(i)])
+
+def mpi_read(mpi_comm, state):
+    fname = '.'.join([state.name, str(mpi_comm.rank)])
+    return frombuffer(open(fname, 'rb').read(), dtype='>d')
+
+def mpi_write(mpi_comm, state, raw_data):
+    fname = '.'.join(state.name, str(mpi_comm.rank))
+    with open(fname, 'wb') as f:
+        f.write(asarray(raw_data, dtype='>d').tobytes())
 
 def lift_drag_from_text(text):
     lift_drag = []
@@ -87,15 +95,11 @@ def solve(u0, mach, nsteps, run_id, interprocess):
     J = loadtxt(lift_drag_file).reshape([-1,2])
     u1 = PrimalState(os.path.join(work_path, 'final.data'))
     assert len(J) == nsteps
-    return ravel(u1), J
+    return u1, J
 
 if __name__ == '__main__':
 #def test_fun3d():
     u0 = PrimalState(os.path.join(REF_WORK_PATH, 'final.data'))
-    # initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
-    #                     for i in range(MPI_NP)]
-    # u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
-    #              for f in initial_data_files])
     shadowing(solve,
               u0,
               XMACH,
@@ -103,6 +107,7 @@ if __name__ == '__main__':
               2,
               STEPS_PER_SEGMENT,
               STEPS_RUNUP,
+              mpi_read_write=(MPI_NP, mpi_read, mpi_write),
               epsilon=1E-4,
               checkpoint_path=BASE_PATH,
               simultaneous_runs=SIMULTANEOUS_RUNS)
@@ -113,6 +118,7 @@ if __name__ == '__main__':
                               checkpoint,
                               K_SEGMENTS,
                               STEPS_PER_SEGMENT,
+                              mpi_read_write=(MPI_NP, mpi_read, mpi_write),
                               epsilon=1E-4,
                               checkpoint_path=BASE_PATH,
                               simultaneous_runs=SIMULTANEOUS_RUNS)

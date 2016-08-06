@@ -15,12 +15,14 @@ from .timeseries import windowed_mean
 
 # ---------------------------------------------------------------------------- #
 
-def tangent_initial_condition(degrees_of_freedom, subspace_dimension):
-    random.seed(12)
-    W = random.rand(subspace_dimension, degrees_of_freedom)
-    W = linalg.qr(W.T)[0].T
-    w = zeros(degrees_of_freedom)
-    return W, w
+def tangent_initial_condition(u0, subspace_dimension):
+    if hasattr(u0, 'dtype') and u0.dtype == dtype(float):
+        degrees_of_freedom = u0.size
+        random.seed(12)
+        W = random.rand(subspace_dimension, degrees_of_freedom)
+        W = linalg.qr(W.T)[0].T
+        w = zeros(degrees_of_freedom)
+        return W, w
 
 def lss_gradient(checkpoint, num_segments=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
@@ -75,8 +77,7 @@ class RunWrapper:
         try:
             u1, J = self.variable_args(
                     u0, parameter, steps, run_id, interprocess)
-            return (array(u1).reshape(array(u0).shape),
-                    array(J).reshape([steps, -1]))
+            return u1, array(J).reshape([steps, -1])
         except Exception as e:
             tb = traceback.format_exc()
             sys.stderr.write(str(tb) + '\n')
@@ -86,7 +87,7 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        run_ddt=None, return_checkpoint=False, mpi_read_write=None):
     """
     """
     run = RunWrapper(run)
@@ -145,7 +146,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        run_ddt=None, return_checkpoint=False, mpi_read_write=None):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -172,11 +173,11 @@ def shadowing(
     if runup_steps > 0:
         u0, _ = run(u0, parameter, runup_steps, 'runup', interprocess)
 
-    V, v = tangent_initial_condition(u0.size, subspace_dimension)
+    V, v = tangent_initial_condition(u0, subspace_dimension)
     lss = LssTangent()
     checkpoint = Checkpoint(u0, V, v, lss, [], [], [], [], [])
     return continue_shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
-            simultaneous_runs, run_ddt, return_checkpoint)
+            simultaneous_runs, run_ddt, return_checkpoint, mpi_read_write)
