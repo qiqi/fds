@@ -12,11 +12,12 @@ from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean
 from .lsstan import LssTangent
 from .timeseries import windowed_mean
+from .states import PrimalState
 
 # ---------------------------------------------------------------------------- #
 
 def tangent_initial_condition(u0, subspace_dimension):
-    if hasattr(u0, 'dtype') and u0.dtype == dtype(float):
+    if not isinstance(u0, PrimalState):
         degrees_of_freedom = u0.size
         random.seed(12)
         W = random.rand(subspace_dimension, degrees_of_freedom)
