@@ -99,7 +99,9 @@ def solve(u0, mach, nsteps, run_id, interprocess):
 
 if __name__ == '__main__':
 #def test_fun3d():
-    u0 = PrimalState(os.path.join(REF_WORK_PATH, 'final.data'))
+    u0 = PrimalState(os.path.join(REF_WORK_PATH, 'final.data'),
+                     mpi_run_cmd=['mpiexec', '-np', str(MPI_NP)],
+                     mpi_read=mpi_read, mpi_write=mpi_write)
     shadowing(solve,
               u0,
               XMACH,
@@ -107,7 +109,6 @@ if __name__ == '__main__':
               2,
               STEPS_PER_SEGMENT,
               STEPS_RUNUP,
-              mpi_read_write=(MPI_NP, mpi_read, mpi_write),
               epsilon=1E-4,
               checkpoint_path=BASE_PATH,
               simultaneous_runs=SIMULTANEOUS_RUNS)
@@ -118,7 +119,6 @@ if __name__ == '__main__':
                               checkpoint,
                               K_SEGMENTS,
                               STEPS_PER_SEGMENT,
-                              mpi_read_write=(MPI_NP, mpi_read, mpi_write),
                               epsilon=1E-4,
                               checkpoint_path=BASE_PATH,
                               simultaneous_runs=SIMULTANEOUS_RUNS)

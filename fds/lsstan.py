@@ -2,7 +2,9 @@ from numpy import *
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
+from . import mpi
 from .timeseries import windowed_mean
+from .states import PrimalState, TangentState, temp_state_dir
 
 class LssTangent:
     def __init__(self):
@@ -72,3 +74,26 @@ class LssTangent:
         cos_angle[i,i,:] = 1
         sin_angle = sqrt(1 - cos_angle**2)
         return v_magnitude, sin_angle
+
+def tangent_initial_condition(u0, subspace_dimension):
+    if isinstance(u0, PrimalState):
+        W = [TempPrimalState('W{0}'.format(i),
+                             u0.mpi_run_cmd, u0.mpi_read, u0.mpi_write) - u0
+             for i in range(subspace_dimension)]
+        def generate_W(mpi_comm):
+            u0_data = u0.mpi_read(mpi_comm, u0)
+            W_data = random.rand(subspace_dimension, u0_data.size)
+            W_data = mpi.qr(W_data.T)[0].T
+            for i in range(subspace_dimension):
+                u0.mpi_write(mpi_comm, W[i].perturbed_state,
+                             u0_data + W_data[i])
+        mpi.run(generate_W, u0.mpi_run_cmd)
+        w = TangentState(u0)
+    else:
+        degrees_of_freedom = u0.size
+        random.seed(12)
+        W = random.rand(subspace_dimension, degrees_of_freedom)
+        W = linalg.qr(W.T)[0].T
+        w = zeros(degrees_of_freedom)
+    return W, w
+

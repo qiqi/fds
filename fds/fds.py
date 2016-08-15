@@ -10,20 +10,10 @@ from numpy import *
 from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean
-from .lsstan import LssTangent
+from .lsstan import LssTangent, tangent_initial_condition
 from .timeseries import windowed_mean
-from .states import PrimalState
 
 # ---------------------------------------------------------------------------- #
-
-def tangent_initial_condition(u0, subspace_dimension):
-    if not isinstance(u0, PrimalState):
-        degrees_of_freedom = u0.size
-        random.seed(12)
-        W = random.rand(subspace_dimension, degrees_of_freedom)
-        W = linalg.qr(W.T)[0].T
-        w = zeros(degrees_of_freedom)
-        return W, w
 
 def lss_gradient(checkpoint, num_segments=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
@@ -88,7 +78,7 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False, mpi_read_write=None):
+        run_ddt=None, return_checkpoint=False):
     """
     """
     run = RunWrapper(run)
@@ -147,7 +137,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False, mpi_read_write=None):
+        run_ddt=None, return_checkpoint=False):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -181,4 +171,4 @@ def shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
-            simultaneous_runs, run_ddt, return_checkpoint, mpi_read_write)
+            simultaneous_runs, run_ddt, return_checkpoint)
