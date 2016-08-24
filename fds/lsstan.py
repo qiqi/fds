@@ -2,7 +2,7 @@ from numpy import *
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from . import mpi
+# from . import mpi
 from .timeseries import windowed_mean
 from .states import PrimalState, TangentState
 
