@@ -3,9 +3,6 @@ import os
 import copy
 import collections
 
-_temp_state_path = os.path.join(os.path.dirname(os.path.abspath(__file__))
-                                'temp_state_dir')
-
 def clear_temp_states():
     shutil.rmtree(_temp_state_path)
 

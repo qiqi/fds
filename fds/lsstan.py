@@ -4,7 +4,7 @@ import scipy.sparse.linalg as splinalg
 
 from . import mpi
 from .timeseries import windowed_mean
-from .states import PrimalState, TangentState, temp_state_dir
+from .states import PrimalState, TangentState
 
 class LssTangent:
     def __init__(self):
