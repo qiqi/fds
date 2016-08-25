@@ -16,10 +16,14 @@ from fds import *
 
 solver_path = os.path.join(my_path, '..', 'tests', 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
-u0 = loadtxt(os.path.join(solver_path, 'u0'))
+#u0 = loadtxt(os.path.join(solver_path, 'u0'))
+u0 = os.path.join(solver_path, 'u0')
 
 def solve(u, s, nsteps, run_id=None, lock=None):
-    tmp_path = tempfile.mkdtemp()
+    #tmp_path = tempfile.mkdtemp()
+    tmp_path = os.path.join('lorenz_demo', run_id)
+    os.makedirs(tmp_path)
+    u = np.loadtxt(u)
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
@@ -27,11 +31,13 @@ def solve(u, s, nsteps, run_id=None, lock=None):
     call([solver, str(int(nsteps))], cwd=tmp_path)
     with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
+    tmp_output = os.path.join(tmp_path, 'output.fds')
+    np.savetxt(tmp_output, out)
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
-    shutil.rmtree(tmp_path)
+    #shutil.rmtree(tmp_path)
     J = transpose([J, 100 * ones(J.size)])
-    return out, J
+    return tmp_output, J
 
 iplot = 0
 def save_plot():

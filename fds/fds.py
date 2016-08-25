@@ -5,15 +5,24 @@ from copy import deepcopy
 import traceback
 from multiprocessing import Manager
 
-from numpy import *
+import pascal_lite as pascal
+import numpy as np
 
 from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean
-from .lsstan import LssTangent, tangent_initial_condition
+from .lsstan import LssTangent#, tangent_initial_condition
 from .timeseries import windowed_mean
 
 # ---------------------------------------------------------------------------- #
+
+def tangent_initial_condition(u0, subspace_dimension):
+    #np.random.seed(12)
+    W = pascal.random(subspace_dimension)
+    #W = (pascal.qr(W.T))[0].T
+    W = pascal.qr_transpose(W)[0]
+    w = pascal.zeros()
+    return W, w
 
 def lss_gradient(checkpoint, num_segments=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
@@ -68,7 +77,7 @@ class RunWrapper:
         try:
             u1, J = self.variable_args(
                     u0, parameter, steps, run_id, interprocess)
-            return u1, array(J).reshape([steps, -1])
+            return u1, np.array(J).reshape([steps, -1])
         except Exception as e:
             tb = traceback.format_exc()
             sys.stderr.write(str(tb) + '\n')
@@ -82,7 +91,7 @@ def continue_shadowing(
     """
     """
     run = RunWrapper(run)
-    assert verify_checkpoint(checkpoint)
+    #assert verify_checkpoint(checkpoint)
     u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
 
     manager = Manager()
@@ -157,6 +166,7 @@ def shadowing(
                                  (steps, n_qoi), where n_qoi is an arbitrary
                                  but consistent number, # quantities of interest.
     '''
+    assert isinstance(u0, str)
     run = RunWrapper(run)
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())

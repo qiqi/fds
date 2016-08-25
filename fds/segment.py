@@ -1,4 +1,4 @@
-from numpy import *
+import numpy as np
 from multiprocessing import Pool
 
 def trapez_mean(J, dim):

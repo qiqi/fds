@@ -14,7 +14,7 @@ from .symbolic_value import _is_like_sa_value, symbolic_array_value, \
                             random_value, builtin
 
 __all__ = ['symbolic_array', 'transpose', 'reshape', 'copy', 'ravel',
-           'sum', 'ones', 'zeros', 'random']
+           'sum', 'ones', 'zeros', 'random', 'qr_transpose', 'dot']
 
 # ============================================================================ #
 
@@ -148,6 +148,15 @@ def copy(x):
 
 def ravel(x):
     return reshape(x, (x.size,))
+
+def qr_transpose(x):
+    assert _is_like_sa(x)
+    outputs = operators.QRT(x.value, shapes=(x.shape, x.shape + x.shape))
+    outputs = tuple([symbolic_array(y) for y in outputs.outputs])
+    return outputs
+
+def dot(x, y):
+    raise NotImplemented
 
 # ============================================================================ #
 #                            mathematical functions                            #

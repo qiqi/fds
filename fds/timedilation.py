@@ -1,5 +1,6 @@
 import sys
-from numpy import *
+import numpy as np
+import pascal_lite as pascal
 from multiprocessing import Pool
 
 def set_order_of_accuracy(order_of_accuracy):
@@ -10,11 +11,11 @@ def set_order_of_accuracy(order_of_accuracy):
 
 def compute_dxdt_of_order(u, order):
     assert order >= 1
-    A = array([arange(order + 1) ** i for i in range(order + 1)])
-    b = zeros(order + 1)
+    A = np.array([np.arange(order + 1) ** i for i in range(order + 1)])
+    b = np.zeros(order + 1)
     b[1] = 1
-    c = linalg.solve(A, b)
-    return dot(c, u[:order+1])
+    c = np.linalg.solve(A, b)
+    return pascal.dot(c, u[:order+1])
 
 def compute_dxdt(u):
     '''
@@ -22,8 +23,8 @@ def compute_dxdt(u):
     '''
     dxdt_higher_order = compute_dxdt_of_order(u, len(u) - 1)
     dxdt_lower_order = compute_dxdt_of_order(u, len(u) - 2)
-    difference = linalg.norm(ravel(dxdt_higher_order - dxdt_lower_order))
-    relative_difference = difference / linalg.norm(ravel(dxdt_higher_order))
+    difference = pascal.norm(ravel(dxdt_higher_order - dxdt_lower_order))
+    relative_difference = difference / pascal.norm(ravel(dxdt_higher_order))
     if relative_difference > 0.01:
         sys.stderr.write('Warning: dxdt in time dilation inaccurate. ')
         sys.stderr.write('Relative error = {0}\n'.format(relative_difference))
@@ -32,15 +33,16 @@ def compute_dxdt(u):
 class TimeDilationBase:
     def contribution(self, v):
         if self.dxdt is None:
+            raise Exception()
             return 0 if array(v).ndim == 1 else zeros(len(v))
         else:
-            return dot(v, self.dxdt) / (self.dxdt**2).sum()
+            return pascal.dot(v, self.dxdt) / (self.dxdt**2).sum()
 
     def project(self, v):
         if self.dxdt_normalized is None:
             return v
         else:
-            dv = outer(dot(v, self.dxdt_normalized), self.dxdt_normalized)
+            dv = pascal.outer(pascal.dot(v, self.dxdt_normalized), self.dxdt_normalized)
             return v - dv.reshape(v.shape)
 
 class TimeDilationExact(TimeDilationBase):
@@ -63,8 +65,11 @@ class TimeDilation(TimeDilationBase):
             run_id_steps = run_id + '_{0}steps'.format(steps)
             res.append(threads.apply_async(
                 run, (u0, parameter, steps, run_id_steps, interprocess)))
-        u = array([u0] + [res_i.get()[0] for res_i in res])
+        
+        u = [u0] + [res_i.get()[0] for res_i in res]
+        u_symbolic = [pascal.symbolic_array() for i in range(0, len(u))]
+
         threads.close()
         threads.join()
-        self.dxdt = compute_dxdt(u)
-        self.dxdt_normalized = self.dxdt / linalg.norm(self.dxdt)
+        self.dxdt = compute_dxdt(u_symbolic)
+        self.dxdt_normalized = self.dxdt / pascal.norm(self.dxdt)
