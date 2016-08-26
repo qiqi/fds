@@ -38,7 +38,6 @@ class OpBase(object):
                 return shape_keeper(a.shape)
             else:
                 return np.array(a, np.float64)
-        #print name, produce_shape_keepers(self.inputs[0])
         shape_keeper_inputs = tuple(map(produce_shape_keepers, self.inputs))
         if shapes is None:
             shape_outputs = py_operation(*shape_keeper_inputs)
@@ -46,7 +45,7 @@ class OpBase(object):
                 shapes = tuple([output.shape for output in shape_outputs])
             else:
                 shapes = (shape_outputs.shape,)
-        print name, shape_keeper_inputs, shapes
+        #print name, [inp.shape for inp in self.inputs], shapes
 
         self.access_neighbor = access_neighbor
         self.outputs = tuple([symbolic_array_value(shape, self) for shape in shapes])

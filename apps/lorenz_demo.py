@@ -21,6 +21,7 @@ u0 = os.path.join(solver_path, 'u0')
 
 def solve(u, s, nsteps, run_id=None, lock=None):
     #tmp_path = tempfile.mkdtemp()
+    print u, run_id
     tmp_path = os.path.join('lorenz_demo', run_id)
     os.makedirs(tmp_path)
     u = np.loadtxt(u)

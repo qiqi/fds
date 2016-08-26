@@ -16,7 +16,7 @@ from .timeseries import windowed_mean
 
 # ---------------------------------------------------------------------------- #
 
-def tangent_initial_condition(u0, subspace_dimension):
+def tangent_initial_condition(subspace_dimension):
     #np.random.seed(12)
     W = pascal.random(subspace_dimension)
     #W = (pascal.qr(W.T))[0].T
@@ -167,14 +167,17 @@ def shadowing(
                                  but consistent number, # quantities of interest.
     '''
     assert isinstance(u0, str)
+    u0 = pascal.symbolic_array(field=u0)
+
     run = RunWrapper(run)
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 
     if runup_steps > 0:
-        u0, _ = run(u0, parameter, runup_steps, 'runup', interprocess)
+        u0, _ = run(u0.field, parameter, runup_steps, 'runup', interprocess)
+        u0 = pascal.symbolic_array(field=u0)
 
-    V, v = tangent_initial_condition(u0, subspace_dimension)
+    V, v = tangent_initial_condition(subspace_dimension)
     lss = LssTangent()
     checkpoint = Checkpoint(u0, V, v, lss, [], [], [], [], [])
     return continue_shadowing(

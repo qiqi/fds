@@ -6,7 +6,7 @@ import numpy as np
 
 from .op_base import OpBase, OpBase, OpBase, OpBase
 
-__all__ = ['add', 'sub', 'mul', 'truediv', 'neg', 'sum']
+__all__ = ['add', 'sub', 'mul', 'truediv', 'neg', 'pow', 'sum']
 
 class add(OpBase):
     def __init__(self, a, b):
@@ -27,6 +27,10 @@ class truediv(OpBase):
 class neg(OpBase):
     def __init__(self, a):
         OpBase.__init__(self, operator.neg, (a,), name="neg")
+        
+class pow(OpBase):
+    def __init__(self, a, b):
+        OpBase.__init__(self, operator.pow, (a, b), name="pow")
 
 class sum(OpBase):
     def __init__(self, a, axis=None):

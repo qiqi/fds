@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import numpy as np
 import pascal_lite as pascal
@@ -15,7 +16,8 @@ def compute_dxdt_of_order(u, order):
     b = np.zeros(order + 1)
     b[1] = 1
     c = np.linalg.solve(A, b)
-    return pascal.dot(c, u[:order+1])
+    return sum([c[i]*u[i] for i in range(0, order+1)])
+    #return pascal.dot(c, u[:order+1])
 
 def compute_dxdt(u):
     '''
@@ -23,6 +25,7 @@ def compute_dxdt(u):
     '''
     dxdt_higher_order = compute_dxdt_of_order(u, len(u) - 1)
     dxdt_lower_order = compute_dxdt_of_order(u, len(u) - 2)
+    ravel = lambda x: x
     difference = pascal.norm(ravel(dxdt_higher_order - dxdt_lower_order))
     relative_difference = difference / pascal.norm(ravel(dxdt_higher_order))
     if relative_difference > 0.01:
@@ -64,12 +67,12 @@ class TimeDilation(TimeDilationBase):
         for steps in range(1, self.order_of_accuracy + 1):
             run_id_steps = run_id + '_{0}steps'.format(steps)
             res.append(threads.apply_async(
-                run, (u0, parameter, steps, run_id_steps, interprocess)))
+                run, (u0.field, parameter, steps, run_id_steps, interprocess)))
         
-        u = [u0] + [res_i.get()[0] for res_i in res]
-        u_symbolic = [pascal.symbolic_array() for i in range(0, len(u))]
+        u = [res_i.get()[0] for res_i in res]
+        u = [u0] + [pascal.symbolic_array(field=ui) for ui in u]
 
         threads.close()
         threads.join()
-        self.dxdt = compute_dxdt(u_symbolic)
+        self.dxdt = compute_dxdt(u)
         self.dxdt_normalized = self.dxdt / pascal.norm(self.dxdt)

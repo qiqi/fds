@@ -28,9 +28,10 @@ def _is_like_sa_value(a):
 # ============================================================================ #
 
 class symbolic_array_value(object):
-    def __init__(self, shape=(), owner=None):
+    def __init__(self, shape=(), owner=None, field=None):
         self.shape = np.empty(shape).shape
         self.owner = owner
+        self.field = field
 
     def __repr__(self):
         if self.owner:

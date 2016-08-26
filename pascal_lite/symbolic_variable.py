@@ -14,7 +14,8 @@ from .symbolic_value import _is_like_sa_value, symbolic_array_value, \
                             random_value, builtin
 
 __all__ = ['symbolic_array', 'transpose', 'reshape', 'copy', 'ravel',
-           'sum', 'ones', 'zeros', 'random', 'qr_transpose', 'dot']
+           'sum', 'ones', 'zeros', 'random', 'qr_transpose', 'dot', 
+           'norm', 'outer']
 
 # ============================================================================ #
 
@@ -32,14 +33,14 @@ class symbolic_array(object):
 
     __context__ = sys.modules[__name__]
 
-    def __init__(self, init=()):
+    def __init__(self, init=(), field=None):
         if _is_like_sa_value(init):
             self.value = init
         else:
             shape = init
             if isinstance(shape, int):
                 shape = (shape,)
-            self.value = symbolic_array_value(shape)
+            self.value = symbolic_array_value(shape, field=field)
 
     def __repr__(self):
         return 'Variable holding {0}'.format(self.value)
@@ -57,6 +58,10 @@ class symbolic_array(object):
     @property
     def size(self):
         return self.value.size
+
+    @property
+    def field(self):
+        return self.value.field
 
     def __len__(self):
         return len(self.value)
@@ -94,6 +99,9 @@ class symbolic_array(object):
 
     def __neg__(self):
         return symbolic_array(operators.neg(self.value).output)
+
+    def __pow__(self, power):
+        return symbolic_array(operators.pow(self.value, power).output)
 
     # ------------------------- math functions ---------------------------- #
 
@@ -151,12 +159,22 @@ def ravel(x):
 
 def qr_transpose(x):
     assert _is_like_sa(x)
-    outputs = operators.QRT(x.value, shapes=(x.shape, x.shape + x.shape))
+    outputs = operators.QRT(x.value)
     outputs = tuple([symbolic_array(y) for y in outputs.outputs])
     return outputs
 
 def dot(x, y):
-    raise NotImplemented
+    assert _is_like_sa(x)
+    assert _is_like_sa(y)
+    return symbolic_array(operators.Dot(x.value, y.value).output)
+
+def norm(x):
+    return dot(x, x)**0.5
+
+def outer(x, y):
+    assert _is_like_sa(x)
+    assert _is_like_sa(y)
+    return symbolic_array(operators.Outer(x.value, y.value).output)
 
 # ============================================================================ #
 #                            mathematical functions                            #
