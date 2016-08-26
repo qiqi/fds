@@ -19,12 +19,21 @@ solver = os.path.join(solver_path, 'solver')
 #u0 = loadtxt(os.path.join(solver_path, 'u0'))
 u0 = os.path.join(solver_path, 'u0')
 
+serial_mode = isinstance(u0, np.ndarray)
+def get_host_dir(run_id):
+    return os.path.join('lorenz_demo', run_id)
+
 def solve(u, s, nsteps, run_id=None, lock=None):
-    #tmp_path = tempfile.mkdtemp()
     print u, run_id
-    tmp_path = os.path.join('lorenz_demo', run_id)
-    os.makedirs(tmp_path)
-    u = np.loadtxt(u)
+
+    if serial_mode:
+        tmp_path = tempfile.mkdtemp()
+    else:
+        u = np.loadtxt(u)
+        tmp_path = get_host_dir(run_id)
+        if not os.path.exists(tmp_path):
+            os.makedirs(tmp_path)
+
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
@@ -32,13 +41,18 @@ def solve(u, s, nsteps, run_id=None, lock=None):
     call([solver, str(int(nsteps))], cwd=tmp_path)
     with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
-    tmp_output = os.path.join(tmp_path, 'output.fds')
-    np.savetxt(tmp_output, out)
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
-    #shutil.rmtree(tmp_path)
     J = transpose([J, 100 * ones(J.size)])
-    return tmp_output, J
+
+    if serial_mode:
+        shutil.rmtree(tmp_path)
+    else:
+        tmp_output = os.path.join(tmp_path, 'output.fds')
+        np.savetxt(tmp_output, out)
+        out = tmp_output
+
+    return out, J
 
 iplot = 0
 def save_plot():
@@ -56,7 +70,7 @@ s = linspace(28, 34, 21)
 
 J, G = [], []
 for si in s:
-    Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000)
+    Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000, get_host_dir=get_host_dir)
     J.append(Ji)
     G.append(Gi)
 

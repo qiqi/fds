@@ -28,9 +28,10 @@ def _is_like_sa_value(a):
 # ============================================================================ #
 
 class symbolic_array_value(object):
-    def __init__(self, shape=(), owner=None, field=None):
+    def __init__(self, shape=(), owner=None, owner_index=None, field=None):
         self.shape = np.empty(shape).shape
         self.owner = owner
+        self.owner_index = owner_index
         self.field = field
 
     def __repr__(self):
@@ -124,7 +125,10 @@ class ComputationalGraph(object):
         # _act attributes are computed to each value
         def _act(v):
             if _is_like_sa_value(v):
-                return v._act
+                if v.owner_index is None:
+                    return v._act
+                else:
+                    return v._act[v.owner_index]
             elif isinstance(v, np.ndarray):
                 return v.reshape(v.shape + (1,))
             else:
@@ -132,7 +136,9 @@ class ComputationalGraph(object):
         for v in self.sorted_values:
             assert not hasattr(v, '_act')
             inputs_act = [_act(v_inp) for v_inp in v.owner.inputs]
+            #print v.owner, inputs_act
             v._act = v.owner.perform(inputs_act)
+            #print v.owner, v._act
         # _act attributes are extracted from outputs then deleted from all
         actual_outputs = tuple(v._act for v in self.output_values)
         for v in self.input_values + self.sorted_values:

@@ -27,10 +27,10 @@ def compute_dxdt(u):
     dxdt_lower_order = compute_dxdt_of_order(u, len(u) - 2)
     ravel = lambda x: x
     difference = pascal.norm(ravel(dxdt_higher_order - dxdt_lower_order))
-    relative_difference = difference / pascal.norm(ravel(dxdt_higher_order))
-    if relative_difference > 0.01:
-        sys.stderr.write('Warning: dxdt in time dilation inaccurate. ')
-        sys.stderr.write('Relative error = {0}\n'.format(relative_difference))
+    #relative_difference = difference / pascal.norm(ravel(dxdt_higher_order))
+    #if relative_difference > 0.01:
+    #    sys.stderr.write('Warning: dxdt in time dilation inaccurate. ')
+    #    sys.stderr.write('Relative error = {0}\n'.format(relative_difference))
     return dxdt_higher_order
 
 class TimeDilationBase:

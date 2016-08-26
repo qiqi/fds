@@ -87,9 +87,11 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        run_ddt=None, return_checkpoint=False, get_host_dir=None):
     """
     """
+    # TODO: mpi mode, checkpoint support, time dilation warning
+
     run = RunWrapper(run)
     #assert verify_checkpoint(checkpoint)
     u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
@@ -103,6 +105,8 @@ def continue_shadowing(
     else:
         time_dil = TimeDilation(run, u0, parameter, run_id,
                                 simultaneous_runs, interprocess)
+    if get_host_dir is None:
+        get_host_dir = lambda x: None
 
     for i in range(lss.K_segments(), num_segments):
         V = time_dil.project(V)
@@ -110,7 +114,7 @@ def continue_shadowing(
 
         u0, V, v, J0, G, g = run_segment(
                 run, u0, V, v, parameter, i, steps_per_segment,
-                epsilon, simultaneous_runs, interprocess)
+                epsilon, simultaneous_runs, interprocess, get_host_dir)
         J_hist.append(J0)
         G_lss.append(G)
         g_lss.append(g)
@@ -128,14 +132,14 @@ def continue_shadowing(
         V = time_dil.project(V)
         v = time_dil.project(v)
 
-        lss.checkpoint(V, v)
-
-        checkpoint = Checkpoint(
-                u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
-        print(lss_gradient(checkpoint))
-        sys.stdout.flush()
-        if checkpoint_path and (i+1) % checkpoint_interval == 0:
-            save_checkpoint(checkpoint_path, checkpoint)
+        #lss.checkpoint(V, v)
+        #
+        #checkpoint = Checkpoint(
+        #        u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
+        #print(lss_gradient(checkpoint))
+        #sys.stdout.flush()
+        #if checkpoint_path and (i+1) % checkpoint_interval == 0:
+        #    save_checkpoint(checkpoint_path, checkpoint)
     if return_checkpoint:
         return checkpoint
     else:
@@ -146,7 +150,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        run_ddt=None, return_checkpoint=False, get_host_dir=None):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -166,7 +170,6 @@ def shadowing(
                                  (steps, n_qoi), where n_qoi is an arbitrary
                                  but consistent number, # quantities of interest.
     '''
-    assert isinstance(u0, str)
     u0 = pascal.symbolic_array(field=u0)
 
     run = RunWrapper(run)
@@ -184,4 +187,4 @@ def shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
-            simultaneous_runs, run_ddt, return_checkpoint)
+            simultaneous_runs, run_ddt, return_checkpoint, get_host_dir)

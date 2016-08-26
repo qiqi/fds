@@ -48,9 +48,11 @@ class OpBase(object):
         #print name, [inp.shape for inp in self.inputs], shapes
 
         self.access_neighbor = access_neighbor
-        self.outputs = tuple([symbolic_array_value(shape, self) for shape in shapes])
         if len(shapes) == 1:
-            self.output = self.outputs[0]
+            self.output = symbolic_array_value(shapes[0], self) 
+        else:
+            self.outputs = tuple([symbolic_array_value(shape, self, index) 
+                              for index, shape in enumerate(shapes)])
 
     def perform(self, input_objects):
         assert len(input_objects) == len(self.inputs)
