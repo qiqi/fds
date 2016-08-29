@@ -106,7 +106,7 @@ def continue_shadowing(
         time_dil = TimeDilation(run, u0, parameter, run_id,
                                 simultaneous_runs, interprocess)
     if get_host_dir is None:
-        get_host_dir = lambda x: None
+        get_host_dir = lambda x: ''
 
     for i in range(lss.K_segments(), num_segments):
         V = time_dil.project(V)

@@ -60,8 +60,8 @@ def test_add_mul():
     assert actual_output.shape == (n_for_this_mpi_rank,)
     assert abs(actual_output - subspace_dimension).max() < 1E-12
 
-#def test_linalg():
-if __name__ == '__main__':
+def test_linalg():
+#if __name__ == '__main__':
     subspace_dimension = 10
     V = pascal.symbolic_array(subspace_dimension)
     v = pascal.symbolic_array()

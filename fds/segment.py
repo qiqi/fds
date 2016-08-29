@@ -4,38 +4,7 @@ import numpy as np
 import pascal_lite as pascal
 from multiprocessing import Pool
 
-def mpi_compute(outputs):
-    zero = pascal.builtin.ZERO
-    random = pascal.builtin.RANDOM[0]
 
-    graph = pascal.ComputationalGraph([x.value for x in outputs])
-    array_inputs = [x for x in graph.input_values if x not in [zero, random]]
-    serial_mode = isinstance(array_inputs[0].field, np.ndarray)
-    if serial_mode:
-        n = array_inputs[0].field.shape[0]
-    else:
-        n = np.loadtxt(array_inputs[0].field).shape[0]
-
-    def inputs(x):
-        if x is zero:
-            return np.zeros(n)
-        elif x is random:
-            shape = random.shape + (n,)
-            return np.random.rand(*shape)
-        elif serial_mode:
-            return x.field
-        else:
-            return np.loadtxt(x.field)
-    actual_outputs = graph(inputs)
-    for index, output in enumerate(outputs):
-        if serial_mode:
-            output.value.field = actual_outputs[index]
-        else:
-            parent_dir = os.path.dirname(output.field)
-            if not os.path.exists(parent_dir):
-                os.makedirs(parent_dir)
-            np.savetxt(output.field, actual_outputs[index])
-    return outputs
 
 def trapez_mean(J, dim):
     J = np.rollaxis(J, dim)
