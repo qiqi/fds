@@ -49,14 +49,16 @@ class OpBase(object):
 
         self.access_neighbor = access_neighbor
         if len(shapes) == 1:
-            self.output = symbolic_array_value(shapes[0], self) 
+            self.outputs = (symbolic_array_value(shapes[0], self),)
+            self.output = self.outputs[0]  # alias
         else:
-            self.outputs = tuple([symbolic_array_value(shape, self, index) 
+            self.outputs = tuple([symbolic_array_value(shape, self, index)
                               for index, shape in enumerate(shapes)])
 
     def perform(self, input_objects):
         assert len(input_objects) == len(self.inputs)
-        return self.py_operation(*input_objects)
+        output = self.py_operation(*input_objects)
+        return output if isinstance(output, tuple) else (output,)
 
     def __repr__(self):
         return 'Operator {0}'.format(self.name)

@@ -19,5 +19,3 @@ class Outer(OpBase):
     def __init__(self, x, y):
         shapes = (x.shape,)
         OpBase.__init__(self, np.outer, (x, y), name='outer', shapes=shapes)
-
-    
