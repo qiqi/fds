@@ -1,6 +1,8 @@
 import os
+import sys
 import numpy as np
 import cPickle as pkl
+import subprocess
 
 import pascal_lite as pascal
 
@@ -18,7 +20,7 @@ def run_compute(outputs):
         serial_compute(sample_input, outputs, graph)
     else:
         mpi_compute(sample_input, outputs, graph)
-    return outputs
+    return
 
 def get_inputs(x, size):
     if x is pascal.builtin.ZERO:
@@ -31,7 +33,6 @@ def get_inputs(x, size):
     else:
         return mpi_read_field(x.field)
 
-
 def serial_compute(sample_input, outputs, graph):
     size = sample_input.field.shape[0]
     inputs = lambda x: get_inputs(x, size)
@@ -40,13 +41,19 @@ def serial_compute(sample_input, outputs, graph):
         output.value.field = actual_outputs[index]
     return 
 
-def mpi_compute(*mpi_inputs):
-    with open('graph.pkl', 'w') as f:
+def mpi_compute(*mpi_inputs):#, spawn_job=None):
+
+    pkl_file = os.path.abspath('graph.pkl')
+    with open(pkl_file, 'w') as f:
         pkl.dump(mpi_inputs, f)
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
-    spawn_job(n_procs, worker_file)
+    spawn_job=None
+    if spawn_job is None:
+        subprocess.call(['mpirun', worker_file, pkl_file])
+    else:
+        spawn_job(worker_file, [pkl_file])
     return 
 
 def mpi_range(size):
@@ -75,7 +82,8 @@ def mpi_compute_worker():
     zero = pascal.builtin.ZERO
     random = pascal.builtin.RANDOM[0]
 
-    with open('graph.pkl') as f:
+    pkl_file = sys.argv[1]
+    with open(pkl_file) as f:
         sample_input, outputs, graph = pkl.load(f)
     
     # read the inputs for the graph

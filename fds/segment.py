@@ -13,7 +13,7 @@ def trapez_mean(J, dim):
 
 def run_segment(run, u0, V, v, parameter, i_segment, steps,
                 epsilon, simultaneous_runs, interprocess,
-                get_host_dir):
+                get_host_dir, compute_outputs=[]):
     '''
     Run Time Segement i_segment, starting from
         u0: nonlinear solution
@@ -46,9 +46,7 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
         u1h[-1].value.field = os.path.join(get_host_dir(run_ids[-1]), 'input.fds')
 
     # compute all outputs
-    u = run_compute([u1i] + u1h)
-    u1i = u[0]
-    u1h = u[1:]
+    run_compute([u1i] + u1h + compute_outputs)
 
     for j in range(subspace_dimension):
         res_h.append(threads.apply_async(
