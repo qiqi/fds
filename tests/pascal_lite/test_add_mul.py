@@ -62,7 +62,7 @@ def test_add_mul():
 
 def test_linalg():
 #if __name__ == '__main__':
-    subspace_dimension = 10
+    subspace_dimension = 4
     V = pascal.symbolic_array(subspace_dimension)
     v = pascal.symbolic_array()
 
@@ -71,10 +71,10 @@ def test_linalg():
     v3 = pascal.qr_transpose(V)[0]
 
     g = pascal.ComputationalGraph([v1.value, v2.value, v3.value])
-    n = 100
+    n = 16
 
-    A = np.random.rand(n, n)
-    b = np.random.rand(n)
+    A = np.random.rand(n, subspace_dimension)
+    b = np.random.rand(subspace_dimension)
 
     def actual_inputs(x):
         if x is V.value:
@@ -85,7 +85,5 @@ def test_linalg():
     o1, o2, o3 = g(actual_inputs)
     assert np.allclose(o1, np.dot(A, b))
     assert np.allclose(o2, np.outer(np.dot(A, b), b))
-    assert np.allclose(o3[0], np.linalg.qr(A.T)[0].T)
+    assert np.allclose(o3, np.linalg.qr(A.T)[0].T)
 
-
-    
