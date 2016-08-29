@@ -4,7 +4,7 @@ import numpy as np
 import pascal_lite as pascal
 from multiprocessing import Pool
 
-
+from .compute import run_compute
 
 def trapez_mean(J, dim):
     J = np.rollaxis(J, dim)
@@ -45,8 +45,8 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
         run_ids.append('segment{0:02d}_init_perturb{1:03d}'.format(i_segment, j))
         u1h[-1].value.field = os.path.join(get_host_dir(run_ids[-1]), 'input.fds')
 
-    # compute everything
-    u = mpi_compute([u1i] + u1h)
+    # compute all outputs
+    u = run_compute([u1i] + u1h)
     u1i = u[0]
     u1h = u[1:]
 

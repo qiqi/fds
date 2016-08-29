@@ -16,8 +16,8 @@ from fds import *
 
 solver_path = os.path.join(my_path, '..', 'tests', 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
-#u0 = loadtxt(os.path.join(solver_path, 'u0'))
-u0 = os.path.join(solver_path, 'u0')
+u0 = loadtxt(os.path.join(solver_path, 'u0'))
+#u0 = os.path.join(solver_path, 'u0')
 
 serial_mode = isinstance(u0, np.ndarray)
 def get_host_dir(run_id):
