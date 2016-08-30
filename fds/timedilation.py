@@ -39,7 +39,7 @@ class TimeDilationBase:
             raise Exception()
             return 0 if array(v).ndim == 1 else zeros(len(v))
         else:
-            return pascal.dot(v, self.dxdt) / (self.dxdt**2).sum()
+            return pascal.dot(v, self.dxdt) / pascal.dot(self.dxdt, self.dxdt)
 
     def project(self, v):
         if self.dxdt_normalized is None:

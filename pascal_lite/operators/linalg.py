@@ -7,15 +7,22 @@ class QRT(OpBase):
         def qr(A):
             Q, R = np.linalg.qr(A.T)
             return Q.T, R.T
-        shapes=(A.shape, A.shape + A.shape)
-        OpBase.__init__(self, qr, (A,), name='qr', shapes=shapes)
+        output_shapes=(A.shape, A.shape + A.shape)
+        OpBase.__init__(self, qr, (A,),
+                        are_outputs_distributed=(True, False),
+                        name='qr', output_shapes=output_shapes)
 
-class Dot(OpBase):
-    def __init__(self, x, y):
-        shapes = (x.shape,)
-        OpBase.__init__(self, np.dot, (x, y), name='dot')
+class ReduceSum(OpBase):
+    def __init__(self, x):
+        assert x.is_distributed
+        OpBase.__init__(self, lambda x : x.sum(-1), (x,),
+                        output_shapes=(x.shape,),
+                        are_outputs_distributed=(False,), name='ReduceSum')
 
-class Outer(OpBase):
-    def __init__(self, x, y):
-        shapes = (x.shape,)
-        OpBase.__init__(self, np.outer, (x, y), name='outer', shapes=shapes)
+class broadcast(OpBase):
+    def __init__(self, x):
+        assert not x.is_distributed
+        OpBase.__init__(self, lambda x : x.reshape(x.shape + (1,)), (x,),
+                        output_shapes=(x.shape,),
+                        are_outputs_distributed=(True,), name='broadcast')
+

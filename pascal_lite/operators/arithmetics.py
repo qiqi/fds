@@ -27,7 +27,7 @@ class truediv(OpBase):
 class neg(OpBase):
     def __init__(self, a):
         OpBase.__init__(self, operator.neg, (a,), name="neg")
-        
+
 class pow(OpBase):
     def __init__(self, a, b):
         OpBase.__init__(self, operator.pow, (a, b), name="pow")

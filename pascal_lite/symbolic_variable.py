@@ -25,6 +25,21 @@ def _is_like_sa(a):
     '''
     return hasattr(a, 'value') and _is_like_sa_value(a.value)
 
+def _binary_op(a, b, op):
+    is_a_like_sa = _is_like_sa(a)
+    is_b_like_sa = _is_like_sa(b)
+    is_result_distributed = (is_a_like_sa and a.is_distributed or
+                             is_b_like_sa and b.is_distributed)
+    if is_result_distributed:
+        if is_a_like_sa and not a.is_distributed:
+            a = broadcast(a)
+        elif is_b_like_sa and not b.is_distributed:
+            b = broadcast(b)
+    a = a.value if is_a_like_sa else a
+    b = b.value if is_b_like_sa else b
+    return symbolic_array(op(a, b).output)
+
+
 # ============================================================================ #
 #                          symbolic array variable                             #
 # ============================================================================ #
@@ -33,14 +48,15 @@ class symbolic_array(object):
 
     __context__ = sys.modules[__name__]
 
-    def __init__(self, init=(), field=None):
+    def __init__(self, init=(), field=None, is_distributed=True):
         if _is_like_sa_value(init):
             self.value = init
         else:
             shape = init
             if isinstance(shape, int):
                 shape = (shape,)
-            self.value = symbolic_array_value(shape, field=field)
+            self.value = symbolic_array_value(shape, field=field,
+                                              is_distributed=is_distributed)
 
     def __repr__(self):
         return 'Variable holding {0}'.format(self.value)
@@ -63,6 +79,10 @@ class symbolic_array(object):
     def field(self):
         return self.value.field
 
+    @property
+    def is_distributed(self):
+        return self.value.is_distributed
+
     def __len__(self):
         return len(self.value)
 
@@ -72,36 +92,31 @@ class symbolic_array(object):
     __array_priority__ = 3000
 
     def __add__(self, a):
-        a = a.value if _is_like_sa(a) else a
-        return symbolic_array(operators.add(self.value, a).output)
+        return _binary_op(self, a, operators.add)
 
     def __radd__(self, a):
         return self.__add__(a)
 
     def __sub__(self, a):
-        a = a.value if _is_like_sa(a) else a
-        return symbolic_array(operators.sub(self.value, a).output)
+        return _binary_op(self, a, operators.sub)
 
     def __rsub__(self, a):
-        a = a.value if _is_like_sa(a) else a
-        return symbolic_array(operators.sub(a, self.value).output)
+        return _binary_op(a, self, operators.sub)
 
     def __mul__(self, a):
-        a = a.value if _is_like_sa(a) else a
-        return symbolic_array(operators.mul(self.value, a).output)
+        return _binary_op(self, a, operators.mul)
 
     def __rmul__(self, a):
         return self.__mul__(a)
 
     def __truediv__(self, a):
-        a = a.value if _is_like_sa(a) else a
-        return symbolic_array(operators.truediv(self.value, a).output)
+        return _binary_op(self, a, operators.truediv)
 
     def __neg__(self):
         return symbolic_array(operators.neg(self.value).output)
 
     def __pow__(self, power):
-        return symbolic_array(operators.pow(self.value, power).output)
+        return _binary_op(self, power, operators.pow)
 
     # ------------------------- math functions ---------------------------- #
 
@@ -157,24 +172,32 @@ def copy(x):
 def ravel(x):
     return reshape(x, (x.size,))
 
+def reduce_sum(x):
+    return symbolic_array(operators.ReduceSum(x.value).output)
+
+def broadcast(x):
+    return symbolic_array(operators.broadcast(x.value).output)
+
 def qr_transpose(x):
     assert _is_like_sa(x)
-    outputs = operators.QRT(x.value)
-    outputs = tuple([symbolic_array(y) for y in outputs.outputs])
+    qr_op = operators.QRT(x.value)
+    outputs = tuple([symbolic_array(y) for y in qr_op.outputs])
     return outputs
 
 def dot(x, y):
-    assert _is_like_sa(x)
-    assert _is_like_sa(y)
-    return symbolic_array(operators.Dot(x.value, y.value).output)
+    if (_is_like_sa(x) and _is_like_sa(y) and x.is_distributed
+                                          and y.is_distributed):
+        return reduce_sum(x * y)
+    else:
+        return (x * y).sum()
 
 def norm(x):
     return dot(x, x)**0.5
 
 def outer(x, y):
-    assert _is_like_sa(x)
-    assert _is_like_sa(y)
-    return symbolic_array(operators.Outer(x.value, y.value).output)
+    x = x.reshape(x.shape + (1,) * y.ndim)
+    y = y.reshape((1,) * x.ndim + y.shape)
+    return x * y
 
 # ============================================================================ #
 #                            mathematical functions                            #

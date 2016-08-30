@@ -19,5 +19,5 @@ class setitem(OpBase):
             x = copy.copy(x)
             x[self.ind] = a
             return x
-        OpBase.__init__(self, op, (a, b), shapes=(a.shape,),
+        OpBase.__init__(self, op, (a, b), output_shapes=(a.shape,),
                         name='setitem[{0}]'.format(ind))

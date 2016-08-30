@@ -67,14 +67,17 @@ def test_linalg():
     v = pascal.symbolic_array()
 
     v1 = pascal.dot(V, v)
+    assert not v1.is_distributed
     v2 = pascal.outer(v1, v)
+    assert v2.is_distributed
     v3 = pascal.qr_transpose(V)[0]
+    assert v3.is_distributed
 
     g = pascal.ComputationalGraph([v1.value, v2.value, v3.value])
     n = 16
 
-    A = np.random.rand(n, subspace_dimension)
-    b = np.random.rand(subspace_dimension)
+    A = np.random.rand(subspace_dimension, n)
+    b = np.random.rand(n)
 
     def actual_inputs(x):
         if x is V.value:
@@ -83,6 +86,7 @@ def test_linalg():
             return b
 
     o1, o2, o3 = g(actual_inputs)
+    print(o1, np.dot(A, b))
     assert np.allclose(o1, np.dot(A, b))
     assert np.allclose(o2, np.outer(np.dot(A, b), b))
     assert np.allclose(o3, np.linalg.qr(A.T)[0].T)
