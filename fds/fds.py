@@ -139,7 +139,7 @@ def continue_shadowing(
                 epsilon, simultaneous_runs, interprocess, get_host_dir,
                 compute_outputs=compute_outputs)
         # update outputs to field values
-        print('g_dil shapes: ', g_dil[-1].shape, g_dil[-1].field.shape)
+        #print('g_dil shapes: ', g_dil[-1].shape, g_dil[-1].field.shape)
         for output in [lss.Rs, lss.bs, G_dil, g_dil]:
             output[-1] = output[-1].field
 

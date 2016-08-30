@@ -30,8 +30,8 @@ def solve(u, s, nsteps):
     J = transpose([J, 100 * ones(J.size)])
     return out, J
 
-#if __name__ == '__main__':
-def test_gradient():
+if __name__ == '__main__':
+#def test_gradient():
     s = linspace(28, 33, 6)
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):

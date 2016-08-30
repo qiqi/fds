@@ -25,8 +25,8 @@ def run_compute(outputs):
 def get_inputs(x, size):
     if x is pascal.builtin.ZERO:
         return np.zeros(size)
-    elif x is pascal.builtin.RANDOM[0]:
-        shape = pascal.builtin.RANDOM[0].shape + (size,)
+    elif x in pascal.builtin.RANDOM:
+        shape = x.shape + (size,)
         return np.random.rand(*shape)
     elif isinstance(x.field, np.ndarray):
         return x.field
@@ -35,6 +35,7 @@ def get_inputs(x, size):
 
 def serial_compute(sample_input, outputs, graph):
     size = sample_input.field.shape[0]
+    print len(graph.input_values)
     inputs = lambda x: get_inputs(x, size)
     actual_outputs = graph(inputs)
     for index, output in enumerate(outputs):
