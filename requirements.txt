@@ -3,3 +3,4 @@ scipy >= 0.14
 pytest
 pytest-cov
 h5py
+dill
