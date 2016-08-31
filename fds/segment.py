@@ -59,6 +59,7 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
     u0p = pascal.symbolic_array(field=u0p)
     # get homogeneous tangents
     G = []
+    V = pascal.random(subspace_dimension)
     for j in range(subspace_dimension):
         u1p, J1 = res_h[j].get()
         u1p = pascal.symbolic_array(field=u1p)

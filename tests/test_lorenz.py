@@ -30,8 +30,8 @@ def solve(u, s, nsteps):
     J = transpose([J, 100 * ones(J.size)])
     return out, J
 
-if __name__ == '__main__':
-#def test_gradient():
+#if __name__ == '__main__':
+def test_gradient():
     s = linspace(28, 33, 6)
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):
@@ -44,8 +44,8 @@ if __name__ == '__main__':
     assert all(abs(J[:,0] - ((s-31)**2 + 85)) < 20)
     assert all(abs(G[:,0] - (2 * (s-31))) < 2)
 
-def test_lyapunov():
 #if __name__ == '__main__':
+def test_lyapunov():
     cp_path = os.path.join(my_path, 'lorenz_lyapunov')
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)

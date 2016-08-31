@@ -23,14 +23,16 @@ class LssTangent:
         #b = pascal.dot(Q.T, v)
         #V[:] = Q.T
         #v -= pascal.dot(Q, b)
-        Q, R = pascal.qr_transpose(V.T)
+        Q, R = pascal.qr_transpose(V)
         b = pascal.dot(Q, v)
-        V[:] = Q
-        v -= pascal.dot(b, Q)
+        #V[:] = Q
+        #v -= pascal.dot(b, Q)
+        V = Q
+        v = v - pascal.dot(b, Q)
 
         self.Rs.append(R)
         self.bs.append(b)
-        return R, b
+        return V, v
 
     def solve(self):
         R, b = np.array(self.Rs), np.array(self.bs)

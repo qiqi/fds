@@ -6,7 +6,7 @@ class QRT(OpBase):
     def __init__(self, A):
         def qr(A):
             Q, R = np.linalg.qr(A.T)
-            return Q.T, R.T
+            return Q.T, R
         output_shapes=(A.shape, A.shape + A.shape)
         OpBase.__init__(self, qr, (A,),
                         are_outputs_distributed=(True, False),

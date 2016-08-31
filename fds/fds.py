@@ -13,6 +13,7 @@ from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean
 from .lsstan import LssTangent#, tangent_initial_condition
 from .timeseries import windowed_mean
+from .compute import run_compute
 
 # ---------------------------------------------------------------------------- #
 
@@ -36,12 +37,17 @@ def lss_gradient(checkpoint, num_segments=None):
         G_dil = G_dil[:num_segments]
         g_dil = g_dil[:num_segments]
     alpha = lss.solve()
+    #print alpha, G_lss, g_lss
+    #print J, G_dil, g_dil
+    #exit(1)
     grad_lss = (alpha[:,:,np.newaxis] * np.array(G_lss)).sum(1) + np.array(g_lss)
     J = np.array(J)
     dJ = trapez_mean(J.mean(0), 0) - J[:,-1]
     steps_per_segment = J.shape[1]
     dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
     grad_dil = dil[:,np.newaxis] * dJ
+    #if len(lss.bs) > 5:
+    #    stop
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
 
 class RunWrapper:
@@ -104,20 +110,30 @@ def continue_shadowing(
     manager = Manager()
     interprocess = (manager.Lock(), manager.dict())
 
-    #run_id = 'time_dilation_{0:02d}'.format(lss.K_segments())
-    #if run_ddt is not None:
-    #    time_dil = TimeDilationExact(run_ddt, u0, parameter)
-    #else:
-    #    time_dil = TimeDilation(run, u0, parameter, run_id,
-    #                            simultaneous_runs, interprocess)
+    i = lss.K_segments()
+    run_id = 'time_dilation_{0:02d}'.format(i)
+    if run_ddt is not None:
+        time_dil = TimeDilationExact(run_ddt, u0, parameter)
+    else:
+        time_dil = TimeDilation(run, u0, parameter, run_id,
+                                simultaneous_runs, interprocess)
 
-    #V = time_dil.project(V)
-    #v = time_dil.project(v)
+    V = time_dil.project(V)
+    v = time_dil.project(v)
 
-    for i in range(lss.K_segments(), num_segments):
+    u0, V, v, J0, G, g = run_segment(
+            run, u0, V, v, parameter, i, steps_per_segment,
+            epsilon, simultaneous_runs, interprocess, get_host_dir,
+            compute_outputs=compute_outputs)
+
+    J_hist.append(J0)
+    G_lss.append(G)
+    g_lss.append(g)
+
+    for i in range(lss.K_segments() + 1, num_segments + 1):
 
         # time dilation contribution
-        run_id = 'time_dilation_{0:02d}'.format(i+1)
+        run_id = 'time_dilation_{0:02d}'.format(i)
         if run_ddt is not None:
             time_dil = TimeDilationExact(run_ddt, u0, parameter)
         else:
@@ -129,31 +145,34 @@ def continue_shadowing(
         V = time_dil.project(V)
         v = time_dil.project(v)
 
-        outputs = lss.checkpoint(V, v)
-
+        V, v = lss.checkpoint(V, v)
         # extra outputs to compute
-        compute_outputs = list(outputs) + [G_dil[-1], g_dil[-1]]
+        compute_outputs = [lss.Rs[-1], lss.bs[-1], G_dil[-1], g_dil[-1]]
+
         # run all segments
-        u0, V, v, J0, G, g = run_segment(
-                run, u0, V, v, parameter, i, steps_per_segment,
-                epsilon, simultaneous_runs, interprocess, get_host_dir,
-                compute_outputs=compute_outputs)
-        # update outputs to field values
-        #print('g_dil shapes: ', g_dil[-1].shape, g_dil[-1].field.shape)
+        if i < num_segments:
+            u0, V, v, J0, G, g = run_segment(
+                    run, u0, V, v, parameter, i, steps_per_segment,
+                    epsilon, simultaneous_runs, interprocess, get_host_dir,
+                    compute_outputs=compute_outputs)
+        else:
+            run_compute(compute_outputs)
+
         for output in [lss.Rs, lss.bs, G_dil, g_dil]:
             output[-1] = output[-1].field
-
-        J_hist.append(J0)
-        G_lss.append(G)
-        g_lss.append(g)
 
         checkpoint = Checkpoint(
                 u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil)
         print(lss_gradient(checkpoint))
         sys.stdout.flush()
 
-        if checkpoint_path and (i+1) % checkpoint_interval == 0:
+        if checkpoint_path and (i) % checkpoint_interval == 0:
             save_checkpoint(checkpoint_path, checkpoint)
+
+        if i < num_segments:
+            J_hist.append(J0)
+            G_lss.append(G)
+            g_lss.append(g)
 
     if return_checkpoint:
         return checkpoint
@@ -194,6 +213,7 @@ def shadowing(
     if runup_steps > 0:
         u0, _ = run(u0.field, parameter, runup_steps, 'runup', interprocess)
         u0 = pascal.symbolic_array(field=u0)
+        #print u0.field
 
     V, v = tangent_initial_condition(subspace_dimension)
     lss = LssTangent()

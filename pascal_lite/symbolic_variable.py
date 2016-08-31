@@ -97,11 +97,17 @@ class symbolic_array(object):
     def __radd__(self, a):
         return self.__add__(a)
 
+    def __iadd__(self, a):
+        self[:] = self + a
+
     def __sub__(self, a):
         return _binary_op(self, a, operators.sub)
 
     def __rsub__(self, a):
         return _binary_op(a, self, operators.sub)
+
+    def __isub__(self, a):
+        self[:] = self - a
 
     def __mul__(self, a):
         return _binary_op(self, a, operators.mul)
@@ -109,8 +115,14 @@ class symbolic_array(object):
     def __rmul__(self, a):
         return self.__mul__(a)
 
+    def __imul__(self, a):
+        self[:] = self * a
+
     def __truediv__(self, a):
         return _binary_op(self, a, operators.truediv)
+
+    def __idiv__(self, a):
+        self[:] = self / a
 
     def __neg__(self):
         return symbolic_array(operators.neg(self.value).output)

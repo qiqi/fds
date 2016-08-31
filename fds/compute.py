@@ -1,5 +1,6 @@
 import os
 import sys
+import pdb
 import numpy as np
 import cPickle as pkl
 import subprocess
@@ -24,25 +25,30 @@ def run_compute(outputs):
 
 def get_inputs(x, size):
     if x is pascal.builtin.ZERO:
+        #print 'zero'
         return np.zeros(size)
     elif x in pascal.builtin.RANDOM:
+        #print 'rand'
+        np.random.seed(12)
         shape = x.shape + (size,)
-        return np.random.rand(*shape)
+        field = np.random.rand(*shape)
+        #print field
+        return field
     elif isinstance(x.field, np.ndarray):
+        #print 'field', x.field
         return x.field
     else:
         return mpi_read_field(x.field)
 
 def serial_compute(sample_input, outputs, graph):
     size = sample_input.field.shape[0]
-    print len(graph.input_values)
     inputs = lambda x: get_inputs(x, size)
     actual_outputs = graph(inputs)
     for index, output in enumerate(outputs):
         output.value.field = actual_outputs[index]
     return 
 
-def mpi_compute(*mpi_inputs):#, spawn_job=None):
+def mpi_compute(*mpi_inputs, **kwargs):
 
     pkl_file = os.path.abspath('graph.pkl')
     with open(pkl_file, 'w') as f:
@@ -50,7 +56,7 @@ def mpi_compute(*mpi_inputs):#, spawn_job=None):
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
-    spawn_job=None
+    spawn_job = kwargs['spawn_job']
     if spawn_job is None:
         subprocess.call(['mpirun', worker_file, pkl_file])
     else:

@@ -29,8 +29,8 @@ def solve(u, s, nsteps):
     shutil.rmtree(tmp_path)
     return out, J[:,newaxis]
 
-#def test_gradient():
-if __name__ == '__main__':
+#if __name__ == '__main__':
+def test_gradient():
     s = linspace(0, 5, 6)
     J, G = zeros([s.size, 1]), zeros([s.size, 1])
     for i, si in enumerate(s):
