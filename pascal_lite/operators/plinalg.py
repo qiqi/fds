@@ -1,6 +1,9 @@
 import numpy
 from numpy import *
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+except ImportError:
+    pass
 
 def pQR(comm, A):
     # Compute QR factorization A = Q*R
