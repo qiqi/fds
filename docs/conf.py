@@ -338,15 +338,3 @@ source_parsers = {
 }
 
 source_suffix = ['.rst', '.md']
-
-import recommonmark
-from recommonmark.transform import AutoStructify
-
-# At the bottom of conf.py
-github_doc_root = 'https://github.com/qiqi/fds/tree/master/doc/'
-def setup(app):
-    app.add_config_value('recommonmark_config', {
-            'url_resolver': lambda url: github_doc_root + url,
-            'auto_toc_tree_section': 'Contents',
-            }, True)
-    app.add_transform(AutoStructify)
