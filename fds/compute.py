@@ -48,47 +48,58 @@ def serial_compute(sample_input, outputs, graph):
 
 def mpi_compute(*mpi_inputs, **kwargs):
 
-    pkl_file = os.path.abspath('graph.pkl')
-    with open(pkl_file, 'w') as f:
+    graph_file = os.path.abspath('compute_graph.pkl')
+    outputs_file = os.path.abspath('compute_outputs.pkl')
+    args = [graph_file, outputs_file]
+
+    with open(graph_file, 'w') as f:
         pickle.dump(mpi_inputs, f)
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
-    spawn_job = kwargs['spawn_job']
-    if spawn_job is None:
-        subprocess.call(['mpirun', worker_file, pkl_file])
+    if 'spawn_job' in kwargs:
+        returncode = kwargs['spawn_job'](worker_file, args)
     else:
-        spawn_job(worker_file, [pkl_file])
+        returncode = subprocess.call(['mpirun', 'python', worker_file] + args)
+    if returncode != 0:
+        raise Exception('compute process failed')
+
+    with open(outputs_file, 'r') as f:
+        compute_outputs = pickle.load(f)
+    outputs = mpi_inputs[1]
+    index = 0
+    for output in outputs:
+        if not output.is_distributed:
+            output.value.field = compute_outputs[index]
+            index += 1
     return 
 
 def mpi_range(size):
-        mpi_size = size / mpi.Get_size()
-        start = mpi.rank * mpi_size
-        end = min(size, start + mpi_size)
-        return start, end
+    mpi_size = size / mpi.Get_size()
+    start = mpi.rank * mpi_size
+    end = min(size, start + mpi_size)
+    return start, end
 
 def mpi_read_field(field_file):
     handle = h5py.File(field_file, 'r', driver='mpio', comm=mpi)
     field = handle['/field']
     start, end = mpi_range(field.shape[0])
     field = field[start:end].copy()
+    handle.close()
     #field = np.loadtxt(field_file)
     return field
 
 def mpi_write_field(field, field_file):
     handle = h5py.File(field_file, 'w', driver='mpio', comm=mpi)
-    field = handle['/field']
+    fieldData = handle.create_dataset('field', shape=field.shape, dtype=field.dtype)
     start, end = mpi_range(field.shape[0])
-    field[start:end] = field
+    fieldData[start:end] = field
+    handle.close()
     #np.savetxt(field_file, field)
     return
 
-def mpi_compute_worker():
-    zero = pascal.builtin.ZERO
-    random = pascal.builtin.RANDOM[0]
-
-    pkl_file = sys.argv[1]
-    with open(pkl_file) as f:
+def mpi_compute_worker(graph_file, outputs_file):
+    with open(graph_file, 'r') as f:
         sample_input, outputs, graph = pickle.load(f)
     
     # read the inputs for the graph
@@ -99,12 +110,19 @@ def mpi_compute_worker():
     actual_outputs = graph(inputs)
 
     # write the outputs in the parent directory for the job
+    compute_outputs = []
     for index, output in enumerate(outputs):
-        parent_dir = os.path.dirname(output.field)
-        if not os.path.exists(parent_dir):
-            os.makedirs(parent_dir)
-        mpi_write_field(actual_outputs[index], output.field)
+        if output.is_distributed:
+            parent_dir = os.path.dirname(output.field)
+            if not os.path.exists(parent_dir):
+                os.makedirs(parent_dir)
+            mpi_write_field(actual_outputs[index], output.field)
+        else:
+            compute_outputs.append(actual_outputs[index])
+    with open(outputs_file, 'w') as f:
+        pickle.dump(compute_outputs, f)
     return
 
-if __name__ == "__main__":
-    mpi_compute_worker()
+if __name__ == '__main__':
+    graph_file, outputs_file = sys.argv[1:3]
+    mpi_compute_worker(graph_file, outputs_file)

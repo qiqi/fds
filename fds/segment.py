@@ -38,12 +38,12 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
     u1i = u0 + v * epsilon
     run_ids = ['segment{0:02d}_param_perturb{1:03d}'.format(
              i_segment, subspace_dimension)]
-    u1i.value.field = os.path.join(get_host_dir(run_ids[0]), 'input.fds')
+    u1i.value.field = os.path.join(get_host_dir(run_ids[0]), 'input.h5')
     u1h = []
     for j in range(subspace_dimension):
         u1h.append(u0 + V[j] * epsilon)
         run_ids.append('segment{0:02d}_init_perturb{1:03d}'.format(i_segment, j))
-        u1h[-1].value.field = os.path.join(get_host_dir(run_ids[-1]), 'input.fds')
+        u1h[-1].value.field = os.path.join(get_host_dir(run_ids[-1]), 'input.h5')
 
     # compute all outputs
     run_compute([u1i] + u1h + compute_outputs)
