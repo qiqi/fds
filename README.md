@@ -30,19 +30,19 @@ sudo pip install fds
 
 # Tutorials
 
--  [First example -- Van der Pol oscillator in Python](tutorials/vanderpol.md)
--  [Lorenz attractor in C](tutorials/lorenz_c.md)
--  [Lorenz 96 in MPI and C](tutorials/lorenz96_mpi.md)
+-  [First example -- Van der Pol oscillator in Python](http://fds.readthedocs.io/en/latest/tutorials/vanderpol.html)
+-  [Lorenz attractor in C](http://fds.readthedocs.io/en/latest/tutorials/lorenz_c.html)
+-  [Lorenz 96 in MPI and C](http://fds.readthedocs.io/en/latest/tutorials/lorenz96_mpi.html)
 
 # Guides
 
--  [Chaos and statistical convergence](guides/statistics.md)
+-  [Chaos and statistical convergence](http://fds.readthedocs.io/en/latest/guides/statistics.html)
 -  [Lyapunov exponents and time
-   segmentation](guides/lyapunov.md)
--  [Save and restart](guides/save_restart.md)
+   segmentation](http://fds.readthedocs.io/en/latest/guides/lyapunov.html)
+-  [Save and restart](http://fds.readthedocs.io/en/latest/guides/save_restart.html)
 
 # Reference
 
--  [The least squares shadowing algorithm](ref/lss_algorithm.md)
--  [Function reference](ref/function_ref.md)
+-  [The least squares shadowing algorithm](http://fds.readthedocs.io/en/latest/ref/lss_algorithm.html)
+-  [Function reference](http://fds.readthedocs.io/en/latest/ref/function_ref.html)
 -  [License](https://www.gnu.org/licenses/gpl-3.0.en.html)
