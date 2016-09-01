@@ -99,6 +99,7 @@ class symbolic_array(object):
 
     def __iadd__(self, a):
         self[:] = self + a
+        return self
 
     def __sub__(self, a):
         return _binary_op(self, a, operators.sub)
@@ -108,6 +109,7 @@ class symbolic_array(object):
 
     def __isub__(self, a):
         self[:] = self - a
+        return self
 
     def __mul__(self, a):
         return _binary_op(self, a, operators.mul)
@@ -117,6 +119,7 @@ class symbolic_array(object):
 
     def __imul__(self, a):
         self[:] = self * a
+        return self
 
     def __truediv__(self, a):
         return _binary_op(self, a, operators.truediv)
@@ -229,10 +232,14 @@ def ones(shape=()):
     return symbolic_array(builtin.ZERO) + np.ones(shape)
 
 def zeros(shape=()):
-    return symbolic_array(builtin.ZERO) + np.zeros(shape)
+    array = symbolic_array(builtin.ZERO)
+    array.value.field = 0
+    return array + np.zeros(shape)
 
 def random(shape=()):
-    return symbolic_array(random_value(shape))
+    array = symbolic_array(random_value(shape))
+    array.value.field = 1
+    return array
 
 
 ################################################################################

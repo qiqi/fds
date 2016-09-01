@@ -16,29 +16,27 @@ except ImportError:
 
 def run_compute(outputs):
     graph = pascal.ComputationalGraph([x.value for x in outputs])
-    sample_input = [x for x in graph.input_values if x.field is not None][0]
-    if isinstance(sample_input.field, np.ndarray):
-        serial_compute(sample_input, outputs, graph)
-    else:
+    sample_input = [x for x in graph.input_values if not isinstance(x.field, int)][0]
+    if isinstance(sample_input.field, str):
         mpi_compute(sample_input, outputs, graph)
+    else:
+        serial_compute(sample_input, outputs, graph)
     return
 
 def get_inputs(x, size):
-    if x is pascal.builtin.ZERO:
-        #print 'zero'
-        return np.zeros(size)
-    elif x in pascal.builtin.RANDOM:
-        #print 'rand'
-        np.random.seed(12)
-        shape = x.shape + (size,)
-        field = np.random.rand(*shape)
-        #print field
-        return field
+    if isinstance(x.field, int):
+        if x.field:
+            shape = x.shape + (size,)
+            field = np.random.rand(*shape)
+            return field
+        else:
+            return np.zeros(size)
     elif isinstance(x.field, np.ndarray):
-        #print 'field', x.field
         return x.field
-    else:
+    elif isinstance(x.field, str):
         return mpi_read_field(x.field)
+    else:
+        raise Exception('unknown input', x.field)
 
 def serial_compute(sample_input, outputs, graph):
     size = sample_input.field.shape[0]

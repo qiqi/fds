@@ -40,6 +40,7 @@ def put_garbage_files_in(path, m_modes):
         open(os.path.join(path, f), 'w').close()
 
 def test_checkpoint():
+#if __name__ == '__main__':
     s = 1
     m_modes = 2
     segments0, segments1 = 10, 20

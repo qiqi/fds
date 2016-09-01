@@ -37,17 +37,12 @@ def lss_gradient(checkpoint, num_segments=None):
         G_dil = G_dil[:num_segments]
         g_dil = g_dil[:num_segments]
     alpha = lss.solve()
-    #print alpha, G_lss, g_lss
-    #print J, G_dil, g_dil
-    #exit(1)
     grad_lss = (alpha[:,:,np.newaxis] * np.array(G_lss)).sum(1) + np.array(g_lss)
     J = np.array(J)
     dJ = trapez_mean(J.mean(0), 0) - J[:,-1]
     steps_per_segment = J.shape[1]
     dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
     grad_dil = dil[:,np.newaxis] * dJ
-    #if len(lss.bs) > 5:
-    #    stop
     return windowed_mean(grad_lss) + windowed_mean(grad_dil)
 
 class RunWrapper:
@@ -96,15 +91,12 @@ def continue_shadowing(
         run_ddt=None, return_checkpoint=False, get_host_dir=None):
     """
     """
-    # TODO: checkpoint support, time dilation warning
-
-
     if get_host_dir is None:
         get_host_dir = lambda x: ''
     compute_outputs = []
 
     run = RunWrapper(run)
-    #assert verify_checkpoint(checkpoint)
+    assert verify_checkpoint(checkpoint)
     u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
 
     manager = Manager()

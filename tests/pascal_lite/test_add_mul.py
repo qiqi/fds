@@ -11,7 +11,7 @@ sys.path.append(os.path.join(my_path, '..', '..'))
 import pascal_lite as pascal
 
 def test_add_mul():
-# if __name__ == '__main__':
+#if __name__ == '__main__':
     subspace_dimension = 16
 
     V = pascal.random(subspace_dimension)
