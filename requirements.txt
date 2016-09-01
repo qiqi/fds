@@ -2,3 +2,5 @@ numpy >= 1.10
 scipy >= 0.14
 pytest
 pytest-cov
+pytest-pep8
+python-coveralls
