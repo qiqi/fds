@@ -36,8 +36,10 @@ def compute_dxdt(u):
 class TimeDilationBase:
     def contribution(self, v):
         if self.dxdt is None:
-            raise Exception()
-            return 0 if array(v).ndim == 1 else zeros(len(v))
+            if len(v.shape) == 0:
+                return pascal.dot(v, v*0)
+            else:
+                return pascal.dot(v, v[0]*0)
         else:
             return pascal.dot(v, self.dxdt) / pascal.dot(self.dxdt, self.dxdt)
 

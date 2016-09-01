@@ -2,7 +2,7 @@ import os
 import sys
 import pdb
 import numpy as np
-import cPickle as pkl
+import dill as pickle
 import subprocess
 
 import pascal_lite as pascal
@@ -50,7 +50,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
 
     pkl_file = os.path.abspath('graph.pkl')
     with open(pkl_file, 'w') as f:
-        pkl.dump(mpi_inputs, f)
+        pickle.dump(mpi_inputs, f)
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
@@ -89,7 +89,7 @@ def mpi_compute_worker():
 
     pkl_file = sys.argv[1]
     with open(pkl_file) as f:
-        sample_input, outputs, graph = pkl.load(f)
+        sample_input, outputs, graph = pickle.load(f)
     
     # read the inputs for the graph
     size = mpi_read_field(sample_input.field).shape[0]
