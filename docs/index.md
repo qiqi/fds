@@ -1,11 +1,17 @@
+[![Build Status](https://travis-ci.org/qiqi/fds.svg?branch=master)](https://travis-ci.org/qiqi/fds.svg?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/algorithmic-music-exploration/amen/badge.svg?branch=master)](https://coveralls.io/github/algorithmic-music-exploration/amen?branch=master)
+[![Dependency Status](https://dependencyci.com/github/algorithmic-music-exploration/amen/badge)](https://dependencyci.com/github/algorithmic-music-exploration/amen)
+[![Documentation Status](https://readthedocs.org/projects/amen/badge/?version=latest)](http://amen.readthedocs.io/en/latest/?badge=latest)
+[![GitHub license](https://img.shields.io/badge/license-BSD-blue.svg)](https://raw.githubusercontent.com/algorithmic-music-exploration/amen/master/LICENSE)
+
 # What's it for
 
 fds is a research tool for computational simulations that exhibis
 chaotic dynamics. It computes sensitivity derivatives of time averaged
 quantities, a.k.a. statistics, with respect simulation parameters.
 
-For an introduction of chaotic dynamics, I highly recommend `Strogatz's
-excellent book <https://www.amazon.com/gp/product/0813349109>`__. For a
+For an introduction of chaotic dynamics, I highly recommend [Strogatz's
+excellent book](https://www.amazon.com/gp/product/0813349109). For a
 statistical view of chaotic dynamical systems, please refer to
 [Berlinger's article](http://www.uvm.edu/~pdodds/files/papers/others/1992/berliner1992a.pdf).
 Algorithm used in this software is described in [the upcoming AIAA
