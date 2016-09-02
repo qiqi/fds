@@ -187,9 +187,6 @@ def copy(x):
 def ravel(x):
     return reshape(x, (x.size,))
 
-def reduce_sum(x):
-    return symbolic_array(operators.ReduceSum(x.value).output)
-
 def broadcast(x):
     return symbolic_array(operators.broadcast(x.value).output)
 
@@ -202,7 +199,7 @@ def qr_transpose(x):
 def dot(x, y):
     if (_is_like_sa(x) and _is_like_sa(y) and x.is_distributed
                                           and y.is_distributed):
-        return reduce_sum(x * y)
+        return symbolic_array(operators.Dot(x.value, y.value).output)
     else:
         return (x * y).sum()
 

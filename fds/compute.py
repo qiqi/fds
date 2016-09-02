@@ -4,6 +4,7 @@ import pdb
 import numpy as np
 import dill as pickle
 import subprocess
+import math
 
 import pascal_lite as pascal
 
@@ -60,7 +61,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
     if 'spawn_job' in kwargs:
         returncode = kwargs['spawn_job'](worker_file, args)
     else:
-        returncode = subprocess.call(['mpirun', 'python', worker_file] + args)
+        returncode = subprocess.call(['mpirun', '-np', '2', 'python', worker_file] + args)
     if returncode != 0:
         raise Exception('compute process failed')
 
@@ -75,7 +76,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
     return 
 
 def mpi_range(size):
-    mpi_size = size / mpi.Get_size()
+    mpi_size = int(math.ceil(float(size) / mpi.Get_size()))
     start = mpi.rank * mpi_size
     end = min(size, start + mpi_size)
     return start, end
@@ -86,16 +87,15 @@ def mpi_read_field(field_file):
     start, end = mpi_range(field.shape[0])
     field = field[start:end].copy()
     handle.close()
-    #field = np.loadtxt(field_file)
     return field
 
 def mpi_write_field(field, field_file):
+    total_size = mpi.allreduce(field.shape[-1], MPI.SUM)
+    start, end = mpi_range(total_size)
     handle = h5py.File(field_file, 'w', driver='mpio', comm=mpi)
-    fieldData = handle.create_dataset('field', shape=field.shape, dtype=field.dtype)
-    start, end = mpi_range(field.shape[0])
+    fieldData = handle.create_dataset('field', shape=(total_size,) + field.shape[:-1], dtype=field.dtype)
     fieldData[start:end] = field
     handle.close()
-    #np.savetxt(field_file, field)
     return
 
 def mpi_compute_worker(graph_file, outputs_file):
@@ -114,13 +114,15 @@ def mpi_compute_worker(graph_file, outputs_file):
     for index, output in enumerate(outputs):
         if output.is_distributed:
             parent_dir = os.path.dirname(output.field)
-            if not os.path.exists(parent_dir):
+            if mpi.rank == 0 and not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
+            mpi.Barrier()
             mpi_write_field(actual_outputs[index], output.field)
         else:
             compute_outputs.append(actual_outputs[index])
-    with open(outputs_file, 'w') as f:
-        pickle.dump(compute_outputs, f)
+    if mpi.rank == 0:
+        with open(outputs_file, 'w') as f:
+            pickle.dump(compute_outputs, f)
     return
 
 if __name__ == '__main__':
