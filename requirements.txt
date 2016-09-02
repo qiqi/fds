@@ -2,5 +2,4 @@ numpy >= 1.10
 scipy >= 0.14
 pytest
 pytest-cov
-h5py
 dill
