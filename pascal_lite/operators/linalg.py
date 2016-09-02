@@ -10,7 +10,7 @@ try:
 except ImportError:
     mpi = None
 
-from plinalg import pQR, pdot
+from .plinalg import pQR, pdot
 
 class QRT(OpBase):
     def __init__(self, A):
