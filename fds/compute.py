@@ -15,13 +15,13 @@ try:
 except ImportError:
     pass
 
-def run_compute(outputs):
+def run_compute(outputs, **kwargs):
     graph = pascal.ComputationalGraph([x.value for x in outputs])
     sample_input = [x for x in graph.input_values if not isinstance(x.field, int)][0]
     if isinstance(sample_input.field, str):
-        mpi_compute(sample_input, outputs, graph)
+        mpi_compute(sample_input, outputs, graph, **kwargs)
     else:
-        serial_compute(sample_input, outputs, graph)
+        serial_compute(sample_input, outputs, graph, **kwargs)
     return
 
 def get_inputs(x, size):
@@ -39,7 +39,7 @@ def get_inputs(x, size):
     else:
         raise Exception('unknown input', x.field)
 
-def serial_compute(sample_input, outputs, graph):
+def serial_compute(sample_input, outputs, graph, **kwargs):
     size = sample_input.field.shape[0]
     inputs = lambda x: get_inputs(x, size)
     actual_outputs = graph(inputs)
@@ -58,10 +58,11 @@ def mpi_compute(*mpi_inputs, **kwargs):
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
-    if 'spawn_job' in kwargs:
-        returncode = kwargs['spawn_job'](worker_file, args)
+    spawn_compute_job = kwargs['spawn_compute_job']
+    if spawn_compute_job is not None:
+        returncode = spawn_compute_job(worker_file, args)
     else:
-        returncode = subprocess.call(['mpirun', '-np', '2', 'python', worker_file] + args)
+        returncode = subprocess.call(['mpirun', 'python', worker_file] + args)
     if returncode != 0:
         raise Exception('compute process failed')
 

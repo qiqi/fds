@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import h5py
 import os
 import sys
 import time
@@ -39,6 +40,21 @@ fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
 if 'PBS_NODEFILE' not in os.environ:
     os.environ['PBS_NODEFILE'] = os.path.join(REF_WORK_PATH, 'PBS_NODEFILE')
 
+def save_hdf5(arr, path):
+        with h5py.File(path, 'w') as handle:
+            handle.create_dataset('field', data=arr)
+        return
+def load_hdf5(path):
+    with h5py.File(path, 'r') as handle:
+        field = handle['/field'][:].copy()
+    return field
+
+def get_host_dir(run_id):
+    return os.path.join(BASE_PATH, run_id)
+
+def spawn_compute_job(exe, args):
+    return call(['mpirun', '-np', '2', 'python', exe] + args)
+
 def distribute_data(u):
     if not hasattr(distribute_data, 'doubles_for_each_rank'):
         distribute_data.doubles_for_each_rank = []
@@ -65,7 +81,8 @@ def lift_drag_from_text(text):
 
 def solve(u0, mach, nsteps, run_id, interprocess):
     print('Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id)
-    work_path = os.path.join(BASE_PATH, run_id)
+    u0 = load_hdf5(u0)
+    work_path = get_host_dir(run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
                           for i in range(MPI_NP)]
     final_data_files = [os.path.join(work_path, 'final.data.'+ str(i))
@@ -99,14 +116,19 @@ def solve(u0, mach, nsteps, run_id, interprocess):
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in final_data_files])
     assert len(J) == nsteps
-    return ravel(u1), J
+    u1 = ravel(u1)
+    path = os.path.join(work_path, 'output.h5')
+    save_hdf5(u1, path)
+    return path, J
 
-if __name__ == '__main__':
-#def test_fun3d():
+def test_fun3d():
     initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                         for i in range(MPI_NP)]
     u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in initial_data_files])
+    path = os.path.join(BASE_PATH, 'u0.h5')
+    save_hdf5(u0, path)
+    u0 = path
     shadowing(solve,
               u0,
               XMACH,
@@ -116,7 +138,9 @@ if __name__ == '__main__':
               STEPS_RUNUP,
               epsilon=1E-4,
               checkpoint_path=BASE_PATH,
-              simultaneous_runs=SIMULTANEOUS_RUNS)
+              simultaneous_runs=SIMULTANEOUS_RUNS,
+              get_host_dir=get_host_dir,
+              spawn_compute_job=spawn_compute_job)
 
     checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
     J, G = continue_shadowing(solve,
@@ -126,9 +150,14 @@ if __name__ == '__main__':
                               STEPS_PER_SEGMENT,
                               epsilon=1E-4,
                               checkpoint_path=BASE_PATH,
-                              simultaneous_runs=SIMULTANEOUS_RUNS)
+                              simultaneous_runs=SIMULTANEOUS_RUNS,
+                              get_host_dir=get_host_dir,
+                              spawn_compute_job=spawn_compute_job)
 
     assert 1 < J[0] < 4
     assert 10 < J[1] < 40
     assert -0.1 < G[0] < 0.5
     assert 1 < G[1] < 8
+
+if __name__ == '__main__':
+    test_fun3d()

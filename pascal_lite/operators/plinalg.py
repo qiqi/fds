@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from numpy import *
 try:
     from mpi4py import MPI
@@ -32,7 +32,7 @@ def pQR(comm, A):
     # Gather R1 in root processor:
     sendbuf = R1
     if rank == root:
-        recvbuf = numpy.empty((size, mR, nR), dtype='d')
+        recvbuf = np.empty((size, mR, nR), dtype='d')
     else:
         recvbuf = None
     comm.Gather(sendbuf, recvbuf, root)
@@ -44,19 +44,24 @@ def pQR(comm, A):
         Q2, R = linalg.qr(R1full)
         sendbuf = Q2
     else:
-        R = numpy.empty((mR,nR), dtype='d')
+        R = np.empty((mR,nR), dtype='d')
         sendbuf = None
 
     # Broadcast R
     comm.Bcast(R, root)
 
     # Scatter Q2
-    recvbuf = numpy.empty((mR, nR), dtype='d')
+    recvbuf = np.empty((mR, nR), dtype='d')
     comm.Scatter(sendbuf, recvbuf, root)
     Q2 = recvbuf
 
     # Compute Q
     Q = dot(Q1,Q2)
+
+
+    S = np.sign(np.diag(R))
+    R = S*R
+    Q = Q*S
 
     return Q, R
 
@@ -85,30 +90,46 @@ def pdot(comm, A, B):
         n2 = Bshape[1]
 
     #C_local = dot(A,B)
-    #C_global = numpy.zeros((m1,n2))
+    #C_global = np.zeros((m1,n2))
     C_local = (A*B).sum(-1)
-    C_global = numpy.zeros_like(C_local)
+    C_global = np.zeros_like(C_local)
 
     comm.Allreduce(C_local, C_global, MPI.SUM)
 
     return C_global
 
+if __name__ == '__main__':
+    comm = MPI.COMM_WORLD
+    rank = comm.rank
+    nprocs = comm.Get_size()
 
-#comm = MPI.COMM_WORLD
+    # pQR unit test:
+    import os
+    import sys
+    A = np.loadtxt(sys.argv[1])
+    size = A.shape[1]
+    start = rank * size/nprocs
+    end = (rank + 1) * size/nprocs
+    A = A[:,start:end]
+    Q, R = pQR(comm,A.T)
+    Q = comm.gather(Q, root=0)
+    R = comm.gather(R, root=0)
 
-## pQR unit test:
-#A = numpy.random.rand(10,3)
-#print comm.Get_rank, A
-#Q, R = pQR(comm,A)
-#print comm.Get_rank, Q
-#print comm.Get_rank, R
+    b = np.loadtxt(sys.argv[2])
+    b = b[start:end]
+    dot = pdot(comm, A, b)
+    dot = comm.gather(dot, root=0)
 
-## pdot unit test:
-#A = numpy.random.rand(5,1)
-#print(comm.Get_rank)
-#print(A)
-#B = numpy.random.rand(5,1)
-#print(comm.Get_rank)
-#print(B)
-#C = pdot(comm,A,B)
-#print(C)
+    if rank == 0:
+        Q = np.vstack(Q)
+        for i in range(0, nprocs):
+            assert np.allclose(dot[0], dot[i])
+            assert np.allclose(R[0], R[i])
+        np.savetxt(os.path.join(os.path.dirname(sys.argv[1]), 'plinalg_Q.txt'), Q)
+        np.savetxt(os.path.join(os.path.dirname(sys.argv[1]), 'plinalg_R.txt'), R[0])
+        np.savetxt(os.path.join(os.path.dirname(sys.argv[1]), 'plinalg_dot.txt'), dot[0])
+
+    # pdot unit test:
+    #A = np.random.rand(5,1)
+    #B = np.random.rand(5,1)
+    #C = pdot(comm,A,B)

@@ -88,11 +88,9 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False, get_host_dir=None):
+        run_ddt=None, return_checkpoint=False, get_host_dir=None, spawn_compute_job=None):
     """
     """
-    if get_host_dir is None:
-        get_host_dir = lambda x: ''
     compute_outputs = []
 
     run = RunWrapper(run)
@@ -115,8 +113,8 @@ def continue_shadowing(
 
     u0, V, v, J0, G, g = run_segment(
             run, u0, V, v, parameter, i, steps_per_segment,
-            epsilon, simultaneous_runs, interprocess, get_host_dir,
-            compute_outputs=compute_outputs)
+            epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
+            compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
 
     J_hist.append(J0)
     G_lss.append(G)
@@ -145,10 +143,10 @@ def continue_shadowing(
         if i < num_segments:
             u0, V, v, J0, G, g = run_segment(
                     run, u0, V, v, parameter, i, steps_per_segment,
-                    epsilon, simultaneous_runs, interprocess, get_host_dir,
-                    compute_outputs=compute_outputs)
+                    epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
+                    compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
         else:
-            run_compute(compute_outputs)
+            run_compute(compute_outputs, spawn_compute_job=spawn_compute_job)
 
         for output in [lss.Rs, lss.bs, G_dil, g_dil]:
             output[-1] = output[-1].field
@@ -176,7 +174,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False, get_host_dir=None):
+        run_ddt=None, return_checkpoint=False, get_host_dir=None, spawn_compute_job=None):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id, interprocess)
@@ -214,4 +212,4 @@ def shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
-            simultaneous_runs, run_ddt, return_checkpoint, get_host_dir)
+            simultaneous_runs, run_ddt, return_checkpoint, get_host_dir, spawn_compute_job)
