@@ -8,6 +8,8 @@ import numpy as np
 my_path = os.path.dirname(os.path.abspath(__file__))
 #sys.path.append(os.path.join(my_path, '..', '..'))
 
+if 'pascal_lite' in sys.modules:
+    del sys.modules['pascal_lite']
 import pascal_lite as pascal
 
 def test_add_mul():
