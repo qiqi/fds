@@ -7,7 +7,7 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 
@@ -61,4 +61,4 @@ def test_checkpoint():
     J1, G1 = shadowing(solve, u0, s, m_modes, segments1, 100, 0,
                        checkpoint_path=BASE_PATH, checkpoint_interval=5)
     assert J1 == J2
-    assert np.allclose(G1 == G2)
+    assert allclose(G1,G2)
