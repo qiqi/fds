@@ -54,7 +54,7 @@ def test_plinalg():
     R = S*R
     Q = Q*S
     Q = Q.T
-    plinalg_file = os.path.join(os.path.dirname(os.path.abspath(pascal.__file__)), 'operators', 'plinalg.py')
+    plinalg_file = os.path.join(my_path, 'test_plinalg.py')
     
     returncode = subprocess.call(['mpirun', '-np', '4', sys.executable, plinalg_file, V_path, v_path])
     assert returncode == 0
