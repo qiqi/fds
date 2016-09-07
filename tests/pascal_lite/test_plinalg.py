@@ -3,12 +3,8 @@ import numpy as np
 import os
 
 
-my_path = os.path.dirname(os.path.abspath(__file__))
-#sys.path.append(os.path.join(my_path, '..', '..'))
-
-from pascal_lite.operators.plinalg import pdot, pQR
-
 if __name__ == '__main__':
+    from pascal_lite.operators.plinalg import pdot, pQR
     try:
         from mpi4py import MPI
     except ImportError:

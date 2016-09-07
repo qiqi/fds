@@ -9,12 +9,12 @@ import numpy as np
 my_path = os.path.dirname(os.path.abspath(__file__))
 #sys.path.append(os.path.join(my_path, '..', '..'))
 
-if 'pascal_lite' in sys.modules:
-    del sys.modules['pascal_lite']
-import pascal_lite as pascal
 
 def test_linalg():
-#if __name__ == '__main__':
+    for mod in sys.modules.keys():
+        if mod.startswith('pascal_lite'):
+            del sys.modules[mod]
+    import pascal_lite as pascal
     subspace_dimension = 4
     V = pascal.symbolic_array(subspace_dimension)
     v = pascal.symbolic_array()
@@ -44,6 +44,7 @@ def test_linalg():
     assert np.allclose(o3, np.linalg.qr(A.T)[0].T)
 
 def test_plinalg():
+    np.random.seed(10)
     V = np.random.rand(4, 100)
     V_path = os.path.join(my_path,'plinalg_A.txt')
     np.savetxt(V_path, V)
@@ -67,6 +68,10 @@ def test_plinalg():
 
     pQ = np.loadtxt(os.path.join(my_path, 'plinalg_Q.txt')).T
     pR = np.loadtxt(os.path.join(my_path, 'plinalg_R.txt'))
+    print R
+    print pR
+    print (np.abs(R-pR)).max()
+    print (np.abs(Q-pQ)).max()
     assert np.allclose(R, pR, rtol=1e-4, atol=1e-6)
     assert np.allclose(Q, pQ, rtol=1e-4, atol=1e-6)
 

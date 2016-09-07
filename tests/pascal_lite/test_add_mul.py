@@ -8,11 +8,11 @@ import numpy as np
 my_path = os.path.dirname(os.path.abspath(__file__))
 #sys.path.append(os.path.join(my_path, '..', '..'))
 
-if 'pascal_lite' in sys.modules:
-    del sys.modules['pascal_lite']
-import pascal_lite as pascal
-
 def test_add_mul():
+    for mod in sys.modules.keys():
+        if mod.startswith('pascal_lite'):
+            del sys.modules[mod]
+    import pascal_lite as pascal
     subspace_dimension = 16
 
     V = pascal.random(subspace_dimension)
