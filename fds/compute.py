@@ -62,7 +62,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
     if spawn_compute_job is not None:
         returncode = spawn_compute_job(worker_file, args)
     else:
-        returncode = subprocess.call(['mpirun', 'python', worker_file] + args)
+        returncode = subprocess.call(['mpirun', sys.executable, worker_file] + args)
     if returncode != 0:
         raise Exception('compute process failed')
 
