@@ -65,8 +65,8 @@ def test_plinalg():
 
     pQ = np.loadtxt(os.path.join(my_path, 'plinalg_Q.txt')).T
     pR = np.loadtxt(os.path.join(my_path, 'plinalg_R.txt'))
-    assert np.allclose(R, pR)
-    assert np.allclose(Q, pQ)
+    assert np.allclose(R, pR, rtol=1e-4, atol=1e-6)
+    assert np.allclose(Q, pQ, rtol=1e-4, atol=1e-6)
 
 if __name__ == '__main__':
     test_linalg()

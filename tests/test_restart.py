@@ -61,4 +61,4 @@ def test_checkpoint():
     J1, G1 = shadowing(solve, u0, s, m_modes, segments1, 100, 0,
                        checkpoint_path=BASE_PATH, checkpoint_interval=5)
     assert J1 == J2
-    assert G1 == G2
+    assert np.allclose(G1 == G2)
