@@ -44,7 +44,7 @@ def test_linalg():
     assert np.allclose(o3, np.linalg.qr(A.T)[0].T)
 
 def test_plinalg():
-    np.random.seed(10)
+    #np.random.seed(10)
     V = np.random.rand(4, 100)
     V_path = os.path.join(my_path,'plinalg_A.txt')
     np.savetxt(V_path, V)
@@ -53,9 +53,9 @@ def test_plinalg():
     np.savetxt(v_path, v)
 
     Q, R = np.linalg.qr(V.T)
-    S = np.sign(np.diag(R))
-    R = S*R
-    Q = Q*S
+    S = np.diag(np.sign(np.diag(R)))
+    R = np.dot(S,R)
+    Q = np.dot(Q,S)
     Q = Q.T
     plinalg_file = os.path.join(my_path, 'test_plinalg.py')
     

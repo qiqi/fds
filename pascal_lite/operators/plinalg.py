@@ -59,9 +59,9 @@ def pQR(comm, A):
     Q = dot(Q1,Q2)
 
 
-    S = np.sign(np.diag(R))
-    R = S*R
-    Q = Q*S
+    S = np.diag(np.sign(np.diag(R)))
+    R = np.dot(S,R)
+    Q = np.dot(Q,S)
 
     return Q, R
 
