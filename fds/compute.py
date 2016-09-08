@@ -100,7 +100,7 @@ def mpi_write_field(field, field_file):
     return
 
 def mpi_compute_worker(graph_file, outputs_file):
-    with open(graph_file, 'r') as f:
+    with open(graph_file, 'rb') as f:
         sample_input, outputs, graph = pickle.load(f)
     
     # read the inputs for the graph
@@ -122,7 +122,7 @@ def mpi_compute_worker(graph_file, outputs_file):
         else:
             compute_outputs.append(actual_outputs[index])
     if mpi.rank == 0:
-        with open(outputs_file, 'w') as f:
+        with open(outputs_file, 'wb') as f:
             pickle.dump(compute_outputs, f)
     return
 
