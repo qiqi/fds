@@ -53,7 +53,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
     outputs_file = os.path.abspath('compute_outputs.pkl')
     args = [graph_file, outputs_file]
 
-    with open(graph_file, 'w') as f:
+    with open(graph_file, 'wb') as f:
         pickle.dump(mpi_inputs, f)
 
     # spawn job and wait for result
@@ -66,7 +66,7 @@ def mpi_compute(*mpi_inputs, **kwargs):
     if returncode != 0:
         raise Exception('compute process failed')
 
-    with open(outputs_file, 'r') as f:
+    with open(outputs_file, 'rb') as f:
         compute_outputs = pickle.load(f)
     outputs = mpi_inputs[1]
     index = 0

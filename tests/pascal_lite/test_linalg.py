@@ -11,7 +11,7 @@ my_path = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_linalg():
-    for mod in sys.modules.keys():
+    for mod in list(sys.modules.keys()):
         if mod.startswith('pascal_lite'):
             del sys.modules[mod]
     import pascal_lite as pascal
