@@ -1,21 +1,20 @@
 from __future__ import print_function
 
+import h5py
 import os
 import sys
 import time
 import shutil
 import tempfile
-import itertools
 from subprocess import *
 
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 from fds.checkpoint import *
-from fds.states import PrimalState
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
@@ -41,9 +40,36 @@ fun3d_bin = os.path.join(REF_WORK_PATH, 'fun3d')
 if 'PBS_NODEFILE' not in os.environ:
     os.environ['PBS_NODEFILE'] = os.path.join(REF_WORK_PATH, 'PBS_NODEFILE')
 
-def files(u):
-    for i in itertools.count():
-        yield '.'.join(u, str(i))
+def save_hdf5(arr, path):
+        with h5py.File(path, 'w') as handle:
+            handle.create_dataset('field', data=arr)
+        return
+def load_hdf5(path):
+    with h5py.File(path, 'r') as handle:
+        field = handle['/field'][:].copy()
+    return field
+
+def get_host_dir(run_id):
+    return os.path.join(BASE_PATH, run_id)
+
+def spawn_compute_job(exe, args):
+    return call(['mpirun', '-np', '2', sys.executable, exe] + args)
+
+def distribute_data(u):
+    if not hasattr(distribute_data, 'doubles_for_each_rank'):
+        distribute_data.doubles_for_each_rank = []
+        for i in range(MPI_NP):
+            final_data_file = os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
+            with open(final_data_file, 'rb') as f:
+                ui = frombuffer(f.read(), dtype='>d')
+                distribute_data.doubles_for_each_rank.append(ui.size)
+    u_distributed = []
+    for n in distribute_data.doubles_for_each_rank:
+        assert u.size >= n
+        u_distributed.append(u[:n])
+        u = u[n:]
+    assert u.size == 0
+    return u_distributed
 
 def lift_drag_from_text(text):
     lift_drag = []
@@ -55,7 +81,8 @@ def lift_drag_from_text(text):
 
 def solve(u0, mach, nsteps, run_id, interprocess):
     print('Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id)
-    work_path = os.path.join(BASE_PATH, run_id)
+    u0 = load_hdf5(u0)
+    work_path = get_host_dir(run_id)
     initial_data_files = [os.path.join(work_path, 'initial.data.'+ str(i))
                           for i in range(MPI_NP)]
     final_data_files = [os.path.join(work_path, 'final.data.'+ str(i))
@@ -73,8 +100,9 @@ def solve(u0, mach, nsteps, run_id, interprocess):
         shutil.copy(os.path.join(REF_WORK_PATH,'fun3d.nml'),work_path)
         shutil.copy(os.path.join(REF_WORK_PATH,'rotated.b8.ugrid'),work_path)
         shutil.copy(os.path.join(REF_WORK_PATH,'rotated.mapbc'),work_path)
-        for file_i, u_i in zip(initial_data_files, files(u0)):
-            shutil.copy(u_i, file_i)
+        for file_i, u_i in zip(initial_data_files, distribute_data(u0)):
+            with open(file_i, 'wb') as f:
+                f.write(asarray(u_i, dtype='>d').tobytes())
         outfile = os.path.join(work_path, 'flow.output')
         with open(outfile, 'w', 8) as f:
             Popen(['mpiexec', '-np', str(MPI_NP), fun3d_bin,
@@ -85,17 +113,22 @@ def solve(u0, mach, nsteps, run_id, interprocess):
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
     J = loadtxt(lift_drag_file).reshape([-1,2])
-    u1 = PrimalState(os.path.join(work_path, 'final.data'))
+    u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
+                 for f in final_data_files])
     assert len(J) == nsteps
-    return ravel(u1), J
+    u1 = ravel(u1)
+    path = os.path.join(work_path, 'output.h5')
+    save_hdf5(u1, path)
+    return path, J
 
-if __name__ == '__main__':
-#def test_fun3d():
-    u0 = PrimalState(os.path.join(REF_WORK_PATH, 'final.data'))
-    # initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
-    #                     for i in range(MPI_NP)]
-    # u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
-    #              for f in initial_data_files])
+def test_fun3d():
+    initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
+                        for i in range(MPI_NP)]
+    u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
+                 for f in initial_data_files])
+    path = os.path.join(BASE_PATH, 'u0.h5')
+    save_hdf5(u0, path)
+    u0 = path
     shadowing(solve,
               u0,
               XMACH,
@@ -105,7 +138,9 @@ if __name__ == '__main__':
               STEPS_RUNUP,
               epsilon=1E-4,
               checkpoint_path=BASE_PATH,
-              simultaneous_runs=SIMULTANEOUS_RUNS)
+              simultaneous_runs=SIMULTANEOUS_RUNS,
+              get_host_dir=get_host_dir,
+              spawn_compute_job=spawn_compute_job)
 
     checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
     J, G = continue_shadowing(solve,
@@ -115,9 +150,14 @@ if __name__ == '__main__':
                               STEPS_PER_SEGMENT,
                               epsilon=1E-4,
                               checkpoint_path=BASE_PATH,
-                              simultaneous_runs=SIMULTANEOUS_RUNS)
+                              simultaneous_runs=SIMULTANEOUS_RUNS,
+                              get_host_dir=get_host_dir,
+                              spawn_compute_job=spawn_compute_job)
 
     assert 1 < J[0] < 4
     assert 10 < J[1] < 40
     assert -0.1 < G[0] < 0.5
     assert 1 < G[1] < 8
+
+if __name__ == '__main__':
+    test_fun3d()

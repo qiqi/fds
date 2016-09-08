@@ -17,9 +17,37 @@ from fds import *
 solver_path = os.path.join(my_path, '..', 'tests', 'solvers', 'lorenz')
 solver = os.path.join(solver_path, 'solver')
 u0 = loadtxt(os.path.join(solver_path, 'u0'))
+serial_mode = False
+
+def get_host_dir(run_id):
+    return os.path.join('lorenz_demo', run_id)
+
+if not serial_mode:
+    os.makedirs(get_host_dir(''))
+    import h5py
+    def save_hdf5(arr, path):
+        with h5py.File(path, 'w') as handle:
+            handle.create_dataset('field', data=arr)
+        return
+    def load_hdf5(path):
+        with h5py.File(path, 'r') as handle:
+            field = handle['/field'][:].copy()
+        return field
+    path = get_host_dir('u0')
+    save_hdf5(u0, path)
+    u0 = path
 
 def solve(u, s, nsteps, run_id=None, lock=None):
-    tmp_path = tempfile.mkdtemp()
+    print u, run_id
+
+    if serial_mode:
+        tmp_path = tempfile.mkdtemp()
+    else:
+        u = load_hdf5(u)
+        tmp_path = get_host_dir(run_id)
+        if not os.path.exists(tmp_path):
+            os.makedirs(tmp_path)
+
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
@@ -29,8 +57,15 @@ def solve(u, s, nsteps, run_id=None, lock=None):
         out = frombuffer(f.read(), dtype='>d')
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
-    shutil.rmtree(tmp_path)
     J = transpose([J, 100 * ones(J.size)])
+
+    if serial_mode:
+        shutil.rmtree(tmp_path)
+    else:
+        tmp_output = os.path.join(tmp_path, 'output.h5')
+        save_hdf5(out, tmp_output)
+        out = tmp_output
+
     return out, J
 
 iplot = 0
@@ -49,7 +84,7 @@ s = linspace(28, 34, 21)
 
 J, G = [], []
 for si in s:
-    Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000)
+    Ji, Gi = shadowing(solve, u0, si-28, 1, 10, 1000, 5000, get_host_dir=get_host_dir)
     J.append(Ji)
     G.append(Gi)
 

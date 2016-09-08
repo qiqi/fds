@@ -7,7 +7,7 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 
@@ -44,8 +44,8 @@ def test_gradient():
     assert all(abs(J[:,0] - ((s-31)**2 + 85)) < 20)
     assert all(abs(G[:,0] - (2 * (s-31))) < 2)
 
-def test_lyapunov():
 #if __name__ == '__main__':
+def test_lyapunov():
     cp_path = os.path.join(my_path, 'lorenz_lyapunov')
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)

@@ -5,7 +5,7 @@ from numpy import *
 from scipy.integrate import odeint
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 

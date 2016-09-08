@@ -1,5 +1,5 @@
 import os
-import pickle
+import dill as pickle
 from collections import namedtuple
 
 Checkpoint = namedtuple('Checkpoint', 'u0 V v lss G_lss g_lss J G_dil g_dil')

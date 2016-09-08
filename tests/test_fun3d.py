@@ -10,7 +10,7 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 from fds.checkpoint import *
@@ -101,8 +101,8 @@ def solve(u0, mach, nsteps, run_id, interprocess):
     assert len(J) == nsteps
     return ravel(u1), J
 
-#if __name__ == '__main__':
-def test_fun3d():
+if __name__ == '__main__':
+#def test_fun3d():
     initial_data_files = [os.path.join(REF_WORK_PATH, 'final.data.'+ str(i))
                         for i in range(MPI_NP)]
     u0 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')

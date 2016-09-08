@@ -7,7 +7,7 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(my_path, '..'))
+#sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 
@@ -40,6 +40,7 @@ def put_garbage_files_in(path, m_modes):
         open(os.path.join(path, f), 'w').close()
 
 def test_checkpoint():
+#if __name__ == '__main__':
     s = 1
     m_modes = 2
     segments0, segments1 = 10, 20
@@ -60,4 +61,4 @@ def test_checkpoint():
     J1, G1 = shadowing(solve, u0, s, m_modes, segments1, 100, 0,
                        checkpoint_path=BASE_PATH, checkpoint_interval=5)
     assert J1 == J2
-    assert G1 == G2
+    assert allclose(G1,G2)

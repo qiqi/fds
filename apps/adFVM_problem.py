@@ -19,10 +19,12 @@ dims = 50
 segments = 20
 steps = 50
 
-time = 2.0
+time = 1.0
 source = '/home/talnikar/adFVM/'
 problem = 'periodic_wake.py'
-case = source + 'cases/periodic_wake/'
+case = source + 'cases/periodic_wake2/'
+#problem = 'cylinder.py'
+#case = source + 'cases/cylinder/orig/'
 
 def getTime(time):
     stime = str(time)
@@ -45,16 +47,20 @@ internalCells = np.concatenate(internalCells)
 
 fieldNames = ['rho', 'rhoU', 'rhoE']
 program = source + 'apps/problem.py'
+
+reference = [1., 200., 2e5]
 def getInternalFields(case, time):
     fields = []
     with h5py.File(case + getTime(time) + '.hdf5', 'r') as phi:
         for name in fieldNames:
             fields.append(phi[name + '/field'][:][internalCells])
+    fields = [x/y for x, y in zip(fields, reference)]
     return np.hstack(fields).ravel()
 
 def writeFields(fields, caseDir, ntime):
     fields = fields.reshape((fields.shape[0]/5, 5))
     fields = fields[:,[0]], fields[:,1:4], fields[:,[4]]
+    fields = [x*y for x, y in zip(fields, reference)]
     timeFile = caseDir + getTime(ntime) + '.hdf5' 
     shutil.copy(case + stime + '.hdf5', timeFile)
     with h5py.File(timeFile, 'r+') as phi:
@@ -109,7 +115,7 @@ def runCase(initFields, parameters, nSteps, run_id):
     return finalFields, objectiveSeries[:-1]
 
 if __name__ == '__main__':
-    from fds import shadowing
     u0 = getInternalFields(case, time)
     #runCase(u0, parameters, steps, 'random')
+    from fds import shadowing
     shadowing(runCase, u0, parameter, dims, segments, steps, 0, simultaneous_runs=nRuns)
