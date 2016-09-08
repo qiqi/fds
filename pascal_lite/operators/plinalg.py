@@ -94,6 +94,6 @@ def pdot(comm, A, B):
     C_local = (A*B).sum(-1)
     C_global = np.zeros_like(C_local)
 
-    comm.Allreduce(C_local, C_global, MPI.SUM)
+    comm.Allreduce([C_local, MPI.DOUBLE], C_global, MPI.SUM)
 
     return C_global
