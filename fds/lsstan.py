@@ -3,7 +3,6 @@ from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
 from .timeseries import windowed_mean
-from .states import PrimalState, TangentState
 import pascal_lite as pascal
 
 class LssTangent:
