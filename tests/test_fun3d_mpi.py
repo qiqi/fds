@@ -53,7 +53,7 @@ def get_host_dir(run_id):
     return os.path.join(BASE_PATH, run_id)
 
 def spawn_compute_job(exe, args):
-    return call(['mpirun', '-np', '2', sys.executable, exe] + args)
+    return call(['mpirun', '-np', '2', exe] + args)
 
 def distribute_data(u):
     if not hasattr(distribute_data, 'doubles_for_each_rank'):
