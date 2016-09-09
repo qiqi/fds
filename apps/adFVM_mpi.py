@@ -15,17 +15,20 @@ def isfloat(s):
 fileName = os.path.abspath(__file__)
 python = sys.executable
 
-nProcessors = 16
-nRuns = 2
+nProcessors = 256
+nProcsPerNode = 16
+nRuns = 8
+subBlockShape = '2x2x2x2x1'
+
 parameter = 1.0
 dims = 50
 segments = 20
 steps = 50
 
-time = 1.0
+time = 2.0
 source = '/home/talnikar/adFVM/'
-problem = 'periodic_wake.py'
-case = source + 'cases/periodic_wake2/'
+problem = 'cylinder.py'
+case = source + 'cases/cylinder/chaotic/test/'
 #problem = 'cylinder.py'
 #case = source + 'cases/cylinder/orig/'
 
@@ -51,49 +54,45 @@ def getParallelInfo():
         nInternalCells = nCount[4]
         nGhostCells = nCount[2]-nCount[3]
         nCells = nInternalCells + nGhostCells
-        start = mpi.exscan(nCells)
-        end = mpi.scan(nCells)
-        cells = np.arange(start, end)
-        start = 0
-        for i in range(0, nProcessors):
-            n = nInternalCells[i] 
-            internalCells.append(np.arange(start, start + n))
-            start += n + nGhostCells[i]
+        cellStart = mpi.exscan(nCells)
+        if cellStart == None:
+            cellStart = 0
+        cellEnd = cellStart + nInternalCells
 
-    size = len(cells)*5
+    size = nInternalCells*5
     start = mpi.exscan(size)
     end = mpi.scan(size)
     size = mpi.bcast(end, root=nProcessors-1)
-    return cells, start, end, size
+    return cellStart, cellEnd, start, end, size, mpi
 
 def getInternalFields(case, time, fieldFile):
     time = float(time)
-    cells, start, end, size = getParallelInfo()
+    cellStart, cellEnd, start, end, size, mpi = getParallelInfo()
     fields = []
-    with h5py.File(case + getTime(time) + '.hdf5', 'r') as phi:
+    with h5py.File(case + getTime(time) + '.hdf5', 'r', driver='mpio', comm=mpi) as phi:
         for name in fieldNames:
-            fields.append(phi[name + '/field'][cells])
+            fields.append(phi[name + '/field'][cellStart:cellEnd])
     fields = [x/y for x, y in zip(fields, reference)]
     field = np.hstack(fields).ravel()
-    with h5py.File(fieldFile, 'w') as handle:
-        handle.create_dataset('field', shape=(size,), field.dtype)
-        handle[start:end] = field
+    with h5py.File(fieldFile, 'w', driver='mpio', comm=mpi) as handle:
+        fieldData = handle.create_dataset('field', shape=(size,), dtype=field.dtype)
+        fieldData[start:end] = field
     return
 
 def writeFields(fieldFile, caseDir, ntime):
     ntime = float(ntime)
-    cells, start, end, size = getParallelInfo()
-    with h5py.File(fieldFile, 'r') as handle:
+    cellStart, cellEnd, start, end, size, mpi = getParallelInfo()
+    with h5py.File(fieldFile, 'r', driver='mpio', comm=mpi) as handle:
         fields = handle['field'][start:end]
     fields = fields.reshape((fields.shape[0]/5, 5))
     fields = fields[:,[0]], fields[:,1:4], fields[:,[4]]
     fields = [x*y for x, y in zip(fields, reference)]
     timeFile = caseDir + getTime(ntime) + '.hdf5' 
     shutil.copy(case + stime + '.hdf5', timeFile)
-    with h5py.File(timeFile, 'r+') as phi:
+    with h5py.File(timeFile, 'r+', driver='mpio', comm=mpi) as phi:
         for index, name in enumerate(fieldNames):
             field = phi[name + '/field']
-            field[cells] = fields[index]
+            field[cellStart:cellEnd] = fields[index]
             phi[name + '/field'][:] = field
     return
 
@@ -101,25 +100,35 @@ def getHostDir(run_id):
     return '{}/temp/{}/'.format(case, run_id)
 
 def spawnJob(exe, args, **kwargs):
-    return call(['mpirun', '-np', str(nProcessors), exe] + args, **kwargs)
+    #global cobalt
+    #corner = cobalt.get_corner()
+    #returncode = subprocess.call(['runjob', '-n', str(nProcessors), 
+    #                   '-p', str(nProcsPerNode),
+    #                   '--corner', corner,
+    #                   '--shape', subBlockShape,
+    #                   exe] + args, **kwargs)
+    #cobalt.free_corner(corner)
+    returncode = subprocess.call(['mpirun', '-np', str(nProcessors), exe] + args, **kwargs)
+    return returncode
 
-def runCase(initFields, parameters, nSteps, run_id):
+def runCase(initFields, parameters, nSteps, run_id, interprocess):
+    #cobalt.interprocess = interprocess
+
     # generate case folders
     caseDir = getHostDir(run_id)
-    mesh.case = caseDir
     if not os.path.exists(caseDir):
         os.makedirs(caseDir)
-    shutil.copy(case + problem, caseDir)
     shutil.copy(case + 'mesh.hdf5', caseDir)
     for pkl in glob.glob(case + '*.pkl'):
         shutil.copy(pkl, caseDir)
 
+    
     # write initial field
-    if spawnJob(python, [fileName, 'RUN', 'writeFields', caseDir, str(time)]):
+    if spawnJob(python, [fileName, 'RUN', 'writeFields', initFields, caseDir, str(time)]):
         raise Exception('initial field conversion failed')
-    writeFields(initFields, caseDir, time)
 
     # modify problem file
+    shutil.copy(case + problem, caseDir)
     problemFile = caseDir + problem
     with open(problemFile, 'r') as f:
         lines = f.readlines()
@@ -147,20 +156,29 @@ def runCase(initFields, parameters, nSteps, run_id):
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
     print caseDir
 
+    #cobalt.interprocess = None
     return finalFields, objectiveSeries[:-1]
 
 if __name__ == '__main__':
 
-    if sys.argv[1] == 'RUN':
+    if len(sys.argv) > 1 and sys.argv[1] == 'RUN':
         func = locals()[sys.argv[2]]
         args = sys.argv[3:]
         func(*args)
-    
-    u0 = getHostDir('init') + 'init.h5'
-    if spawnJob(sys.executable, [fileName, 'RUN', 'getInternalFields', case, str(time), u0]):
-        raise Exception('final field conversion failed')
+    else:
+        #from fds.cobalt import CobaltManager
+        #cobalt = CobaltManager(subBlockShape, nRuns)
+        #cobalt.boot_blocks()
 
-    #runCase(u0, parameters, steps, 'random')
-    from fds import shadowing
-    shadowing(runCase, u0, parameter, dims, segments, steps, 0, simultaneous_runs=nRuns
-            get_host_dir=getCaseDir, spawn_compute_job=spawnJob)
+        init = getHostDir('init')
+        if not os.path.exists(init):
+            os.makedirs(init)
+        u0 = init + 'init.h5'
+        if spawnJob(sys.executable, [fileName, 'RUN', 'getInternalFields', case, str(time), u0]):
+            raise Exception('final field conversion failed')
+
+        #runCase(u0, parameters, steps, 'random')
+        from fds import shadowing
+        shadowing(runCase, u0, parameter, dims, segments, steps, 0, simultaneous_runs=nRuns, get_host_dir=getHostDir, spawn_compute_job=spawnJob)
+
+        #cobalt.free_blocks()
