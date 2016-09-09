@@ -51,13 +51,13 @@ def mpi_compute(*mpi_inputs, **kwargs):
 
     graph_file = os.path.abspath('compute_graph.pkl')
     outputs_file = os.path.abspath('compute_outputs.pkl')
-    args = [worker_file, graph_file, outputs_file]
 
     with open(graph_file, 'wb') as f:
         pickle.dump(mpi_inputs, f)
 
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
+    args = [worker_file, graph_file, outputs_file]
     spawn_compute_job = kwargs['spawn_compute_job']
     if spawn_compute_job is not None:
         returncode = spawn_compute_job(sys.executable, args)
