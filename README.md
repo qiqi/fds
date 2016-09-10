@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/qiqi/fds.svg?branch=master)](https://travis-ci.org/qiqi/fds.svg?branch=master)
+[![Build Status](https://travis-ci.org/qiqi/fds.svg?branch=master)](https://travis-ci.org/qiqi/fds?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/qiqi/fds/badge.svg?branch=master)](https://coveralls.io/github/qiqi/fds?branch=master)
 [![Dependency Status](https://dependencyci.com/github/qiqi/fds/badge)](https://dependencyci.com/github/qiqi/fds)
 [![Documentation Status](https://readthedocs.org/projects/fds/badge/?version=latest)](http://fds.readthedocs.io/en/latest/?badge=latest)
