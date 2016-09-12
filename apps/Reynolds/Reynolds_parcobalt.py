@@ -53,14 +53,25 @@ if not os.path.exists(BASE_PATH):
 
 Reynolds_bin = os.path.join(os.sep,'projects','LESOpt','pablof','fds','Reynolds','Reynolds')
 
-Cobalt = CobaltManager(SIMULTANEOUS_RUNS*NODES_PER_RUN) # TODO: We assume block=partition. This seems to be required is blocks are not big enough
+Cobalt = CobaltManager(jobShape, SIMULTANEOUS_RUNS) # TODO: We assume block=partition. This seems to be required is blocks are not big enough
 print('No. available blocks = ', len(Cobalt.blocks))
 
 def get_host_dir(run_id):
     return os.path.join(BASE_PATH, run_id)
 
 def spawn_compute_job(exe, args):
-    return call(['runjob','-n', str(MPI_FDS),'-p', str(MPI_PER_NODE), exe] + args)
+    global cobalt
+    corner = cobalt.get_corner()
+    returncode = call(['runjob', '-n', str(MPI_FDS), 
+                       '-p', str(MPI_PER_NODE),
+                       '--block', Cobalt.partition,
+                       '--corner', corner,
+                       '--shape', jobShape,
+                       '--exp-env', 'PYTHONPATH',
+                       '--verbose', 'INFO',
+                       ':', exe] + args, **kwargs)
+    cobalt.free_corner(corner)
+    return returncode
 
 def lift_drag_pressure_from_text(text, xmach):
     lift_drag_pressure = []
@@ -73,6 +84,7 @@ def lift_drag_pressure_from_text(text, xmach):
     return array(lift_drag_pressure)
 
 def solve(hdf5_inputFile_path, s, nsteps, run_id, interprocess):
+    Cobalt.interprocess = interprocess
     if args.xmach:
         xmach, alpha = s, ALPHA
     elif args.alpha:
@@ -101,7 +113,7 @@ def solve(hdf5_inputFile_path, s, nsteps, run_id, interprocess):
         with open(outfile, 'w', 8) as f:
             # Get corner:
             while True:
-                corner = Cobalt.get_corner(jobShape,interprocess)
+                corner = Cobalt.get_corner()
                 if corner != -1:
                     break
 
@@ -131,7 +143,7 @@ def solve(hdf5_inputFile_path, s, nsteps, run_id, interprocess):
             time.sleep(SLEEP_SECONDS_FOR_IO)
 
             # Free corner:
-            Cobalt.free_corner(corner,interprocess)
+            Cobalt.free_corner(corner)
 
         if not os.path.exists(lift_drag_pressure_file_tmp) or \
                 not all([os.path.exists(f) for f in final_data_files]):
@@ -152,6 +164,7 @@ def solve(hdf5_inputFile_path, s, nsteps, run_id, interprocess):
         os.remove(f)
 
     assert len(J) == nsteps
+    Cobalt.interprocess = None
     return HDF5_outpuFile_path, J
 
 if __name__ == '__main__':

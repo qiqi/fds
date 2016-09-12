@@ -160,7 +160,7 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
     print caseDir
 
-    #cobalt.interprocess = None
+    cobalt.interprocess = None
     return finalFields, objectiveSeries[:-1]
 
 if __name__ == '__main__':
