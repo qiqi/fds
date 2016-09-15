@@ -59,9 +59,12 @@ print('No. available blocks = ', len(Cobalt.blocks))
 def get_host_dir(run_id):
     return os.path.join(BASE_PATH, run_id)
 
-def spawn_compute_job(exe, args):
-    global cobalt
-    corner = cobalt.get_corner()
+def spawn_compute_job(exe, args, **kwargs):
+    global Cobalt
+    if 'interprocess' in kwargs:
+        Cobalt.interprocess = kwargs['interprocess']
+        del kwargs['interprocess']
+    corner = Cobalt.get_corner()
     returncode = call(['runjob', '-n', str(MPI_FDS), 
                        '-p', str(MPI_PER_NODE),
                        '--block', Cobalt.partition,
@@ -70,7 +73,7 @@ def spawn_compute_job(exe, args):
                        '--exp-env', 'PYTHONPATH',
                        '--verbose', 'INFO',
                        ':', exe] + args, **kwargs)
-    cobalt.free_corner(corner)
+    Cobalt.free_corner(corner)
     return returncode
 
 def lift_drag_pressure_from_text(text, xmach):
