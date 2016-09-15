@@ -35,25 +35,24 @@ class CobaltManager:
     def get_corner(self):
         blockName = self.partition
         if self.interprocess:
-            with self.interprocess[0]:
-                if 'available_corners' not in self.interprocess[1]:
-                    available_corners_tmp = self.list_corners(blockName)
-                    self.interprocess[1]['available_corners'] = available_corners_tmp.decode().strip().split('\n')
-                available_corners = self.interprocess[1]['available_corners']
-
-                if len(available_corners) > 0:
-                    grabbed_corner = available_corners[0]
-                    self.interprocess[1]['available_corners'] = available_corners[1:]
-                    return grabbed_corner
-                else:
-                    return -1
+            while 1:
+                with self.interprocess[0]:
+                    if 'available_corners' not in self.interprocess[1]:
+                        self.interprocess[1]['available_corners'] = self.list_corners(blockName)
+                    available_corners = self.interprocess[1]['available_corners']
+                    if len(available_corners) > 0:
+                        grabbed_corner = available_corners[0]
+                        self.interprocess[1]['available_corners'] = available_corners[1:]
+                        return grabbed_corner
         else:
             return self.list_corners(blockName)[0]
 
     def free_corner(self, corner):
         if self.interprocess:
             with self.interprocess[0]:
-                self.interprocess[1]['available_corners'].append(corner)
+                corners = self.interprocess[1]['available_corners']
+                corners.append(corner)
+                self.interprocess[1]['available_corners'] = corners
 
     def boot_blocks(self):
         ps = []

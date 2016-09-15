@@ -58,9 +58,10 @@ def mpi_compute(*mpi_inputs, **kwargs):
     # spawn job and wait for result
     worker_file = os.path.join(os.path.abspath(__file__))
     args = [worker_file, graph_file, outputs_file]
+    interprocess = kwargs['interprocess']
     spawn_compute_job = kwargs['spawn_compute_job']
     if spawn_compute_job is not None:
-        returncode = spawn_compute_job(sys.executable, args)
+        returncode = spawn_compute_job(sys.executable, args, interprocess=interprocess)
     else:
         returncode = subprocess.call(['mpirun', sys.executable] + args)
     if returncode != 0:

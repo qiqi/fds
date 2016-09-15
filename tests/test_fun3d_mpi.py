@@ -52,7 +52,7 @@ def load_hdf5(path):
 def get_host_dir(run_id):
     return os.path.join(BASE_PATH, run_id)
 
-def spawn_compute_job(exe, args):
+def spawn_compute_job(exe, args, **kwargs):
     return call(['mpirun', '-np', '2', exe] + args)
 
 def distribute_data(u):

@@ -53,7 +53,7 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
         u1h[-1].value.field = os.path.join(get_host_dir(run_ids[-1]), 'input.h5')
 
     # compute all outputs
-    run_compute([u1i] + u1h + compute_outputs, spawn_compute_job=spawn_compute_job)
+    run_compute([u1i] + u1h + compute_outputs, spawn_compute_job=spawn_compute_job, interprocess=interprocess)
 
     for j in range(subspace_dimension):
         res_h.append(threads.apply_async(

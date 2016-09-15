@@ -146,7 +146,7 @@ def continue_shadowing(
                     epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
                     compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
         else:
-            run_compute(compute_outputs, spawn_compute_job=spawn_compute_job)
+            run_compute(compute_outputs, spawn_compute_job=spawn_compute_job, interprocess=interprocess)
 
         for output in [lss.Rs, lss.bs, G_dil, g_dil]:
             output[-1] = output[-1].field
