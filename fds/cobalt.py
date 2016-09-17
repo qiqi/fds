@@ -22,7 +22,6 @@ class CobaltManager:
         available_blocks = available_blocks.decode().strip().split('\n')
         if len(available_blocks[0]) == 0:
             raise Exception('get-bootable-blocks returned nothing')
-        print(self.partition, 'availabel blocks', available_blocks)
         return available_blocks
 
     def get_corners(self, blockName):
@@ -33,7 +32,6 @@ class CobaltManager:
         corners = corners.decode().strip().split('\n')
         if p.returncode:
             raise Exception('get-corners failed')
-        print(blockName, 'get_corner', corners)
         return corners
 
     def get_alloc(self):
@@ -44,10 +42,11 @@ class CobaltManager:
                     if 'available_corners' not in self.interprocess[1]:
                         self.interprocess[1]['available_corners'] = copy.deepcopy(self.corners)
                     corners = self.interprocess[1]['available_corners']
-                    for block, blockCorners in corners.items():
-                        if len(blockCorners) > 0:
-                            corner = blockCorners[0]
-                            self.interprocess[1]['available_corners'][block] = blockCorners[1:]
+                    for block in corners:
+                        if len(corners[block]) > 0:
+                            corner = corners[block][0]
+                            corners[block] = corners[block][1:]
+                            self.interprocess[1]['available_corners']= corners
                             return block, corner
         else:
             return self.blocks[0], self.corners[self.blocks[0]][0]
