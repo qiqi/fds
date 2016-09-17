@@ -1,17 +1,19 @@
 import os
 import sys
 import subprocess
+import copy
 
 class CobaltManager:
-    def __init__(self, shape, runs):
+    def __init__(self, shape, nodesPerBlock=512):
         self.partition = os.environ['COBALT_PARTNAME']
-        eval_shape = eval(shape.replace('x','*'))
-        nodes = eval_shape*runs
-        self.blocks = self.get_available_blocks(nodes)
         self.shape = shape
+        self.blocks = self.get_blocks(nodesPerBlock)
+        self.corners = {}
+        for block in self.blocks:
+            self.corners[block] = self.get_corners(block)
         self.interprocess = None
 
-    def get_available_blocks(self, nodesPerBlock):
+    def get_blocks(self, nodesPerBlock):
         p = subprocess.Popen(['get-bootable-blocks','--size', str(nodesPerBlock), self.partition],
                               stdout=subprocess.PIPE)
         available_blocks = p.communicate()[0]
@@ -19,10 +21,11 @@ class CobaltManager:
             raise Exception('get-bootable-blocks failed')
         available_blocks = available_blocks.decode().strip().split('\n')
         if len(available_blocks[0]) == 0:
-            available_blocks = [self.partition]
+            raise Exception('get-bootable-blocks returned nothing')
+        print(self.partition, 'availabel blocks', available_blocks)
         return available_blocks
 
-    def list_corners(self, blockName):
+    def get_corners(self, blockName):
         p = subprocess.Popen(['/soft/cobalt/bgq_hardware_mapper/get-corners.py', blockName, self.shape],
 
                               stdout=subprocess.PIPE)
@@ -30,28 +33,30 @@ class CobaltManager:
         corners = corners.decode().strip().split('\n')
         if p.returncode:
             raise Exception('get-corners failed')
+        print(blockName, 'get_corner', corners)
         return corners
 
-    def get_corner(self):
+    def get_alloc(self):
         blockName = self.partition
         if self.interprocess:
             while 1:
                 with self.interprocess[0]:
                     if 'available_corners' not in self.interprocess[1]:
-                        self.interprocess[1]['available_corners'] = self.list_corners(blockName)
-                    available_corners = self.interprocess[1]['available_corners']
-                    if len(available_corners) > 0:
-                        grabbed_corner = available_corners[0]
-                        self.interprocess[1]['available_corners'] = available_corners[1:]
-                        return grabbed_corner
+                        self.interprocess[1]['available_corners'] = copy.deepcopy(self.corners)
+                    corners = self.interprocess[1]['available_corners']
+                    for block, blockCorners in corners.items():
+                        if len(blockCorners) > 0:
+                            corner = blockCorners[0]
+                            self.interprocess[1]['available_corners'][block] = blockCorners[1:]
+                            return block, corner
         else:
-            return self.list_corners(blockName)[0]
+            return self.blocks[0], self.corners[self.blocks[0]][0]
 
-    def free_corner(self, corner):
+    def free_alloc(self, (block, corner)):
         if self.interprocess:
             with self.interprocess[0]:
                 corners = self.interprocess[1]['available_corners']
-                corners.append(corner)
+                corners[block].append(corner)
                 self.interprocess[1]['available_corners'] = corners
 
     def boot_blocks(self):

@@ -14,20 +14,20 @@ def isfloat(s):
 fileName = os.path.abspath(__file__)
 python = sys.executable
 
-nProcessors = 16
+nProcessors = 128
 nProcsPerNode = 8
-nRuns = 128
-subBlockShape = '1x1x1x1x2'
+nRuns = 32
+subBlockShape = '1x2x2x2x2'
 
 parameter = 1.0
-dims = 20
+dims = 128
 segments = 20
-steps = 10000
+steps = 5000
 
-time = 2.0
+time = 1.0
 source = '/projects/LESOpt/talnikar/'
-problem = 'cylinder.py'
-case = source + 'cylinder/fds/'
+problem = 'periodic_wake_fds.py'
+case = source + 'periodic_wake/'
 
 def getTime(time):
     stime = str(time)
@@ -88,7 +88,6 @@ def writeFields(fieldFile, caseDir, ntime):
     fields = fields[:,[0]], fields[:,1:4], fields[:,[4]]
     fields = [x*y for x, y in zip(fields, reference)]
     timeFile = caseDir + getTime(ntime) + '.hdf5' 
-    shutil.copy(case + stime + '.hdf5', timeFile)
     with h5py.File(timeFile, 'r+', driver='mpio', comm=mpi) as phi:
         for index, name in enumerate(fieldNames):
             field = phi[name + '/field']
@@ -101,16 +100,20 @@ def getHostDir(run_id):
 
 def spawnJob(exe, args, **kwargs):
     global cobalt
-    corner = cobalt.get_corner()
+    if 'interprocess' in kwargs:
+        cobalt.interprocess = kwargs['interprocess']
+        del kwargs['interprocess']
+    block, corner = cobalt.get_alloc()
+    print('spawnJob', exe, args, block, corner)
     returncode = subprocess.call(['runjob', '-n', str(nProcessors), 
                        '-p', str(nProcsPerNode),
-                       '--block', cobalt.partition,
+                       '--block', block,
                        '--corner', corner,
                        '--shape', subBlockShape,
                        '--exp-env', 'PYTHONPATH',
                        '--verbose', 'INFO',
                        ':', exe] + args, **kwargs)
-    cobalt.free_corner(corner)
+    cobalt.free_alloc((block, corner))
     #returncode = subprocess.call(['mpirun', '-np', str(nProcessors), exe] + args, **kwargs)
     return returncode
 
@@ -124,11 +127,15 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     shutil.copy(case + 'mesh.hdf5', caseDir)
     for pkl in glob.glob(case + '*.pkl'):
         shutil.copy(pkl, caseDir)
-
+    timeFile = caseDir + stime + '.hdf5' 
+    shutil.copy(case + stime + '.hdf5', timeFile)
     
     # write initial field
-    if spawnJob(python, [fileName, 'RUN', 'writeFields', initFields, caseDir, str(time)]):
-        raise Exception('initial field conversion failed')
+    outputFile = caseDir  + 'writeFields.log'
+    with open(outputFile, 'w') as f:
+        if spawnJob(python, [fileName, 'RUN', 'writeFields', initFields, caseDir, str(time)], stdout=f, stderr=f):
+            raise Exception('initial field conversion failed')
+    print('initial field written', initFields)
 
     # modify problem file
     shutil.copy(case + problem, caseDir)
@@ -144,17 +151,22 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
             f.write(writeLine)
 
     outputFile = caseDir  + 'output.log'
-    with open(outputFile, 'w') as f:
+    errorFile = caseDir  + 'error.log'
+    with open(outputFile, 'w') as f, open(errorFile, 'w') as fe:
         #if spawnJob(python, [problemFile], stdout=f, stderr=f):
-        if spawnJob(python, [program, problemFile, '--mira', '-n', '--coresPerNode', str(nProcsPerNode), '--unloadingStages', '4'], stdout=f, stderr=f):
+        if spawnJob(python, [program, problemFile, '--mira', '-n', '--coresPerNode', str(nProcsPerNode), '--unloadingStages', '4'], stdout=f, stderr=fe):
             raise Exception('Execution failed, check error log:', outputFile)
+    print('execution finished', caseDir)
 
     # read final fields
     times = [float(x[:-5]) for x in os.listdir(caseDir) if isfloat(x[:-5]) and x.endswith('.hdf5')]
     lastTime = sorted(times)[-1]
     finalFields = caseDir + 'output.h5'
-    if spawnJob(python, [fileName, 'RUN', 'getInternalFields', caseDir, str(lastTime), finalFields]):
-        raise Exception('final field conversion failed')
+    outputFile = caseDir  + 'getInternalFields.log'
+    with open(outputFile, 'w') as f:
+        if spawnJob(python, [fileName, 'RUN', 'getInternalFields', caseDir, str(lastTime), finalFields], stdout=f, stderr=f):
+            raise Exception('final field conversion failed')
+    print('final field written', finalFields)
 
     # read objective values
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
@@ -171,7 +183,7 @@ if __name__ == '__main__':
         func(*args)
     else:
         from fds.cobalt import CobaltManager
-        cobalt = CobaltManager(subBlockShape, nRuns)
+        cobalt = CobaltManager(subBlockShape, 128)
         cobalt.boot_blocks()
 
         init = getHostDir('init')
