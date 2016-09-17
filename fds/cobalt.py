@@ -51,7 +51,8 @@ class CobaltManager:
         else:
             return self.blocks[0], self.corners[self.blocks[0]][0]
 
-    def free_alloc(self, (block, corner)):
+    def free_alloc(self, alloc):
+        block, corner = alloc
         if self.interprocess:
             with self.interprocess[0]:
                 corners = self.interprocess[1]['available_corners']
