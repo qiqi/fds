@@ -36,8 +36,6 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
 
     threads = Pool(simultaneous_runs)
     run_id = 'segment{0:02d}_baseline'.format(i_segment)
-    res_0 = threads.apply_async(
-            run, (u0.field, parameter, steps, run_id, interprocess))
     # run homogeneous tangents
     res_h = []
     subspace_dimension = len(V)
@@ -54,6 +52,9 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
 
     # compute all outputs
     run_compute([u1i] + u1h + compute_outputs, spawn_compute_job=spawn_compute_job, interprocess=interprocess)
+
+    res_0 = threads.apply_async(
+            run, (u0.field, parameter, steps, run_id, interprocess))
 
     for j in range(subspace_dimension):
         res_h.append(threads.apply_async(
