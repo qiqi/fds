@@ -17,17 +17,17 @@ from fds.checkpoint import *
 ALPHA = 20               # nominal angle of attach
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
-K_SEGMENTS = 200         # number of time chunks
+K_SEGMENTS = 400         # number of time chunks
 STEPS_PER_SEGMENT = 200  # number of time steps per chunk
 STEPS_RUNUP = 0          # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 5 # how long to wait for file IO to sync
-MPI_NP = 24              # number of MPI processes for each FUN3D instance
+MPI_NP = 16              # number of MPI processes for each FUN3D instance
 SIMULTANEOUS_RUNS = 18   # max number of simultaneous MPI runs
 
 # change this a directory with final.data.* files, so that I know
 # how to distribute an initial condition into different ranks
 REF_WORK_PATH = os.path.join(
-        os.sep,'nobackupp8','enielsen','NILSS','PythonTesting','run_data')
+        os.sep,'work2','enielsen','LSS','run_data')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--xmach', action='store_true')
@@ -48,7 +48,7 @@ if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
 
 # modify to point to fun3d binary
-fun3d_bin = os.path.join(os.sep,'u','enielsen','GIT','Master','fun3d','optimized','FUN3D_90','nodet_mpi')
+fun3d_bin = os.path.join(os.sep,'work1','home','enielsen','GIT','fun3d','optimized','FUN3D_90','nodet_mpi')
 
 def distribute_data(u):
     if not hasattr(distribute_data, 'doubles_for_each_rank'):
