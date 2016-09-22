@@ -17,8 +17,8 @@ template = string.Template(open('tecplot.mcr.template').read())
 
 pbs_header = '''#!/bin/csh
 #PBS -A AFVAW39842SAM
-#PBS -l walltime=00:29:00
-#PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -l walltime=23:59:00
+#PBS -l select=1:ncpus=4:mpiprocs=4
 #PBS -q standard
 #PBS -N tecplot
 #PBS -j oe
@@ -28,13 +28,11 @@ cd $PBS_O_WORKDIR
 '''
 
 vectors = cp.lss.lyapunov_covariant_vectors()
-f_submit = open('submit_script', 'wt')
-for i_segment in range(len(vectors[0])):
-    pbs_file = 'pbs/job{0}.pbs'.format(i_segment)
-    f_submit.write('qsub ' + pbs_file + '\n')
-    f_pbs = open(pbs_file, 'wt')
-    f_pbs.write(pbs_header)
-    for i_vector, vector in enumerate(vectors):
+pbs_file = 'job.pbs'
+f_pbs = open(pbs_file, 'wt')
+f_pbs.write(pbs_header)
+for i_segment in range(100, 150):
+    for i_vector, vector in enumerate(vectors[:4]):
         v = vector[i_segment]
         data_files = ['segment{0:02d}_baseline'.format(i_segment)] \
                    + ['segment{0:02d}_init_perturb{1:03d}'.format(i_segment, j)
@@ -66,11 +64,12 @@ for i_segment in range(len(vectors[0])):
         mcr_file = 'tecplot_macros/tecplot_{0}_{1}.mcr'.format(i_vector, i_segment)
         with open(mcr_file, 'wt') as f:
             f.write(macro)
-        f_pbs.write('tec360 -mesa -b -p ' + mcr_file + ' &\n')
+        png_file = 'png/du_far_vector_{0}_segment_{1}.png'.format(i_vector, i_segment)
+        f_pbs.write('if ( ! -f ' + png_file + ' ) tec360 -mesa -b -p ' + mcr_file + ' & \n')
         # subprocess.check_call(
         #     ['/hafs_x86_64/tec360', '-mesa', '-b', '-p', 'tecplot.mcr'])
-    f_pbs.write('wait\n')
-    f_pbs.close()
+    f_pbs.write('wait\n\n')
+f_pbs.close()
          
 # print(L.shape)
 # 
