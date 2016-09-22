@@ -4,6 +4,7 @@ import os
 import sys
 import string
 import subprocess
+import numpy
 my_path = os.path.dirname(os.path.abspath(__file__))
 
 sys.path.append(os.path.join(my_path, '..'))
@@ -32,6 +33,12 @@ pbs_file = 'job.pbs'
 f_pbs = open(pbs_file, 'wt')
 f_pbs.write(pbs_header)
 for i_segment in range(100, 150):
+    for i_vector in range(4):
+        vectors[i_vector][i_segment] /= numpy.sqrt((vectors[i_vector][i_segment]**2).sum()) * 1E-4
+        if i_vector > 0:
+            inner_product = (vectors[i_vector-1][i_segment] * vectors[i_vector][i_segment]).sum()
+            if inner_product < 0:
+	        vectors[i_vector][i_segment] *= -1
     for i_vector, vector in enumerate(vectors[:4]):
         v = vector[i_segment]
         data_files = ['segment{0:02d}_baseline'.format(i_segment)] \
@@ -60,14 +67,64 @@ for i_segment in range(100, 150):
            DELETED_ZONES=deleted_zones,
            EQUATION_DU=equation_du,
            EQUATION_DP=equation_dp,
+           DU_SCALE='0.02',
+           DP_SCALE='0.003',
            FILE_SUFFIX=file_suffix)
         mcr_file = 'tecplot_macros/tecplot_{0}_{1}.mcr'.format(i_vector, i_segment)
         with open(mcr_file, 'wt') as f:
             f.write(macro)
-        png_file = 'png/du_far_vector_{0}_segment_{1}.png'.format(i_vector, i_segment)
+        png_file = 'png/du_far_' + file_suffix + '.png'
         f_pbs.write('if ( ! -f ' + png_file + ' ) tec360 -mesa -b -p ' + mcr_file + ' & \n')
-        # subprocess.check_call(
-        #     ['/hafs_x86_64/tec360', '-mesa', '-b', '-p', 'tecplot.mcr'])
+
+        if i_vector == 0:
+            # visualize flow field
+            equation_du = '{du} = {u}[1]'
+            equation_dp = '{dp} = {vort_y}[1]'
+                           
+            file_suffix = '_actual_flow_not_du_segment_{0}'.format(i_segment)
+    
+            macro = template.substitute(
+               DATA_FILES=data_files,
+               DELETED_ZONES=deleted_zones,
+               EQUATION_DU=equation_du,
+               EQUATION_DP=equation_dp,
+               DU_SCALE='0.15',
+               DP_SCALE='1.0',
+               FILE_SUFFIX=file_suffix)
+            mcr_file = 'tecplot_macros/flow_field_tecplot_{0}.mcr'.format(i_segment)
+            with open(mcr_file, 'wt') as f:
+                f.write(macro)
+            png_file = 'png/du_far_' + file_suffix + '.png'
+            f_pbs.write('if ( ! -f ' + png_file + ' ) tec360 -mesa -b -p ' + mcr_file + ' & \n')
+        else:
+            # visualize difference between this mode and the last one
+            prev_v = vectors[i_vector-1][i_segment]
+            equation_du = '{du} = ' \
+                        + ' + '.join([
+                              '{0} * ({{u}}[{1}] - {{u}}[1])'.format(v[i]-prev_v[i], i+2)
+                              for i in range(len(v))])
+            equation_dp = '{dp} = ' \
+                        + ' + '.join([
+                              '{0} * ({{p}}[{1}] - {{p}}[1])'.format(v[i]-prev_v[i], i+2)
+                              for i in range(len(v))])
+                           
+            file_suffix = 'delta_vector_{0}_segment_{1}'.format(i_vector, i_segment)
+    
+            macro = template.substitute(
+               DATA_FILES=data_files,
+               DELETED_ZONES=deleted_zones,
+               EQUATION_DU=equation_du,
+               EQUATION_DP=equation_dp,
+               DU_SCALE=str(0.02 * numpy.linalg.norm(v - prev_v) / numpy.linalg.norm(v)),
+               DP_SCALE=str(0.003 * numpy.linalg.norm(v - prev_v) / numpy.linalg.norm(v)),
+               FILE_SUFFIX=file_suffix)
+            mcr_file = 'tecplot_macros/delta_tecplot_{0}_{1}.mcr'.format(i_vector, i_segment)
+            with open(mcr_file, 'wt') as f:
+                f.write(macro)
+            png_file = 'png/du_far_' + file_suffix + '.png'
+            f_pbs.write('if ( ! -f ' + png_file + ' ) tec360 -mesa -b -p ' + mcr_file + ' & \n')
+            # subprocess.check_call(
+            #     ['/hafs_x86_64/tec360', '-mesa', '-b', '-p', 'tecplot.mcr'])
     f_pbs.write('wait\n\n')
 f_pbs.close()
          
