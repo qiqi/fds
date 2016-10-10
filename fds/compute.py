@@ -17,7 +17,8 @@ except ImportError:
 
 def run_compute(outputs, **kwargs):
     graph = pascal.ComputationalGraph([x.value for x in outputs])
-    sample_input = [x for x in graph.input_values if not isinstance(x.field, int)][0]
+    sample_input = [x for x in graph.input_values
+                    if not isinstance(x.field, int)][0]
     if isinstance(sample_input.field, str):
         mpi_compute(sample_input, outputs, graph, **kwargs)
     else:
@@ -59,7 +60,8 @@ def mpi_compute(*mpi_inputs, **kwargs):
     interprocess = kwargs['interprocess']
     spawn_compute_job = kwargs['spawn_compute_job']
     if spawn_compute_job is not None:
-        returncode = spawn_compute_job(sys.executable, args, interprocess=interprocess)
+        returncode = spawn_compute_job(sys.executable, args,
+                                       interprocess=interprocess)
     else:
         returncode = subprocess.call(['mpirun', sys.executable] + args)
     if returncode != 0:
@@ -92,7 +94,8 @@ def mpi_write_field(field, field_file):
     total_size = mpi.allreduce(field.shape[-1], MPI.SUM)
     start, end = mpi_range(total_size)
     handle = h5py.File(field_file, 'w', driver='mpio', comm=mpi)
-    fieldData = handle.create_dataset('field', shape=(total_size,) + field.shape[:-1], dtype=field.dtype)
+    shape = (total_size,) + field.shape[:-1]
+    fieldData = handle.create_dataset('field', shape=shape, dtype=field.dtype)
     fieldData[start:end] = field
     handle.close()
 
