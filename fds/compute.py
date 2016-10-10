@@ -8,7 +8,7 @@ import math
 
 import pascal_lite as pascal
 
-try:    
+try:
     from mpi4py import MPI
     mpi = MPI.COMM_WORLD
     import h5py
@@ -22,7 +22,6 @@ def run_compute(outputs, **kwargs):
         mpi_compute(sample_input, outputs, graph, **kwargs)
     else:
         serial_compute(sample_input, outputs, graph, **kwargs)
-    return
 
 def get_inputs(x, size):
     if isinstance(x.field, int):
@@ -45,7 +44,6 @@ def serial_compute(sample_input, outputs, graph, **kwargs):
     actual_outputs = graph(inputs)
     for index, output in enumerate(outputs):
         output.value.field = actual_outputs[index]
-    return 
 
 def mpi_compute(*mpi_inputs, **kwargs):
 
@@ -75,7 +73,6 @@ def mpi_compute(*mpi_inputs, **kwargs):
         if not output.is_distributed:
             output.value.field = compute_outputs[index]
             index += 1
-    return 
 
 def mpi_range(size):
     mpi_size = int(math.ceil(float(size) / mpi.Get_size()))
@@ -98,16 +95,15 @@ def mpi_write_field(field, field_file):
     fieldData = handle.create_dataset('field', shape=(total_size,) + field.shape[:-1], dtype=field.dtype)
     fieldData[start:end] = field
     handle.close()
-    return
 
 def mpi_compute_worker(graph_file, outputs_file):
     with open(graph_file, 'rb') as f:
         sample_input, outputs, graph = pickle.load(f)
-    
+
     # read the inputs for the graph
     size = mpi_read_field(sample_input.field).shape[0]
     inputs = lambda x: get_inputs(x, size)
-    
+
     # perform the computation
     actual_outputs = graph(inputs)
 
@@ -125,7 +121,6 @@ def mpi_compute_worker(graph_file, outputs_file):
     if mpi.rank == 0:
         with open(outputs_file, 'wb') as f:
             pickle.dump(compute_outputs, f)
-    return
 
 if __name__ == '__main__':
     graph_file, outputs_file = sys.argv[1:3]
