@@ -53,6 +53,42 @@ subroutine dfdX(X,dfdX_res)
 	dfdX_res(D,D) = -1.d0
 	dfdX_res(D,1) = X(D-1)
 
-end subroutine dfdX   
+end subroutine dfdX  
+
+subroutine dvdt(X,v,dvdt_res)
+
+		implicit none
+		real(kind=8), intent(in), dimension(D) :: X, v
+		real(kind=8), intent(out), dimension(D,1) :: dvdt_res
+		real(kind=8), dimension(D,D) :: dfdX_res
+		real(kind=8), dimension(D,1) :: v1
+		
+		call dfdX(X,dfdX_res)
+		v1 = reshape(v,[D,1])
+		dvdt_res = matmul(dfdX_res,v1)	
+		 	
+end subroutine dvdt
+subroutine rk4(X,v,vnp1)
+
+	implicit none
+	real(kind=8) , intent(in), dimension(D,1) :: v,X
+	real(kind=8) , intent(out), dimension(D,1) :: vnp1
+	real(kind=8) , dimension(D,1) :: dvdt_res,k1,k2,k3,k4
+	real(kind=8) :: dt
+
+	dt = 0.001d0	
+	call dvdt(X,v,dvdt_res)
+	k1 = dt*dvdt_res
+	call dvdt(X,v + 0.5d0*k1,dvdt_res)
+	k2 = dt*dvdt_res
+	call dvdt(X,v + 0.5d0*k2,dvdt_res)
+	k3 = dt*dvdt_res
+	call dvdt(X,v + k3,dvdt_res)
+	k4 = dt*dvdt_res
+
+	vnp1 = v + 1.d0/6.d0*k1 + 1.d0/3.d0*k2 + 1.d0/3.d0*k3 + 1.d0/6.d0*k4
+
+
+end subroutine rk4 
 
 end module Lorenz96
