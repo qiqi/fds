@@ -1,28 +1,67 @@
-! $UWHPSC/codes/fortran/newton/test1.f90
+! Lorenz'96
 
 program test1
 
     use Lorenz96
-    
+    use mpi 
 
     implicit none
-	real(kind=8), dimension(D,1) ::X,v
-	real(kind=8), dimension(D,1) :: dXdt
-	real(kind=8), dimension(D,D) :: dfdX_res
-	real(kind=8), dimension(D) :: A
-	integer :: itest
-   	do itest=1,D
-    
-		
-		 X(itest,1) = 1.d0 
-		 v(itest,1) = 1.d0
+	real(kind=8), dimension(:), allocatable ::X,v,vnp1
+	real(kind=8), dimension(:), allocatable :: dXdt
+	real(kind=8), dimension(:,:), allocatable :: dfdX_res
+	integer :: i, me, ierr, nprocs, Dproc, D
+    integer :: istart, iend, ncyc, lproc, rproc	
+	integer, allocatable :: seed(:)
+	integer :: rsize, req1, req2
+	integer, dimension(MPI_STATUS_SIZE) :: mpistatus
+    call mpi_init(ierr)
+    call mpi_comm_size(MPI_COMM_WORLD, nprocs, ierr)
+    call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
-	enddo
+	ncyc = 1
+	D = 10
+	Dproc =	D/nprocs	
+
+	istart = me*Dproc + 1
+	iend = min((me + 1)*Dproc, D)
+	lproc = MOD(me + nprocs - 1, nprocs)
+	rproc = MOD(me + 1, nprocs)
+
+	allocate(X(istart-2:iend+1),v(istart-2:iend+1),vnp1(istart-2:iend+1))
+
+	call RANDOM_SEED(SIZE=rsize)
+	allocate(seed(rsize))
+	call RANDOM_SEED(PUT=seed)	
+	call RANDOM_NUMBER(X)
+	v = 0.d0
+	if(me == 0) then 
+		v(istart) = 1.d0
+	end if
+	print *, X
+	do i = 1, ncyc	
+
+		call mpi_isend(X(istart), 1,  &
+		MPI_DOUBLE_PRECISION,         &
+		lproc,  &
+		1, MPI_COMM_WORLD, req1, ierr)
 	
-	call rk4(X,v,dfdX_res)
-	print *, dfdX_res(:,1)
-	!print *, A
+		call mpi_isend(X(iend-1:iend), &
+		2, MPI_DOUBLE_PRECISION,       &
+		rproc,   &
+		2, MPI_COMM_WORLD, req1, ierr)
 
-	!print *, dfdX_res(4,5)
+
+		call mpi_recv(X(istart-2:istart-1), &
+		2, MPI_DOUBLE_PRECISION, lproc, &
+	    2, MPI_COMM_WORLD, mpistatus, ierr)			 			
+		
+		call mpi_recv(X(iend+1), &
+		1, MPI_DOUBLE_PRECISION, rproc, &
+	    1, MPI_COMM_WORLD, mpistatus, ierr)			 			
+									
+		call rk4(X,D+3,v,vnp1)		
+	
+	enddo
+	call mpi_finalize(ierr)	
 	
 end program test1
