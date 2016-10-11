@@ -6,7 +6,7 @@ program test1
     use mpi 
 
     implicit none
-	real(kind=8), dimension(:), allocatable ::X,v,vnp1
+	real(kind=8), dimension(:), allocatable ::X,v,vnp1_res, Xnp1_res
 	real(kind=8), dimension(:), allocatable :: dXdt
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res
 	integer :: i, me, ierr, nprocs, Dproc, D
@@ -19,7 +19,7 @@ program test1
     call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
 	ncyc = 1
-	D = 10
+	D = 4
 	Dproc =	D/nprocs	
 
 	istart = me*Dproc + 1
@@ -27,7 +27,7 @@ program test1
 	lproc = MOD(me + nprocs - 1, nprocs)
 	rproc = MOD(me + 1, nprocs)
 
-	allocate(X(istart-2:iend+1),v(istart-2:iend+1),vnp1(istart-2:iend+1))
+	allocate(X(istart-2:iend+1),v(istart-2:iend+1),vnp1_res(istart:iend),Xnp1_res(istart:iend))
 
 	call RANDOM_SEED(SIZE=rsize)
 	allocate(seed(rsize))
@@ -58,9 +58,13 @@ program test1
 		call mpi_recv(X(iend+1), &
 		1, MPI_DOUBLE_PRECISION, rproc, &
 	    1, MPI_COMM_WORLD, mpistatus, ierr)			 			
-									
-		call rk4(X,D+3,v,vnp1)		
-	
+		call Xnp1(X,D,Xnp1_res)
+
+		X(istart:iend) = Xnp1_res
+		!v(istart:iend) = vnp1
+							
+		!call rk4(X,D+3,v,vnp1)		
+		
 	enddo
 	call mpi_finalize(ierr)	
 	

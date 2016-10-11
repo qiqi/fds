@@ -6,22 +6,25 @@ module Lorenz96
     real(kind=8), parameter :: M = 10.d0
 contains
 
-subroutine f(X,D,dXdt)
+subroutine Xnp1(X,D,Xnp1_res)
 
         
     implicit none
 	integer, intent(in) :: D
 	real(kind=8), intent(in), dimension(D) :: X
-	real(kind=8), intent(out), dimension(D) :: dXdt
+	real(kind=8), intent(out), dimension(D-3) :: Xnp1_res
 	integer :: i
-	dXdt = 0.d0
+	real(kind=8) :: dt
+
+	dt = 0.001d0
 	do i=3,D-1
-		dXdt(i) = (-X(i-2) + X(i+1))*X(i-1) - X(i) + M	
+		Xnp1_res(i-2) = (-X(i-2) + X(i+1))*X(i-1) - X(i) + M	
 	end do
 	!dXdt(1) = (-X(D-1) + X(2))*X(D) - X(1) + M
   	!dXdt(2) = (-X(D) + X(3))*X(1) - X(2) + M
 	!dXdt(D) = (-X(D-2) + X(1))*X(D-1) - X(D) + M
-end subroutine f
+	Xnp1_res = X(1:D-3) + dt*Xnp1_res
+end subroutine Xnp1
 
 subroutine dfdX(X,D,dfdX_res)
 
@@ -78,7 +81,7 @@ subroutine rk4(X,D,v,vnp1)
 	implicit none
 	integer, intent(in) :: D
 	real(kind=8) , intent(in), dimension(D,1) :: v,X
-	real(kind=8) , intent(out), dimension(D,1) :: vnp1
+	real(kind=8) , intent(out), dimension(D-3,1) :: vnp1
 	real(kind=8) , dimension(D,1) :: dvdt_res,k1,k2,k3,k4
 	real(kind=8) :: dt
 	
@@ -93,8 +96,10 @@ subroutine rk4(X,D,v,vnp1)
 	call dvdt(X,D,v + k3,dvdt_res)
 	k4 = dt*dvdt_res
 
-	vnp1 = v + 1.d0/6.d0*k1 + 1.d0/3.d0*k2 + 1.d0/3.d0*k3 + 1.d0/6.d0*k4
-
+	vnp1 = v(3:D-1,1) + 1.d0/6.d0*k1(3:D-1,1) + &
+		 1.d0/3.d0*k2(3:D-1,1) + 1.d0/3.d0*k3(3:D-1,1) + &
+		1.d0/6.d0*k4(3:D-1,1)
+	
 
 end subroutine rk4 
 
