@@ -75,9 +75,9 @@ def join_line_parenthesis(split_line, split_depth):
     line = split_line[0]
     for i in range(1, len(split_line)):
         if split_depth[i] > split_depth[i-1]:
-            line += '('
+            line += b'('
         else:
-            line += ')'
+            line += b')'
         line += split_line[i]
     return line
 
@@ -97,9 +97,9 @@ class DataWriter:
                         data_i = ['{0:.18g}'.format(d)
                                   for d in data[data_ptr:data_ptr+ni]]
                         data_ptr += ni
-                        if '\n' in split_line[i]:
-                            split_line[i] = ' '.join(data_i) + '\n'
+                        if b'\n' in split_line[i]:
+                            split_line[i] = (' '.join(data_i) + '\n').encode()
                         else:
-                            split_line[i] = ' '.join(data_i)
+                            split_line[i] = (' '.join(data_i)).encode()
                 f.write(join_line_parenthesis(split_line, split_depth))
         return data[:data_ptr]
