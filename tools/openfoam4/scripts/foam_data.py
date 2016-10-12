@@ -31,12 +31,12 @@ def find_data_path(comm, path, time, mkdir=False):
     return data_path
 
 def split_line_parenthesis(line):
-    sub_lines = line.split('(')
+    sub_lines = line.split(b'(')
     split_line = []
     split_depth = []
     depth = 0
     for sub_line in sub_lines:
-        split_sub_line = sub_line.split(')')
+        split_sub_line = sub_line.split(b')')
         split_line.extend(split_sub_line)
         split_depth.append(depth - np.arange(len(split_sub_line)))
         depth += 2 - len(split_sub_line)
