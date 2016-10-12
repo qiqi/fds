@@ -9,6 +9,9 @@ import numpy as np
 import mpi4py
 from mpi4py import MPI
 
+my_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(my_path)
+
 from foam_data import *
 
 if __name__ == '__main__':
