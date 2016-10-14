@@ -5,9 +5,9 @@ from copy import deepcopy
 import traceback
 from multiprocessing import Manager
 
-import pascal_lite as pascal
 import numpy as np
 
+import pascal_lite as pascal
 from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
 from .segment import run_segment, trapez_mean

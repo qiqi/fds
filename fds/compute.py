@@ -6,6 +6,10 @@ import dill as pickle
 import subprocess
 import math
 
+my_path = os.path.dirname(os.path.abspath(__file__))
+if os.path.abspath(os.path.join(my_path, '..')) not in sys.path:
+    sys.path.append(os.path.abspath(os.path.join(my_path, '..')))
+
 import pascal_lite as pascal
 
 try:

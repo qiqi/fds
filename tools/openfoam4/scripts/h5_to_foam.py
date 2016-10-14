@@ -53,6 +53,7 @@ if __name__ == '__main__':
                         os.path.join(args.out_path, 'system'))
         shutil.copytree(os.path.join(args.ref_path, 'constant'),
                         os.path.join(args.out_path, 'constant'))
-    proc_path = 'processor{0}'.format(comm.rank)
-    shutil.copytree(os.path.join(args.ref_path, proc_path, 'constant'),
-                    os.path.join(args.out_path, proc_path, 'constant'))
+    if comm.size > 1:
+        proc_path = 'processor{0}'.format(comm.rank)
+        shutil.copytree(os.path.join(args.ref_path, proc_path, 'constant'),
+                        os.path.join(args.out_path, proc_path, 'constant'))
