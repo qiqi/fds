@@ -77,17 +77,19 @@ def solve(u0, s, nsteps, run_id, interprocess):
                 'endTime         {0};'.format(final_time))
         with open(controlDict, 'wt') as f:
             f.write(modified)
-        for u_file in ['U.gz', 'U_0.gz']:
+        for u in ['U.gz', 'U_0.gz']:
             for rank in range(MPI_NP):
                 p = 'processor{0}'.format(rank)
-                u_file = os.path.join(work_path, p, '0', u_file)
+                u_file = os.path.join(work_path, p, '0', u)
+                if rank == 1:
+                    print(p, u_file)
                 with gzip.open(u_file, 'rb') as f:
-                    original = f.read()
-                modified = original.replace(
+                    content = f.read()
+                content = content.replace(
                         'value           uniform (10 0 0);'.encode(),
                         'value           uniform ({0} 0 0);'.format(s).encode())
                 with gzip.open(u_file, 'wb') as f:
-                    f.write(modified)
+                    f.write(content)
         with open(os.path.join(work_path, 'out'), 'wt') as f:
             check_call(MPI + [pisofoam_bin, '-parallel'], cwd=work_path, stdout=f, stderr=f)
         check_call(MPI + [PYTHON, FOAMH5, work_path, str(final_time), u1])
@@ -100,7 +102,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
             time_t_paths = [os.path.join(work_path,
                                          'processor{0}'.format(rank), t)
                             for rank in range(MPI_NP)]
-            J.append([read_field(p) for p in transient_paths])
+            J.append([read_field(p) for p in time_t_paths])
             for p in time_t_paths:
                 shutil.rmtree(p)
         J = array(J)
