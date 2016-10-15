@@ -45,14 +45,14 @@ def split_line_parenthesis(line):
 class FileParser:
     def __init__(self, data_path):
         self.data_path = data_path
-        self.is_scalar = False
-        self.is_vector = False
 
     def parse(self, filename):
         filename = os.path.join(self.data_path, filename)
         if not filename.endswith('.gz'):
             return
         f = gzip.open(filename)
+        self.is_scalar = False
+        self.is_vector = False
         line_beginning_depth = 0
         for line in f:
             if line.strip().startswith('class '):
@@ -74,9 +74,8 @@ class DataLoader:
         data = []
         for split_line, split_depth in self.parser.parse(filename):
             for sub_line, sub_depth in zip(split_line, split_depth):
-                if sub_depth > 0 and self.parser.is_scalar:
-                    data.extend(sub_line.strip().split())
-                if sub_depth > 1 and self.parser.is_vector:
+                if (sub_depth > 0 and self.parser.is_scalar or
+                    sub_depth > 1 and self.parser.is_vector):
                     data.extend(sub_line.strip().split())
         return np.array(data, float)
 
@@ -102,7 +101,8 @@ class DataWriter:
             for split_line, split_depth in self.parser.parse(filename):
                 assert len(split_line) == len(split_depth)
                 for i in range(len(split_line)):
-                    if split_depth[i] > 0:
+                    if (split_depth[i] > 0 and self.parser.is_scalar or
+                        split_depth[i] > 1 and self.parser.is_vector):
                         ni = len(split_line[i].strip().split())
                         data_i = ['{0:.18g}'.format(d)
                                   for d in data[data_ptr:data_ptr+ni]]
