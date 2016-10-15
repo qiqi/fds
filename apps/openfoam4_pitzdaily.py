@@ -86,7 +86,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
         with open(os.path.join(work_path, 'out'), 'wt') as f:
             check_call(pisofoam_bin, cwd=work_path, stdout=f, stderr=f)
         check_call([PYTHON, FOAMH5, work_path, str(final_time), u1])
-        shutil.rmtree(os.path.join(work_path, '0'))
+        # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'system'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
         transient_paths = [os.path.join(work_path, str(i * TIME_PER_STEP))

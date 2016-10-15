@@ -45,6 +45,8 @@ def split_line_parenthesis(line):
 class FileParser:
     def __init__(self, data_path):
         self.data_path = data_path
+        self.is_scalar = False
+        self.is_vector = False
 
     def parse(self, filename):
         filename = os.path.join(self.data_path, filename)
@@ -53,6 +55,12 @@ class FileParser:
         f = gzip.open(filename)
         line_beginning_depth = 0
         for line in f:
+            if line.strip().startswith('class '):
+                assert not self.is_scalar and not self.is_vector
+                if 'Vector' in line:
+                    self.is_vector = True
+                elif 'Scalar' in line:
+                    self.is_scalar = True
             split_line, split_depth = split_line_parenthesis(line)
             line_beginning_depth += split_depth[-1]
             yield split_line, split_depth + line_beginning_depth
@@ -66,7 +74,9 @@ class DataLoader:
         data = []
         for split_line, split_depth in self.parser.parse(filename):
             for sub_line, sub_depth in zip(split_line, split_depth):
-                if sub_depth > 0:
+                if sub_depth > 0 and self.parser.is_scalar:
+                    data.extend(sub_line.strip().split())
+                if sub_depth > 1 and self.parser.is_vector:
                     data.extend(sub_line.strip().split())
         return np.array(data, float)
 
