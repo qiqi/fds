@@ -20,7 +20,10 @@ STEPS_PER_SEGMENT = 100  # number of time steps per chunk
 K_SEGMENTS = 100         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
 TIME_PER_STEP = 1E-4
-SIMULTANEOUS_RUNS = 3    # max number of simultaneous MPI runs
+SIMULTANEOUS_RUNS = 18    # max number of simultaneous MPI runs
+MPI_NP = 2
+
+MPI = ['mpiexec', '-np', str(MPI_NP)]
 
 # modify to point to openfoam binary
 REF_WORK_PATH = os.path.join(my_path, '../../pitzdaily/ref')
@@ -63,7 +66,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
     if not (os.path.exists(u1) and os.path.exists(J_npy)):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
-        check_call([PYTHON, H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
+        check_call(MPI + [PYTHON, H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
         controlDict = os.path.join(work_path, 'system/controlDict')
         with open(controlDict, 'rt') as f:
             original = f.read()
@@ -75,25 +78,32 @@ def solve(u0, s, nsteps, run_id, interprocess):
         with open(controlDict, 'wt') as f:
             f.write(modified)
         for u_file in ['U.gz', 'U_0.gz']:
-            u_file = os.path.join(work_path, '0', u_file)
-            with gzip.open(u_file, 'rb') as f:
-                original = f.read()
-            modified = original.replace(
-                    'value           uniform (10 0 0);'.encode(),
-                    'value           uniform ({0} 0 0);'.format(s).encode())
-            with gzip.open(u_file, 'wb') as f:
-                f.write(modified)
+            for rank in range(MPI_NP):
+                p = 'processor{0}'.format(rank)
+                u_file = os.path.join(work_path, p, '0', u_file)
+                with gzip.open(u_file, 'rb') as f:
+                    original = f.read()
+                modified = original.replace(
+                        'value           uniform (10 0 0);'.encode(),
+                        'value           uniform ({0} 0 0);'.format(s).encode())
+                with gzip.open(u_file, 'wb') as f:
+                    f.write(modified)
         with open(os.path.join(work_path, 'out'), 'wt') as f:
-            check_call(pisofoam_bin, cwd=work_path, stdout=f, stderr=f)
-        check_call([PYTHON, FOAMH5, work_path, str(final_time), u1])
+            check_call(MPI + [pisofoam_bin, '-parallel'], cwd=work_path, stdout=f, stderr=f)
+        check_call(MPI + [PYTHON, FOAMH5, work_path, str(final_time), u1])
         # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'system'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
-        transient_paths = [os.path.join(work_path, str(i * TIME_PER_STEP))
-                           for i in range(1, nsteps+1)]
-        J = array([read_field(p) for p in transient_paths])
-        for p in transient_paths:
-            shutil.rmtree(p)
+        J = []
+        for i in range(1, nsteps+1):
+            t = str(i * TIME_PER_STEP)
+            time_t_paths = [os.path.join(work_path,
+                                         'processor{0}'.format(rank), t)
+                            for rank in range(MPI_NP)]
+            J.append([read_field(p) for p in transient_paths])
+            for p in time_t_paths:
+                shutil.rmtree(p)
+        J = array(J)
         save(J_npy, J)
     else:
         J = load(J_npy)
@@ -102,9 +112,23 @@ def solve(u0, s, nsteps, run_id, interprocess):
 def getHostDir(run_id):
     return os.path.join(HDF5_PATH, run_id)
 
-if __name__ == '__main__':
-    u0 = os.path.join(REF_WORK_PATH, 'final.hdf5')
+def get_u0():
+    u0 = os.path.join(REF_WORK_PATH, 'u0.hdf5')
+    template = os.path.join(REF_WORK_PATH, 'decomposeParDict.template')
+    original = open(template).read()
+    assert 'numberOfSubdomains X' in original
+    modified = original.replace(
+            'numberOfSubdomains X', 'numberOfSubdomains {0}'.format(MPI_NP))
+    decomposeParDict = os.path.join(REF_WORK_PATH, 'system/decomposeParDict')
+    with open(decomposeParDict, 'wt') as f:
+        f.write(modified)
+    check_call(['decomposePar', '-force'], cwd=REF_WORK_PATH, stdout=PIPE)
+    check_call(MPI + [PYTHON, FOAMH5, REF_WORK_PATH, '0', u0])
+    return u0
 
+
+if __name__ == '__main__':
+    u0 = get_u0()
     checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
     if checkpoint is None:
         J, G = shadowing(
