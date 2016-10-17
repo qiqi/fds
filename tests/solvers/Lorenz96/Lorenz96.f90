@@ -16,14 +16,14 @@ subroutine Xnp1(X,D,Xnp1_res)
 	integer :: i
 	real(kind=8) :: dt
 
-	dt = 0.001d0
+	dt = 0.01d0
 	do i=3,D-1
 		Xnp1_res(i-2) = (-X(i-2) + X(i+1))*X(i-1) - X(i) + M	
 	end do
 	!dXdt(1) = (-X(D-1) + X(2))*X(D) - X(1) + M
   	!dXdt(2) = (-X(D) + X(3))*X(1) - X(2) + M
 	!dXdt(D) = (-X(D-2) + X(1))*X(D-1) - X(D) + M
-	Xnp1_res = X(1:D-3) + dt*Xnp1_res
+	Xnp1_res = X(3:D-1) + dt*Xnp1_res
 end subroutine Xnp1
 
 subroutine dfdX(X,D,dfdX_res)
