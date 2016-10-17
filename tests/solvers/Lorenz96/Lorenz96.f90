@@ -34,7 +34,7 @@ subroutine dfdX(X,D,dfdX_res)
 	real(kind=8), intent(out), dimension(D-3,D-3) :: dfdX_res 	
 	integer :: i,j
 
-	
+	print *,"Inside dfdX..."
 	dfdX_res = 0.d0
 	do j=3,D-4
 		i = j + 2	
@@ -44,7 +44,7 @@ subroutine dfdX(X,D,dfdX_res)
 		dfdX_res(j,j-2) = -X(i-1)  					
 
 	enddo	
-
+    print *,"Inside dfdX, next loop..."
 	dfdX_res(1,1) = -1.d0
 	dfdX_res(1,2) = X(2)
 	dfdX_res(2,2) = -1.d0	 	
@@ -54,7 +54,7 @@ subroutine dfdX(X,D,dfdX_res)
 	dfdX_res(D-3,D-3) = -1.d0
 	dfdX_res(D-3,D-4) = X(D) - X(D-3)
 	dfdX_res(D-3,D-5) = -X(D-2) 
-
+    print *,"Inside dfdX, end..."
 end subroutine dfdX  
 
 subroutine dvdt(X,D,v1,dvdt_res)
@@ -66,8 +66,7 @@ subroutine dvdt(X,D,v1,dvdt_res)
 		real(kind=8), dimension(D-3,D-3) :: dfdX_res
 		real(kind=8), intent(in), dimension(D,1) :: v1
 		real(kind=8), dimension(D-3,D) :: dfdX_ext
-		
-		
+			
 		call dfdX(X,D,dfdX_res)
 		dfdX_ext = 0.d0
 		dfdX_ext(1:D-3,3:D-1) = dfdX_res
@@ -79,7 +78,7 @@ subroutine dvdt(X,D,v1,dvdt_res)
 		dfdX_ext(D-3,D) = X(D-2) 
 		
 		dvdt_res = matmul(dfdX_ext,v1)	
-		 	
+        print *,"Inside dvdt..., end" 	
 end subroutine dvdt
 subroutine rk45(X,D,v,vnp1)
 
@@ -90,7 +89,7 @@ subroutine rk45(X,D,v,vnp1)
 	real(kind=8) , dimension(D-3,1) :: v1,dvdt_res,k1,k2,k3,k4
 	real(kind=8) :: dt
 
-	
+    
 
 	dt = 0.001d0	
 	v1 = reshape(v,[D-3,1])
@@ -106,7 +105,7 @@ subroutine rk45(X,D,v,vnp1)
 	vnp1 = v1 + 1.d0/6.d0*k1 + &
 		 1.d0/3.d0*k2 + 1.d0/3.d0*k3 + &
 		1.d0/6.d0*k4
-	
+    print *,"Inside rk45... end"	
 
 end subroutine rk45 
 

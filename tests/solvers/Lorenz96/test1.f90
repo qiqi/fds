@@ -72,11 +72,11 @@ program test1
 		4, MPI_COMM_WORLD, req2, ierr)
 
 
-		call mpi_recv(X(istart-2:istart-1), &
+		call mpi_recv(v(istart-2:istart-1), &
 		2, MPI_DOUBLE_PRECISION, lproc, &
 	    4, MPI_COMM_WORLD, mpistatus, ierr)			 			
 		
-		call mpi_recv(X(iend+1), &
+		call mpi_recv(v(iend+1), &
 		1, MPI_DOUBLE_PRECISION, rproc, &
 	    3, MPI_COMM_WORLD, mpistatus, ierr)		
 
