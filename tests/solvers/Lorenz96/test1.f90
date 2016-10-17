@@ -19,8 +19,8 @@ program test1
     call mpi_comm_size(MPI_COMM_WORLD, nprocs, ierr)
     call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
-	ncyc = 1
-	D = 8
+	ncyc = 100
+	D = 40
 	Dproc =	D/nprocs	
 
 	istart = me*Dproc + 1
@@ -40,6 +40,7 @@ program test1
 	end if
 	print *, me, X
 
+	
 	do i = 1, ncyc	
 
 		call mpi_isend(X(istart), 1,  &
@@ -91,9 +92,11 @@ program test1
 		X(istart:iend) = Xnp1_res
 		
 		v(istart:iend) = vnp1_res(:,1)
-							
-		
-		
+						
+		if(me==0) then	
+			open(unit=20, file='X.dat')
+			write(20,*) X(istart:iend)		
+		end if
 	enddo
 	call mpi_finalize(ierr)	
 	
