@@ -52,7 +52,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
     print('Starting solve, run_id = ', run_id)
     work_path = os.path.join(BASE_PATH, run_id)
     u1 = os.path.join(work_path, 'final.hdf5')
-    if not os.path.exists(u1):
+    while not os.path.exists(u1):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
         spawnJob(PYTHON, [H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
@@ -87,6 +87,8 @@ def solve(u0, s, nsteps, run_id, interprocess):
         spawnJob(PYTHON, [FOAMH5, work_path, str(final_time), u1])
         # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
+        if not os.path.exists(u1):
+            shutil.move(work_path, work_path + '.failed')
     return u1, zeros(nsteps)
 
 def getHostDir(run_id):
