@@ -3,7 +3,7 @@
 module Lorenz96
 
     ! system parameters:
-    real(kind=8), parameter :: M = 5.d0
+    real(kind=8), parameter :: M = 8.1d0
 contains
 
 subroutine Xnp1(X,D,Xnp1_res)
