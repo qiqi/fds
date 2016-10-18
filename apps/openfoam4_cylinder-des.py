@@ -43,6 +43,11 @@ if not os.path.exists(HDF5_PATH):
 # modify to point to openfoam binary
 pisofoam_bin = '/opt/openfoam4/platforms/linux64GccDPInt32Opt/bin/pisoFoam'
 
+def spawnJob(exe, args, **kwargs):
+    if 'interprocess' in kwargs:
+        del kwargs['interprocess']
+    return call(MPI + [exe] + args, **kwargs)
+
 def solve(u0, s, nsteps, run_id, interprocess):
     print('Starting solve, run_id = ', run_id)
     work_path = os.path.join(BASE_PATH, run_id)
@@ -50,11 +55,13 @@ def solve(u0, s, nsteps, run_id, interprocess):
     if not os.path.exists(u1):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
-        check_call(MPI + [PYTHON, H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
+        spawnJob(PYTHON, [H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
         controlDict = os.path.join(work_path, 'system/controlDict')
         with open(controlDict, 'rt') as f:
             original = f.read()
         final_time = nsteps * TIME_PER_STEP
+        if final_time == int(final_time):
+            final_time = int(final_time)
         assert 'endTime         1;' in original
         modified = original.replace(
                 'endTime         1;',
@@ -67,8 +74,6 @@ def solve(u0, s, nsteps, run_id, interprocess):
             for rank in range(MPI_NP):
                 p = 'processor{0}'.format(rank)
                 u_file = os.path.join(work_path, p, '0', u)
-                if rank == 1:
-                    print(p, u_file)
                 with gzip.open(u_file, 'rb') as f:
                     content = f.read()
                 content = content.replace(
@@ -77,8 +82,9 @@ def solve(u0, s, nsteps, run_id, interprocess):
                 with gzip.open(u_file, 'wb') as f:
                     f.write(content)
         with open(os.path.join(work_path, 'out'), 'wt') as f:
-            check_call(MPI + [pisofoam_bin, '-parallel'], cwd=work_path, stdout=f, stderr=f)
-        check_call(MPI + [PYTHON, FOAMH5, work_path, str(final_time), u1])
+            spawnJob(pisofoam_bin, ['-parallel'],
+                     cwd=work_path, stdout=f, stderr=f)
+        spawnJob(PYTHON, [FOAMH5, work_path, str(final_time), u1])
         # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
     return u1, zeros(nsteps)
@@ -98,7 +104,7 @@ def get_u0():
         with open(decomposeParDict, 'wt') as f:
             f.write(modified)
         check_call(['decomposePar', '-force'], cwd=REF_WORK_PATH, stdout=PIPE)
-        check_call(MPI + [PYTHON, FOAMH5, REF_WORK_PATH, '0', u0])
+        spawnJob(PYTHON, [FOAMH5, REF_WORK_PATH, '0', u0])
     return u0
 
 
@@ -117,7 +123,8 @@ if __name__ == '__main__':
                     epsilon=1E-3,
                     checkpoint_path=BASE_PATH,
                     simultaneous_runs=SIMULTANEOUS_RUNS,
-                    get_host_dir=getHostDir)
+                    get_host_dir=getHostDir,
+                    spawn_compute_job=spawnJob)
     else:
         J, G = continue_shadowing(solve,
                                   S_BASELINE,
@@ -127,4 +134,5 @@ if __name__ == '__main__':
                                   epsilon=1E-3,
                                   checkpoint_path=BASE_PATH,
                                   simultaneous_runs=SIMULTANEOUS_RUNS,
-                                  get_host_dir=getHostDir)
+                                  get_host_dir=getHostDir,
+                                  spawn_compute_job=spawnJob)

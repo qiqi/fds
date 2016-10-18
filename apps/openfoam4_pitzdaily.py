@@ -81,8 +81,6 @@ def solve(u0, s, nsteps, run_id, interprocess):
             for rank in range(MPI_NP):
                 p = 'processor{0}'.format(rank)
                 u_file = os.path.join(work_path, p, '0', u)
-                if rank == 1:
-                    print(p, u_file)
                 with gzip.open(u_file, 'rb') as f:
                     content = f.read()
                 content = content.replace(
