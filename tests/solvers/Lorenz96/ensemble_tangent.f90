@@ -9,7 +9,7 @@ program ensemble_tangent
 	real(kind=8), dimension(:), allocatable ::X,v,Xp,Xpnp1_res,Xnp1_res
 	real(kind=8), dimension(:), allocatable :: dXdt,g
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res, vnp1_res
-	integer :: i, me, ierr, nprocs, Dproc, D, ns
+	integer :: i, me, ierr, nprocs, Dproc, D, ns, ns_proc, j, Dext
     integer :: istart, iend, ncyc, lproc, rproc	
 	integer, allocatable :: seed(:)
 	integer :: rsize, req1, req2
@@ -24,6 +24,8 @@ program ensemble_tangent
 	ncyc = 2000
 	D = 40	
 	dt = 0.01d0
+	T = 2000
+
 	ns = T/ncyc
 	ns_proc = ns/nprocs
 	Dext = D+3
@@ -43,6 +45,8 @@ program ensemble_tangent
 			call RANDOM_SEED(PUT=seed)	
 			call RANDOM_NUMBER(X)
 			v = 0.d0
+			Xp = X
+
 			if(me == 0) then 
 				v(istart) = 1.d0
 				Xp(istart) = Xp(istart) + 0.001d0
@@ -57,6 +61,7 @@ program ensemble_tangent
 
 		    Xavg = 0.d0	
 			do i = 1, ncyc	
+
 
 		
                 X(1) = X(Dext-1)
@@ -85,14 +90,18 @@ program ensemble_tangent
 					write(21,*) Xp(istart:iend)		
 				end if
 
+
 				Xavg = Xavg + DOT_PRODUCT(v(istart:iend),g)
 			enddo
 			close(20)
 			close(21)
 			Xavg = Xavg/ncyc
 			if(me==0) then
+
 				print *, 1.d0/dt/ncyc*log(abs(Xp(istart)-X(istart))/0.001d0)
 			endif
+	enddo
+
 	call mpi_finalize(ierr)	
 	
 end program ensemble_tangent
