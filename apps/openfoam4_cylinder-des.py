@@ -41,7 +41,7 @@ if not os.path.exists(HDF5_PATH):
     os.mkdir(HDF5_PATH)
 
 # modify to point to openfoam binary
-pisofoam_bin = '/opt/openfoam4/platforms/linux64GccDPInt32Opt/bin/pisoFoam'
+pisofoam_bin = os.path.join(my_path, '../tools/openfoam4/pisoFoam/pisoFoam')
 
 def spawnJob(exe, args, **kwargs):
     if 'interprocess' in kwargs:
