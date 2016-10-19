@@ -15,11 +15,11 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 16             # number of unstable modes
-STEPS_PER_SEGMENT = 100  # number of time steps per chunk
-K_SEGMENTS = 100         # number of time chunks
-STEPS_RUNUP = 0          # additional run up time steps
-TIME_PER_STEP = 1E-4
+M_MODES = 16              # number of unstable modes
+STEPS_PER_SEGMENT = 200   # number of time steps per chunk
+K_SEGMENTS = 100          # number of time chunks
+STEPS_RUNUP = 0           # additional run up time steps
+TIME_PER_STEP = 1E-5
 SIMULTANEOUS_RUNS = 18    # max number of simultaneous MPI runs
 MPI_NP = 2
 
@@ -43,27 +43,17 @@ if not os.path.exists(HDF5_PATH):
 # modify to point to openfoam binary
 pisofoam_bin = '/opt/openfoam4/platforms/linux64GccDPInt32Opt/bin/pisoFoam'
 
-def read_field(data_path):
-    field = []
-    with gzip.open(os.path.join(data_path, 'U.gz'), 'rb') as f:
-        line = f.readline().strip()
-        while not line.startswith('internalField'):
-            line = f.readline().strip()
-        n_lines = int(f.readline().strip())
-        assert f.readline().strip() == '('
-        for i in range(n_lines):
-            line = f.readline().strip()
-            assert line.startswith('(') and line.endswith(')')
-            field.extend(line[1:-1].split())
-        assert f.readline().strip() == ')'
-    return array(field, float)
+def read_probes(work_path):
+    filename = os.path.join(work_path, 'postProcessing/probes/0/p')
+    p = loadtxt(filename).reshape([-1, 8])
+    J = (p[:,-1] - p[:,1] - 25)**2
+    return J
 
 def solve(u0, s, nsteps, run_id, interprocess):
     print('Starting solve, run_id = ', run_id)
     work_path = os.path.join(BASE_PATH, run_id)
     u1 = os.path.join(work_path, 'final.hdf5')
-    J_npy = os.path.join(work_path, 'prob.npy')
-    if not (os.path.exists(u1) and os.path.exists(J_npy)):
+    while not os.path.exists(u1):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
         check_call(MPI + [PYTHON, H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
@@ -71,10 +61,14 @@ def solve(u0, s, nsteps, run_id, interprocess):
         with open(controlDict, 'rt') as f:
             original = f.read()
         final_time = nsteps * TIME_PER_STEP
+        if final_time == int(final_time):
+            final_time = int(final_time)
         assert 'endTime         1;' in original
         modified = original.replace(
                 'endTime         1;',
-                'endTime         {0};'.format(final_time))
+                'endTime         {0};'.format(final_time)).replace(
+                'writeInterval   10;',
+                'writeInterval   {0};'.format(nsteps))
         with open(controlDict, 'wt') as f:
             f.write(modified)
         for u in ['U.gz', 'U_0.gz']:
@@ -92,21 +86,11 @@ def solve(u0, s, nsteps, run_id, interprocess):
             check_call(MPI + [pisofoam_bin, '-parallel'], cwd=work_path, stdout=f, stderr=f)
         check_call(MPI + [PYTHON, FOAMH5, work_path, str(final_time), u1])
         # shutil.rmtree(os.path.join(work_path, '0'))
-        shutil.rmtree(os.path.join(work_path, 'system'))
+        # shutil.rmtree(os.path.join(work_path, 'system'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
-        J = []
-        for i in range(1, nsteps+1):
-            t = str(i * TIME_PER_STEP)
-            time_t_paths = [os.path.join(work_path,
-                                         'processor{0}'.format(rank), t)
-                            for rank in range(MPI_NP)]
-            J.append([read_field(p) for p in time_t_paths])
-            for p in time_t_paths:
-                shutil.rmtree(p)
-        J = array(J)
-        save(J_npy, J)
-    else:
-        J = load(J_npy)
+        if not os.path.exists(u1):
+            shutil.move(work_path, work_path + '.failed')
+    J = read_probes(work_path)
     return u1, J
 
 def getHostDir(run_id):
