@@ -10,33 +10,39 @@ program ensemble_tangent
 	real(kind=8), dimension(:), allocatable :: dXdt,g
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res, vnp1_res
 	integer :: i, me, ierr, nprocs, Dproc, D, ns, ns_proc, j, Dext
-    integer :: istart, iend, ncyc, lproc, rproc	
+    integer :: istart, iend, lproc, rproc	
 	integer, allocatable :: seed(:)
 	integer :: rsize, req1, req2
 	integer, dimension(MPI_STATUS_SIZE) :: mpistatus
  	real(kind=8), pointer, dimension(:) :: p
-	real(kind=8) :: dt, dXavgds, dXavgds_avg_proc, dXavgds_avg, L1	
-	integer :: thefile, T
+	real(kind=8) :: dt, dXavgds, dXavgds_avg_proc, L1, thetaEA_mean, thetaEA_var	
+	integer :: thefile, T, tau,k,k1,s
+	real(kind=8), dimension(:), allocatable :: dXavgds_all,thetaEA
+	integer, dimension(MPI_STATUS_SIZE) :: status
     call mpi_init(ierr)
     call mpi_comm_size(MPI_COMM_WORLD, nprocs, ierr)
     call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
-	ncyc = 60000
+	tau = 1000
 	D = 40	
 	dt = 0.01d0
-	T = 720000
+	T = 100000
 	L1 = 0.d0
-	ns = T/ncyc
+	ns = 10000
 	ns_proc = ns/nprocs
 	Dext = D+3
+	s = T/tau
 	allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
-	Xpnp1_res(1:D), Xp(1:Dext), g(1:D))
+	Xpnp1_res(1:D), Xp(1:Dext), g(1:D), dXavgds_all(1:ns),thetaEA(1:ns/s))
+	if(me==0) then
+		k=0
+	endif
 
 	istart = 3
 	iend = Dext - 1
 	g = 0.d0
 	g(D) = 1.d0
-	dXavgds_avg = 0.d0	
+	
 	dXavgds_avg_proc = 0.d0	
 	do j = 1, ns_proc
 
@@ -61,7 +67,7 @@ program ensemble_tangent
 
 		    dXavgds = 0.d0
 			
-			do i = 1, ncyc	
+			do i = 1, tau	
 				
 
 
@@ -102,18 +108,34 @@ program ensemble_tangent
 			enddo
 			close(20)
 			close(21)
-			dXavgds = dXavgds/ncyc
-			dXavgds_avg_proc = dXavgds_avg_proc + dXavgds
+			dXavgds = dXavgds/tau
+			
+			call MPI_SEND(dXavgds,1,MPI_DOUBLE_PRECISION, &
+							0, me, MPI_COMM_WORLD, ierr)
+
+			if(me==0) then
+				do k1 = 1,nprocs
+					k = k + 1
+					call MPI_RECV(dXavgds_all(k), &
+						1, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, &
+						MPI_ANY_TAG, MPI_COMM_WORLD, status, ierr)
+				end do
+			end if      
 			deallocate(seed)
 	enddo
-	
-	call MPI_REDUCE(dXavgds_avg_proc, dXavgds_avg, &
-					1, MPI_DOUBLE_PRECISION,MPI_SUM,0, &
-					MPI_COMM_WORLD,ierr)
 
+	
+	
 	if(me==0) then
-		dXavgds_avg = dXavgds_avg/ns
-		print *,  dXavgds_avg
+		do k1 = 1,ns/s
+			thetaEA(k1) = sum(dXavgds_all((k1-1)*s+1:k1*s))/s
+		end do
+		thetaEA_mean = sum(thetaEA)/(ns/s)
+		thetaEA_var = 0.d0
+		do k1 = 1,ns/s
+			thetaEA_var = thetaEA_var + (thetaEA(k1)-thetaEA_mean)**2.0
+		end do
+		thetaEA_var = thetaEA_var/(ns/s)
 	end if
 
 
