@@ -1,8 +1,7 @@
 ! Lorenz ' 96 system
 
 module Lorenz96
-
-    ! system parameters:
+	! system parameters:
     real(kind=8), parameter :: M = 8.1d0
 contains
 
@@ -79,33 +78,42 @@ subroutine dvdt(X,D,v1,dvdt_res)
 		
 		dvdt_res = matmul(dfdX_ext,v1)	
 end subroutine dvdt
-subroutine rk45(X,D,v,vnp1)
-
+subroutine rk45_full(X,D,v,vnp1)
+!Assumes full perturbation vector.
 	implicit none
 	integer, intent(in) :: D
 	real(kind=8) , intent(in), dimension(D) :: X,v
 	real(kind=8) , intent(out), dimension(D-3,1) :: vnp1
-	real(kind=8) , dimension(D-3,1) :: v1,dvdt_res,k1,k2,k3,k4
+	real(kind=8) , dimension(D,1) :: v1,k1,k2,k3,k4
+	real(kind=8) , dimension(D-3,1):: dvdt_res
 	real(kind=8) :: dt
 
     
 
 	dt = 0.001d0	
-	v1 = reshape(v,[D-3,1])
+	v1 = reshape(v,[D,1])
 	call dvdt(X,D,v1,dvdt_res)	
-	k1 = dt*dvdt_res
+	k1(3:D-1,1) = dt*dvdt_res(:,1)
+	k1(1,1) = k1(D-2,1)
+	k1(2,1) = k1(D-1,1)
+	k1(D,1) = k1(3,1)
 	call dvdt(X,D,v1 + 0.5d0*k1,dvdt_res)
-	k2 = dt*dvdt_res
+	k2(3:D-1,1) = dt*dvdt_res(:,1)
+	k2(1,1) = k2(D-2,1)
+	k2(2,1) = k2(D-1,1)
+	k2(D,1) = k2(3,1)
 	call dvdt(X,D,v1 + 0.5d0*k2,dvdt_res)
-	k3 = dt*dvdt_res
+	k3(3:D-1,1) = dt*dvdt_res(:,1)
+	k3(1,1) = k3(D-2,1)
+	k3(2,1) = k3(D-1,1)
+	k3(D,1) = k3(3,1)
 	call dvdt(X,D,v1 + k3,dvdt_res)
-	k4 = dt*dvdt_res
-
-	vnp1 = v1 + 1.d0/6.d0*k1 + &
-		 1.d0/3.d0*k2 + 1.d0/3.d0*k3 + &
-		1.d0/6.d0*k4
+	k4(3:D-1,1) = dt*dvdt_res(:,1)
+	vnp1(:,1) = v1(3:D-1,1) + 1.d0/6.d0*k1(3:D-1,1) + &
+		 1.d0/3.d0*k2(3:D-1,1) + 1.d0/3.d0*k3(3:D-1,1) + &
+		1.d0/6.d0*k4(3:D-1,1)
     
 
-end subroutine rk45 
+end subroutine rk45_full 
 
 end module Lorenz96

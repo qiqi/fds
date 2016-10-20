@@ -15,17 +15,17 @@ program ensemble_tangent
 	integer :: rsize, req1, req2
 	integer, dimension(MPI_STATUS_SIZE) :: mpistatus
  	real(kind=8), pointer, dimension(:) :: p
-	real(kind=8) :: dt, Xavg	
-	integer :: thefile, ns, T
+	real(kind=8) :: dt, dXavgds, dXavgds_avg_proc, dXavgds_avg, L1	
+	integer :: thefile, T
     call mpi_init(ierr)
     call mpi_comm_size(MPI_COMM_WORLD, nprocs, ierr)
     call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
-	ncyc = 2000
+	ncyc = 60000
 	D = 40	
 	dt = 0.01d0
-	T = 2000
-
+	T = 720000
+	L1 = 0.d0
 	ns = T/ncyc
 	ns_proc = ns/nprocs
 	Dext = D+3
@@ -33,10 +33,11 @@ program ensemble_tangent
 	Xpnp1_res(1:D), Xp(1:Dext), g(1:D))
 
 	istart = 3
-	iend = D
+	iend = Dext - 1
 	g = 0.d0
 	g(D) = 1.d0
-
+	dXavgds_avg = 0.d0	
+	dXavgds_avg_proc = 0.d0	
 	do j = 1, ns_proc
 
 			
@@ -47,10 +48,9 @@ program ensemble_tangent
 			v = 0.d0
 			Xp = X
 
-			if(me == 0) then 
-				v(istart) = 1.d0
-				Xp(istart) = Xp(istart) + 0.001d0
-			end if
+			v(istart) = 1.d0
+			Xp(istart) = Xp(istart) + 0.001d0
+		
 
 		!	call MPI_FILE_OPEN(MPI_COMM_WORLD, 'test', &
 		!			MPI_MODE_WRONLY + MPI_MODE_CREATE, &
@@ -59,22 +59,29 @@ program ensemble_tangent
 		!			write(30+me,*) X(istart:iend)	
 		!			close(30+me)	
 
-		    Xavg = 0.d0	
+		    dXavgds = 0.d0
+			
 			do i = 1, ncyc	
+				
+
+
+				v(1) = v(Dext-2)
+                v(2) = v(Dext-1)
+                v(Dext) = v(istart)
 
 
 		
-                X(1) = X(Dext-1)
-                X(2) = X(Dext)
+                X(1) = X(Dext-2)
+                X(2) = X(Dext-1)
                 X(Dext) = X(istart)
 
-                Xp(1) = Xp(Dext-1)
-                Xp(2) = Xp(Dext)
+                Xp(1) = Xp(Dext-2)
+                Xp(2) = Xp(Dext-1)
                 Xp(Dext) = Xp(istart)
 
 				call Xnp1(X,Dext,Xnp1_res)
 				call Xnp1(Xp,Dext,Xpnp1_res)
-				call rk45(X,Dext,v,vnp1_res)
+				call rk45_full(X,Dext,v,vnp1_res)
 
 				if(me == 0) then
 				!Compute lift and drag.	
@@ -91,16 +98,24 @@ program ensemble_tangent
 				end if
 
 
-				Xavg = Xavg + DOT_PRODUCT(v(istart:iend),g)
+				dXavgds = dXavgds + DOT_PRODUCT(v(istart:iend),g)
 			enddo
 			close(20)
 			close(21)
-			Xavg = Xavg/ncyc
-			if(me==0) then
-
-				print *, 1.d0/dt/ncyc*log(abs(Xp(istart)-X(istart))/0.001d0)
-			endif
+			dXavgds = dXavgds/ncyc
+			dXavgds_avg_proc = dXavgds_avg_proc + dXavgds
+			deallocate(seed)
 	enddo
+	
+	call MPI_REDUCE(dXavgds_avg_proc, dXavgds_avg, &
+					1, MPI_DOUBLE_PRECISION,MPI_SUM,0, &
+					MPI_COMM_WORLD,ierr)
+
+	if(me==0) then
+		dXavgds_avg = dXavgds_avg/ns
+		print *,  dXavgds_avg
+	end if
+
 
 	call mpi_finalize(ierr)	
 	
