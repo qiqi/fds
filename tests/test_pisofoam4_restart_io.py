@@ -40,13 +40,13 @@ cp -r {0}/../../data/pisofoam_restart/system {0}/two_steps/step_1
 sed -i -e "s/numberOfSubdomains 2/numberOfSubdomains {3}/g" {0}/two_steps/step_1/system/decomposeParDict
 decomposePar -case {0}/two_steps/step_1 > {0}/two_steps/step_1/out0
 mpiexec -np {3} {1}/pisoFoam -parallel -case {0}/two_steps/step_1 > {0}/two_steps/step_1/out
-mpiexec -np {3} python {2}/foam_to_h5.py {0}/two_steps/step_1 1 {0}/two_steps/1.hdf5
-mpiexec -np {3} python {2}/h5_to_foam.py two_steps/step_1 {0}/two_steps/1.hdf5 {0}/two_steps/step_2 0
+mpiexec -np {3} {4} {2}/foam_to_h5.py {0}/two_steps/step_1 1 {0}/two_steps/1.hdf5
+mpiexec -np {3} {4} {2}/h5_to_foam.py two_steps/step_1 {0}/two_steps/1.hdf5 {0}/two_steps/step_2 0
 mpiexec -np {3} {1}/pisoFoam -parallel -case {0}/two_steps/step_2 > {0}/two_steps/step_2/out
 reconstructPar -case {0}/two_steps/step_2 > {0}/two_steps/step_2/out1
 cp {0}/two_steps/step_2/1/*.gz {0}/two_steps/step_2
 gunzip {0}/two_steps/step_2/*.gz
-'''.strip().format(test_path, foam_path, tool_path, 4)
+'''.strip().format(test_path, foam_path, tool_path, 4, sys.executable)
 
 compare = '''
 diff one_step/U two_steps/

@@ -55,11 +55,11 @@ class FileParser:
         self.is_vector = False
         line_beginning_depth = 0
         for line in f:
-            if line.strip().startswith('class '):
+            if line.strip().startswith(b'class '):
                 assert not self.is_scalar and not self.is_vector
-                if 'Vector' in line:
+                if b'Vector' in line:
                     self.is_vector = True
-                elif 'Scalar' in line:
+                elif b'Scalar' in line:
                     self.is_scalar = True
             split_line, split_depth = split_line_parenthesis(line)
             line_beginning_depth += split_depth[-1]
