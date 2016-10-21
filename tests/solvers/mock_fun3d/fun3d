@@ -27,6 +27,7 @@ else:
     x = random.rand(10)
 
 def extend(x):
+    print(x)
     MPI.COMM_WORLD.Isend(x[-2:], mpi_rank_p)
     MPI.COMM_WORLD.Isend(x[:1], mpi_rank_m)
     x_extended = zeros(x.size + 3)
@@ -47,12 +48,14 @@ def print_cl_cd(x):
 F = args.xmach + 8
 dt = 0.01
 for i in range(args.ncyc):
+  
+    
     x = extend(x)
     x_m2, x_m1, x, x_p1 = x[:-3], x[1:-2], x[2:-1], x[3:]
     dxdt = -x_m2 * x_m1 + x_m1 * x_p1 - x + F
     x += dt * dxdt
     print_cl_cd(x)
-
+    
 if args.write_final_field:
     with open('final.data.{0}'.format(mpi_rank), 'wb') as f:
         f.write(asarray(x, dtype='>d').tostring())
