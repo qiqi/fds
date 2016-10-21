@@ -83,11 +83,9 @@ def mpi_compute(sample_input, outputs, graph, **kwargs):
             output.value.field = computed_outputs[index]
             index += 1
 
-def mpi_range(size):
-    mpi_size = int(math.ceil(float(size) / mpi.Get_size()))
-    start = mpi.rank * mpi_size
-    end = min(size, start + mpi_size)
-    return start, end
+def mpi_range(total_size):
+    boundaries = np.array(np.linspace(0, total_size, mpi.size + 1), int)
+    return boundaries[mpi.rank], boundaries[mpi.rank + 1]
 
 def mpi_read_field(field_file):
     handle = h5py.File(field_file, 'r', driver='mpio', comm=mpi)

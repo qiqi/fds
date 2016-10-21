@@ -104,6 +104,23 @@ def sort_operations(unsorted_operations):
         assert removed_any
     return sorted_operations
 
+def forgettable_values(sorted_operations):
+    values_used_total = collections.defaultdict(int)
+    for op in sorted_operations:
+        for inp in op.inputs:
+            if _is_like_sa_value(inp):
+                values_used_total[inp] += 1
+    values_used = collections.defaultdict(int)
+    remove_values = collections.defaultdict(set)
+    for i in range(len(sorted_operations)):
+        op = sorted_operations[i]
+        for inp in op.inputs:
+            if _is_like_sa_value(inp):
+                values_used[inp] += 1
+                if values_used[inp] == values_used_total[inp]:
+                    remove_values[op].add(inp)
+    return remove_values
+
 class ComputationalGraph(object):
     '''
     Immutable compact stage
@@ -135,10 +152,15 @@ class ComputationalGraph(object):
                 return v.reshape(v.shape + (1,))
             else:
                 return v
+        remove_act_values = forgettable_values(self.sorted_operations)
         for op in self.sorted_operations:
             assert not any(hasattr(outp, '_act') for outp in op.outputs)
             inputs_act = [_act(inp) for inp in op.inputs]
             outputs_act = op.perform(inputs_act)
+            for inp in remove_act_values[op]:
+                if hasattr(inp, '_act') and inp not in self.output_values:
+                    del inp._act
+                    values_assigned_act.remove(inp)
             for outp, outp_act in zip(op.outputs, outputs_act):
                 outp._act = outp_act
                 values_assigned_act.add(outp)

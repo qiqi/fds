@@ -77,7 +77,10 @@ class DataLoader:
                 if (sub_depth > 0 and self.parser.is_scalar or
                     sub_depth > 1 and self.parser.is_vector):
                     data.extend(sub_line.strip().split())
-        return np.array(data, float)
+        data = np.array(data, float)
+        if filename.startswith('nu'):
+            data[data<=0] = 0
+        return data
 
 
 def join_line_parenthesis(split_line, split_depth):
@@ -104,8 +107,8 @@ class DataWriter:
                     if (split_depth[i] > 0 and self.parser.is_scalar or
                         split_depth[i] > 1 and self.parser.is_vector):
                         ni = len(split_line[i].strip().split())
-                        data_i = ['{0:.18g}'.format(d)
-                                  for d in data[data_ptr:data_ptr+ni]]
+                        data_i = data[data_ptr:data_ptr+ni]
+                        data_i = ['{0:.18g}'.format(d) for d in data_i]
                         data_ptr += ni
                         if b'\n' in split_line[i]:
                             split_line[i] = (' '.join(data_i) + '\n').encode()

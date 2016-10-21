@@ -15,19 +15,19 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 16              # number of unstable modes
-STEPS_PER_SEGMENT = 200   # number of time steps per chunk
-K_SEGMENTS = 100          # number of time chunks
-STEPS_RUNUP = 0           # additional run up time steps
-TIME_PER_STEP = 1E-5
-SIMULTANEOUS_RUNS = 18    # max number of simultaneous MPI runs
-MPI_NP = 2
+M_MODES = 16             # number of unstable modes
+STEPS_PER_SEGMENT = 40   # number of time steps per chunk
+K_SEGMENTS = 100         # number of time chunks
+STEPS_RUNUP = 0          # additional run up time steps
+TIME_PER_STEP = 0.05
+SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
+MPI_NP = 36
 
 MPI = ['mpiexec', '-np', str(MPI_NP)]
 
 # modify to point to openfoam binary
-REF_WORK_PATH = os.path.join(my_path, '../../pitzdaily/ref')
-BASE_PATH = os.path.join(my_path, 'pitzdaily')
+REF_WORK_PATH = os.path.join(my_path, '../../cylinder-des/ref')
+BASE_PATH = os.path.join(my_path, 'cylinder-des')
 HDF5_PATH = os.path.join(BASE_PATH, 'hdf5')
 S_BASELINE = 10
 
@@ -41,13 +41,12 @@ if not os.path.exists(HDF5_PATH):
     os.mkdir(HDF5_PATH)
 
 # modify to point to openfoam binary
-pisofoam_bin = '/opt/openfoam4/platforms/linux64GccDPInt32Opt/bin/pisoFoam'
+pisofoam_bin = os.path.join(my_path, '../tools/openfoam4/pisoFoam/pisoFoam')
 
-def read_probes(work_path):
-    filename = os.path.join(work_path, 'postProcessing/probes/0/p')
-    p = loadtxt(filename).reshape([-1, 8])
-    J = (p[:,-1] - p[:,1] - 25)**2
-    return J
+def spawnJob(exe, args, **kwargs):
+    if 'interprocess' in kwargs:
+        del kwargs['interprocess']
+    return call(MPI + [exe] + args, **kwargs)
 
 def solve(u0, s, nsteps, run_id, interprocess):
     print('Starting solve, run_id = ', run_id)
@@ -56,7 +55,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
     while not os.path.exists(u1):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
-        check_call(MPI + [PYTHON, H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
+        spawnJob(PYTHON, [H5FOAM, REF_WORK_PATH, u0, work_path, '0'])
         controlDict = os.path.join(work_path, 'system/controlDict')
         with open(controlDict, 'rt') as f:
             original = f.read()
@@ -67,7 +66,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
         modified = original.replace(
                 'endTime         1;',
                 'endTime         {0};'.format(final_time)).replace(
-                'writeInterval   10;',
+                'writeInterval   200;',
                 'writeInterval   {0};'.format(nsteps))
         with open(controlDict, 'wt') as f:
             f.write(modified)
@@ -83,31 +82,31 @@ def solve(u0, s, nsteps, run_id, interprocess):
                 with gzip.open(u_file, 'wb') as f:
                     f.write(content)
         with open(os.path.join(work_path, 'out'), 'wt') as f:
-            check_call(MPI + [pisofoam_bin, '-parallel'], cwd=work_path, stdout=f, stderr=f)
-        check_call(MPI + [PYTHON, FOAMH5, work_path, str(final_time), u1])
+            spawnJob(pisofoam_bin, ['-parallel'],
+                     cwd=work_path, stdout=f, stderr=f)
+        spawnJob(PYTHON, [FOAMH5, work_path, str(final_time), u1])
         # shutil.rmtree(os.path.join(work_path, '0'))
-        # shutil.rmtree(os.path.join(work_path, 'system'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
         if not os.path.exists(u1):
             shutil.move(work_path, work_path + '.failed')
-    J = read_probes(work_path)
-    return u1, J
+    return u1, zeros(nsteps)
 
 def getHostDir(run_id):
     return os.path.join(HDF5_PATH, run_id)
 
 def get_u0():
     u0 = os.path.join(REF_WORK_PATH, 'u0.hdf5')
-    template = os.path.join(REF_WORK_PATH, 'decomposeParDict.template')
-    original = open(template).read()
-    assert 'numberOfSubdomains X' in original
-    modified = original.replace(
-            'numberOfSubdomains X', 'numberOfSubdomains {0}'.format(MPI_NP))
-    decomposeParDict = os.path.join(REF_WORK_PATH, 'system/decomposeParDict')
-    with open(decomposeParDict, 'wt') as f:
-        f.write(modified)
-    check_call(['decomposePar', '-force'], cwd=REF_WORK_PATH, stdout=PIPE)
-    check_call(MPI + [PYTHON, FOAMH5, REF_WORK_PATH, '0', u0])
+    if not os.path.exists(u0):
+        template = os.path.join(REF_WORK_PATH, 'decomposeParDict.template')
+        original = open(template).read()
+        assert 'numberOfSubdomains X' in original
+        modified = original.replace(
+                'numberOfSubdomains X', 'numberOfSubdomains {0}'.format(MPI_NP))
+        decomposeParDict = os.path.join(REF_WORK_PATH, 'system/decomposeParDict')
+        with open(decomposeParDict, 'wt') as f:
+            f.write(modified)
+        check_call(['decomposePar', '-force'], cwd=REF_WORK_PATH, stdout=PIPE)
+        spawnJob(PYTHON, [FOAMH5, REF_WORK_PATH, '0', u0])
     return u0
 
 
@@ -126,7 +125,8 @@ if __name__ == '__main__':
                     epsilon=1E-3,
                     checkpoint_path=BASE_PATH,
                     simultaneous_runs=SIMULTANEOUS_RUNS,
-                    get_host_dir=getHostDir)
+                    get_host_dir=getHostDir,
+                    spawn_compute_job=spawnJob)
     else:
         J, G = continue_shadowing(solve,
                                   S_BASELINE,
@@ -136,4 +136,5 @@ if __name__ == '__main__':
                                   epsilon=1E-3,
                                   checkpoint_path=BASE_PATH,
                                   simultaneous_runs=SIMULTANEOUS_RUNS,
-                                  get_host_dir=getHostDir)
+                                  get_host_dir=getHostDir,
+                                  spawn_compute_job=spawnJob)
