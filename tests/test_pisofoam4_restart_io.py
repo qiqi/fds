@@ -20,12 +20,13 @@ cp -r {0}/../../data/pisofoam_restart/0 {0}/one_step
 cp -r {0}/../../data/pisofoam_restart/constant {0}/one_step
 cp -r {0}/../../data/pisofoam_restart/system {0}/one_step
 sed -i -e "s/endTime         1;/endTime         2;/g" {0}/one_step/system/controlDict
+sed -i -e "s/numberOfSubdomains 2/numberOfSubdomains {2}/g" {0}/one_step/system/decomposeParDict
 decomposePar -case {0}/one_step > {0}/one_step/out0
-mpiexec -np 2 {1}/pisoFoam -parallel -case {0}/one_step > {0}/one_step/out
+mpiexec -np {2} {1}/pisoFoam -parallel -case {0}/one_step > {0}/one_step/out
 reconstructPar -case {0}/one_step > {0}/one_step/out1
 cp {0}/one_step/2/*.gz {0}/one_step
 gunzip {0}/one_step/*.gz
-'''.strip().format(test_path, foam_path)
+'''.strip().format(test_path, foam_path, 4)
 
 test_two_steps = '''
 rm -rf {0}/two_steps
@@ -36,15 +37,16 @@ mkdir {0}/two_steps/step_2
 gzip {0}/two_steps/step_1/0/*
 cp -r {0}/../../data/pisofoam_restart/constant {0}/two_steps/step_1
 cp -r {0}/../../data/pisofoam_restart/system {0}/two_steps/step_1
+sed -i -e "s/numberOfSubdomains 2/numberOfSubdomains {3}/g" {0}/two_steps/step_1/system/decomposeParDict
 decomposePar -case {0}/two_steps/step_1 > {0}/two_steps/step_1/out0
-mpiexec -np 2 {1}/pisoFoam -parallel -case {0}/two_steps/step_1 > {0}/two_steps/step_1/out
-mpiexec -np 2 python {2}/foam_to_h5.py {0}/two_steps/step_1 1 {0}/two_steps/1.hdf5
-mpiexec -np 2 python {2}/h5_to_foam.py two_steps/step_1 {0}/two_steps/1.hdf5 {0}/two_steps/step_2 0
-mpiexec -np 2 {1}/pisoFoam -parallel -case {0}/two_steps/step_2 > {0}/two_steps/step_2/out
+mpiexec -np {3} {1}/pisoFoam -parallel -case {0}/two_steps/step_1 > {0}/two_steps/step_1/out
+mpiexec -np {3} {4} {2}/foam_to_h5.py {0}/two_steps/step_1 1 {0}/two_steps/1.hdf5
+mpiexec -np {3} {4} {2}/h5_to_foam.py two_steps/step_1 {0}/two_steps/1.hdf5 {0}/two_steps/step_2 0
+mpiexec -np {3} {1}/pisoFoam -parallel -case {0}/two_steps/step_2 > {0}/two_steps/step_2/out
 reconstructPar -case {0}/two_steps/step_2 > {0}/two_steps/step_2/out1
 cp {0}/two_steps/step_2/1/*.gz {0}/two_steps/step_2
 gunzip {0}/two_steps/step_2/*.gz
-'''.strip().format(test_path, foam_path, tool_path)
+'''.strip().format(test_path, foam_path, tool_path, 4, sys.executable)
 
 compare = '''
 diff one_step/U two_steps/
@@ -57,8 +59,8 @@ diff one_step/phi_0 two_steps/
 diff one_step/U_0 two_steps/
 '''.strip()
 
-if __name__ == '__main__':
-#def test_pisoform4_io():
+#if __name__ == '__main__':
+def test_pisoform4_io():
     if os.path.exists(test_path):
         shutil.rmtree(test_path)
     os.mkdir(test_path)
