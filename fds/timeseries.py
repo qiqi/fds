@@ -8,6 +8,7 @@ def mean_std(x):
 
 def windowed_mean(a):
     win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
+    # win = ones(a.shape[0]) 
     return (a * win[:,newaxis]).sum(0) / win.sum()
 
 def exp_cum_mean(x):
