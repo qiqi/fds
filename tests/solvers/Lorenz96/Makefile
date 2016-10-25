@@ -3,7 +3,7 @@ OBJECTS1 = Lorenz96.o ensemble_tangent.o
 OBJECTS2 = Lorenz96.o test1.o 
 MODULES = Lorenz96.mod
 LFLAGS = -lblas -llapack
-FFLAGS = -g
+FFLAGS = -g -fcheck=all -Wall
 NUM_PROCS ?= 4   
 
 FC = mpif90
