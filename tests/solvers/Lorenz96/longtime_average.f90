@@ -6,15 +6,16 @@ program ensemble_tangent
     use mpi 
 
     implicit none
-	real(kind=8), dimension(:), allocatable ::X,v,Xp,Xpnp1_res,Xnp1_res
+	real(kind=8), dimension(:), allocatable ::X,v,Xp,Xpnp1_res,Xnp1_res,F,Xavg
 	real(kind=8), dimension(:), allocatable :: dXdt,g,thetaEA_mean, thetaEA_var	
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res, vnp1_res
 	integer :: i, me, ierr, nprocs, Dproc, D, ns, ns_proc, j, Dext !, you_old, you_new
     integer :: istart, iend, lproc, rproc, max_iter	
 	integer, allocatable :: seed(:)
-	integer :: rsize, req1, req2
+	integer :: rsize, req1, req2i, nF, nF_sent, sender, jj
 	real(kind=8), pointer, dimension(:) :: p
-	real(kind=8) :: dt, dXavgds, dXavgds_avg_proc, L1, dXavgds_fd
+	real(kind=8) :: dt, dXavgds, dXavgds_avg_proc, L1, dXavgds_fd, Xavg_F
+	real(kind=8) :: Fproc
 	integer :: thefile, T, tau,k,k1,N, ntau, k2
 	real(kind=8), dimension(:), allocatable :: dXavgds_all,thetaEA
 	integer, dimension(MPI_STATUS_SIZE) :: status
@@ -32,11 +33,12 @@ program ensemble_tangent
 	ns = 100000
 	ns_proc = ns/nprocs
 	Dext = D+3
-	
+
+	nF = 100	
 	
 	allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
 	Xpnp1_res(1:D), Xp(1:Dext), g(1:D), dXavgds_all(1:ns), &
-	thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
+	thetaEA_mean(1:ntau), thetaEA_var(1:ntau), F(1:nF))
 	if(me==0) then
 		k=0
 	end if
@@ -50,46 +52,120 @@ program ensemble_tangent
 			open(unit=21, file='VthetaEA_test.dat')
 	end if
 
-	!Finite Difference
-	
+	!Direct Integration
+	Xavg = 0.d0	
 	if(me==0) then
-		max_iter = 1000000
-		dXavgds_fd = 0.d0
 
-		call RANDOM_SEED(SIZE=rsize)
-		allocate(seed(rsize))
-		call RANDOM_SEED(PUT=seed)	
-		call RANDOM_NUMBER(X)
-		deallocate(seed)
-		v = 0.d0
-		Xp = X
-		Xp(istart) = Xp(istart) + 0.01d0
-		do i = 1,max_iter
+		nF_sent = 0
+
+		!Initialize F
+		F(1) = 5.d0
+		do j = 2, nF
+
+			F(j) = F(j-1) + dF
+		end do
+
+		do j=1,min(num_procs-1,nF)
+
+			call MPI_SEND(F(j), 1, MPI_DOUBLE_PRECISION, &
+							j, j, MPI_COMM_WORLD, ierr)
+			
+			nF_sent = nF_sent + 1	
+				
+		end do
+	
+		do j = 1,nF
+			
+			call MPI_RECV(Xavg_F, 1, MPI_DOUBLE_PRECISION, &
+				MPI_ANY_SOURCE, MPI_ANY_TAG, &
+				MPI_COMM_WORLD, status, ierr)
+		
+			sender = status(MPI_SOURCE)
+			jj = status(MPI_TAG)
+			Xavg(jj) = Xavg_F
+
+			if(nF_sent < nF) then
+		
+				nF_sent = nF_sent + 1
+				call MPI_SEND(F(nF_sent), 1, MPI_DOUBLE_PRECISION, &
+					sender, nF_sent, MPI_COMM_WORLD, status, ierr)
+							
+			else
+			
+				call MPI_SEND(F(nF_sent), 1, MPI_DOUBLE_PRECISION, &
+					sender, 0, MPI_COMM_WORLD, status, ierr)
 
 				
 
-			X(1) = X(Dext-2)
-			X(2) = X(Dext-1)
-			X(Dext) = X(istart)
+			end if	
+			 	
 
-			Xp(1) = Xp(Dext-2)
-			Xp(2) = Xp(Dext-1)
-			Xp(Dext) = Xp(istart)
-
-			call Xnp1(X,Dext,Xnp1_res)
-			call Xnp1(Xp,Dext,Xpnp1_res)
-	
-			if(i==600000) then
-				dXavgds_fd = dXavgds_fd + & 
-				ABS((DOT_PRODUCT(Xpnp1_res,g)-DOT_PRODUCT(Xnp1_res,g)))/0.01d0 
-			end if
-
-
-		end do
-		dXavgds_fd = dXavgds_fd !/(max_iter-500000)
-		print *, "fds sens... ", dXavgds_fd
+		end do	
+		
+		
 	end if 
 
+		
+!Code for workers
+
+	if(me /= 0) then
+
+		if(me > nF) then 
+			go to 99
+		end if
+
+		do while (.true.)
+
+			call MPI_RECV(Fproc, 1, MPI_DOUBLE_PRECISION, &
+						0, MPI_ANY_TAG, MPI_COMM_WORLD, &
+						status, ierr)
+			j = status(MPI_TAG)
+		
+			if(j==0) then 
+				go to 99
+ 			end if
+		
+			call RANDOM_SEED(SIZE=rsize)
+			allocate(seed(rsize))
+			call RANDOM_SEED(PUT=seed)	
+			call RANDOM_NUMBER(X)
+			deallocate(seed)
+		
+			Xp = X
+	
+			max_iter = 1000000
+			Xavg_F = 0.d0
+
+			do i = 1,max_iter
+
+						
+
+					X(1) = X(Dext-2)
+					X(2) = X(Dext-1)
+					X(Dext) = X(istart)
+
+					Xp(1) = Xp(Dext-2)
+					Xp(2) = Xp(Dext-1)
+					Xp(Dext) = Xp(istart)
+
+					call Xnp1(X,Dext,Xnp1_res)
+					call Xnp1(Xp,Dext,Xpnp1_res)
+			
+					if(i > 300000) then
+						Xavg = Xavg + SUM(Xnp1_res)/D 
+					end if
+
+
+				end do
+				Xavg = Xavg/(max_iter-300000)
+				print *, "Long term average is : ", Xavg
+			
+				
+
+
+
+
+		end do while 
 
 
 
