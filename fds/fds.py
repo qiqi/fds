@@ -25,17 +25,21 @@ def tangent_initial_condition(subspace_dimension):
     w = pascal.zeros()
     return W, w
 
-def lss_gradient(checkpoint, num_segments=None):
+def lss_gradient(checkpoint, segment_range=None):
     _, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = checkpoint
-    if num_segments:
+    if segment_range is not None:
         lss = deepcopy(lss)
-        lss.bs = lss.bs[:num_segments]
-        lss.Rs = lss.Rs[:num_segments]
-        G_lss = G_lss[:num_segments]
-        g_lss = g_lss[:num_segments]
-        J = J[:num_segments]
-        G_dil = G_dil[:num_segments]
-        g_dil = g_dil[:num_segments]
+        if isinstance(segment_range, int):
+            s = slice(segment_range)
+        else:
+            s = slice(*segment_range)
+        lss.bs = lss.bs[s]
+        lss.Rs = lss.Rs[s]
+        G_lss  = G_lss [s]
+        g_lss  = g_lss [s]
+        J      = J     [s]
+        G_dil  = G_dil [s]
+        g_dil  = g_dil [s]
     alpha = lss.solve()
     grad_lss = (alpha[:,:,np.newaxis] * np.array(G_lss)).sum(1) + np.array(g_lss)
     J = np.array(J)

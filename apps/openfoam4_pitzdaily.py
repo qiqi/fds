@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import argparse
 from subprocess import *
+from StringIO import StringIO
 
 from numpy import *
 
@@ -16,9 +17,9 @@ from fds import *
 from fds.checkpoint import *
 
 M_MODES = 16              # number of unstable modes
-STEPS_PER_SEGMENT = 200   # number of time steps per chunk
-K_SEGMENTS = 100          # number of time chunks
-STEPS_RUNUP = 0           # additional run up time steps
+STEPS_PER_SEGMENT = 250   # number of time steps per chunk
+K_SEGMENTS = 40           # number of time chunks
+STEPS_RUNUP = 200         # additional run up time steps
 TIME_PER_STEP = 1E-5
 SIMULTANEOUS_RUNS = 18    # max number of simultaneous MPI runs
 MPI_NP = 2
@@ -29,7 +30,7 @@ MPI = ['mpiexec', '-np', str(MPI_NP)]
 REF_WORK_PATH = os.path.join(my_path, '../../pitzdaily/ref')
 BASE_PATH = os.path.join(my_path, 'pitzdaily')
 HDF5_PATH = os.path.join(BASE_PATH, 'hdf5')
-S_BASELINE = 10
+S_BASELINE = 1
 
 H5FOAM = os.path.join(my_path, '../tools/openfoam4/scripts/h5_to_foam.py')
 FOAMH5 = os.path.join(my_path, '../tools/openfoam4/scripts/foam_to_h5.py')
@@ -44,10 +45,10 @@ if not os.path.exists(HDF5_PATH):
 pisofoam_bin = '/opt/openfoam4/platforms/linux64GccDPInt32Opt/bin/pisoFoam'
 
 def read_probes(work_path):
-    filename = os.path.join(work_path, 'postProcessing/probes/0/p')
-    p = loadtxt(filename).reshape([-1, 8])
-    J = (p[:,-1] - p[:,1] - 25)**2
-    return J
+    filename = os.path.join(work_path, 'postProcessing/probes/0/U')
+    text = open(filename).read().replace('(', ' ').replace(')', ' ')
+    U = loadtxt(StringIO(text)).reshape([-1, 22])[:,1:]
+    return transpose([U[:,3], U[:,3]**2, U[:,3]**4, U[:,3]**8])
 
 def solve(u0, s, nsteps, run_id, interprocess):
     print('Starting solve, run_id = ', run_id)
@@ -79,7 +80,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
                     content = f.read()
                 content = content.replace(
                         'value           uniform (10 0 0);'.encode(),
-                        'value           uniform ({0} 0 0);'.format(s).encode())
+                        'value           uniform ({0} 0 0);'.format(10 * s).encode())
                 with gzip.open(u_file, 'wb') as f:
                     f.write(content)
         with open(os.path.join(work_path, 'out'), 'wt') as f:
@@ -123,7 +124,7 @@ if __name__ == '__main__':
                     K_SEGMENTS,
                     STEPS_PER_SEGMENT,
                     STEPS_RUNUP,
-                    epsilon=1E-3,
+                    epsilon=1E-4,
                     checkpoint_path=BASE_PATH,
                     simultaneous_runs=SIMULTANEOUS_RUNS,
                     get_host_dir=getHostDir)
@@ -133,7 +134,7 @@ if __name__ == '__main__':
                                   checkpoint,
                                   K_SEGMENTS,
                                   STEPS_PER_SEGMENT,
-                                  epsilon=1E-3,
+                                  epsilon=1E-4,
                                   checkpoint_path=BASE_PATH,
                                   simultaneous_runs=SIMULTANEOUS_RUNS,
                                   get_host_dir=getHostDir)
