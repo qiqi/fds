@@ -19,7 +19,7 @@ M_MODES = 16             # number of unstable modes
 STEPS_PER_SEGMENT = 40   # number of time steps per chunk
 K_SEGMENTS = 100         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
-TIME_PER_STEP = 0.05
+TIME_PER_STEP = 0.02
 SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
 MPI_NP = 36
 
@@ -62,12 +62,14 @@ def solve(u0, s, nsteps, run_id, interprocess):
         final_time = nsteps * TIME_PER_STEP
         if final_time == int(final_time):
             final_time = int(final_time)
-        assert 'endTime         1;' in original
+        assert 'endTime         1000;' in original
         modified = original.replace(
-                'endTime         1;',
+                'endTime         1000;',
                 'endTime         {0};'.format(final_time)).replace(
                 'writeInterval   200;',
-                'writeInterval   {0};'.format(nsteps))
+                'writeInterval   {0};'.format(nsteps)).replace(
+                'deltaT          0.05;',
+                'deltaT          {0};'.format(TIME_PER_STEP))
         with open(controlDict, 'wt') as f:
             f.write(modified)
         for u in ['U.gz', 'U_0.gz']:

@@ -54,9 +54,7 @@ int main(int argc, char *argv[])
     #include "createFvOptions.H"
     #include "initContinuityErrs.H"
 
-    //laminarTransport.correct();
-    //turbulence->validate();
-    //turbulence->correct();
+    turbulence->validate();
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -70,8 +68,6 @@ int main(int argc, char *argv[])
 
         // Pressure-velocity PISO corrector
         {
-            //volScalarField nut(turbulence->nut());
-            //nut.write();
             #include "UEqn.H"
 
             // --- PISO loop

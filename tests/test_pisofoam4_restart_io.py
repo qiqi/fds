@@ -57,8 +57,8 @@ diff one_step/phi_0 two_steps/
 diff one_step/U_0 two_steps/
 '''.strip()
 
-if __name__ == '__main__':
-#def test_pisoform4_io():
+#if __name__ == '__main__':
+def test_pisoform4_io():
     if os.path.exists(test_path):
         shutil.rmtree(test_path)
     os.mkdir(test_path)
