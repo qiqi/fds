@@ -1,20 +1,23 @@
 ! Lorenz ' 96 system
 
 module Lorenz96
-	! system parameters:
-    real(kind=8), parameter :: M = 8.1d0
+	
 contains
 
-subroutine Xnp1(X,D,Xnp1_res)
+subroutine Xnp1(X,D,Xnp1_res,M)
 
         
     implicit none
 	integer, intent(in) :: D
+	real(kind=8), optional :: M
 	real(kind=8), intent(in), dimension(D) :: X
 	real(kind=8), intent(out), dimension(D-3) :: Xnp1_res
 	integer :: i
 	real(kind=8) :: dt
-
+	
+	if(present(M) .eqv. .false.) then
+		M = 8.1d0
+	end if
 	dt = 0.01d0
 	do i=3,D-1
 		Xnp1_res(i-2) = (-X(i-2) + X(i+1))*X(i-1) - X(i) + M	
