@@ -24,12 +24,11 @@ program ensemble_tangent
 	nF = 100	
 	
 	allocate(X(1:Dext), Xnp1_res(1:D), &
-	F(1:nF))
+	F(1:nF), Xavg(1:nF))
 	istart = 3
-	iend = Dext - 1
-	
+	iend = Dext - 1 	
 	if(me==0) then	
-			!open(unit=20, file='EthetaEA_test.dat')
+			open(unit=20, file='LTA_vs_F.dat')
 			!open(unit=21, file='VthetaEA_test.dat')
 	end if
 
@@ -45,7 +44,7 @@ program ensemble_tangent
 
 			F(j) = F(j-1) + dF
 		end do
-
+			
 		do j=1,min(nprocs-1,nF)
 
 			call MPI_SEND(F(j), 1, MPI_DOUBLE_PRECISION, &
@@ -55,16 +54,16 @@ program ensemble_tangent
 				
 		end do
 	
-		do j = 1,nF
-			
+		do j = 1,nF	
 			call MPI_RECV(Xavg_F, 1, MPI_DOUBLE_PRECISION, &
 				MPI_ANY_SOURCE, MPI_ANY_TAG, &
 				MPI_COMM_WORLD, status, ierr)
-		
+				
 			sender = status(MPI_SOURCE)
 			jj = status(MPI_TAG)
 			Xavg(jj) = Xavg_F
-
+		
+			write (20,*), F(jj), Xavg_F
 			if(nF_sent < nF) then
 		
 				nF_sent = nF_sent + 1
@@ -81,16 +80,17 @@ program ensemble_tangent
 			end if	
 			 	
 
-		end do	
+		end do
+		close(20)	
 		
 		
 	end if 
 
 		
 !Code for workers
-
+	 
 	if(me /= 0) then
-
+	
 		if(me > nF) then 
 			go to 99
 		end if
@@ -123,24 +123,29 @@ program ensemble_tangent
 					X(2) = X(Dext-1)
 					X(Dext) = X(istart)
 	
-					call Xnp1(X,Dext,Xnp1_res)
+					call Xnp1(X,Dext,Xnp1_res,Fproc)
 			
 			
 					if(i > 300000) then
-						Xavg = Xavg + SUM(Xnp1_res)/D 
+						Xavg_F = Xavg_F + SUM(Xnp1_res)/D 
 					end if
 
+					X = Xnp1_res
+					
 
 			end do
-			Xavg = Xavg/(max_iter-300000)
-			print *, "Long term average is : ", Xavg
 			
+			Xavg_F = Xavg_F/(max_iter-300000)
+			print *, "Long term average is : ", Xavg_F, "from : ", me
+			call MPI_SEND(Xavg_F,1,MPI_DOUBLE_PRECISION, &
+			0,j,MPI_COMM_WORLD, ierr)			
 	end do  
 
 
 	end if
 
 99 continue
+
 		call mpi_finalize(ierr)	
 	
 end program ensemble_tangent
