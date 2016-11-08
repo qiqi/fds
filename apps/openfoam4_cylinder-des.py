@@ -15,11 +15,11 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 16             # number of unstable modes
-STEPS_PER_SEGMENT = 40   # number of time steps per chunk
-K_SEGMENTS = 100         # number of time chunks
+M_MODES = 64             # number of unstable modes
+STEPS_PER_SEGMENT = 200  # number of time steps per chunk
+K_SEGMENTS = 200         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
-TIME_PER_STEP = 0.02
+TIME_PER_STEP = 0.01
 SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
 MPI_NP = 36
 
@@ -87,8 +87,12 @@ def solve(u0, s, nsteps, run_id, interprocess):
             spawnJob(pisofoam_bin, ['-parallel'],
                      cwd=work_path, stdout=f, stderr=f)
         spawnJob(PYTHON, [FOAMH5, work_path, str(final_time), u1])
-        # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
+        for rank in range(MPI_NP):
+            p = 'processor{0}'.format(rank)
+            shutil.rmtree(os.path.join(work_path, p, '0'))
+            shutil.rmtree(os.path.join(work_path, p, str(final_time)))
+            shutil.rmtree(os.path.join(work_path, p, 'constant'))
         if not os.path.exists(u1):
             shutil.move(work_path, work_path + '.failed')
     return u1, zeros(nsteps)

@@ -73,7 +73,7 @@ def mpi_compute(sample_input, outputs, graph, **kwargs):
     else:
         returncode = subprocess.call(['mpirun', sys.executable] + args)
     if returncode != 0:
-        raise Exception('compute process failed')
+        raise Exception('compute process failed: ', sys.executable, args)
 
     with open(outputs_file, 'rb') as f:
         computed_outputs = pickle.load(f)
