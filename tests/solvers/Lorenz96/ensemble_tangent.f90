@@ -174,7 +174,7 @@ program ensemble_tangent
 	!Ensemble Tangent
     ! Worker processes
     if(me /= 0) then
-        for k = 1,ntau
+        do k = 1,ntau
             allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
                 	g(1:D))
 	        g = 1.d0/D
@@ -215,8 +215,11 @@ program ensemble_tangent
 				dXavgds = dXavgds/tau
 			    call MPI_SEND(dXavgds,1,MPI_DOUBLE_PRECISION, &
 									0, me, MPI_COMM_WORLD, ierr)
-
+            end do
+            99 continue
+        end do
+    end if
 			
-		call mpi_finalize(ierr)	
+    call mpi_finalize(ierr)	
 	
 end program ensemble_tangent
