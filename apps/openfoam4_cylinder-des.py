@@ -15,7 +15,7 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 64             # number of unstable modes
+M_MODES = 32             # number of unstable modes
 STEPS_PER_SEGMENT = 200  # number of time steps per chunk
 K_SEGMENTS = 200         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
@@ -29,7 +29,7 @@ MPI = ['mpiexec', '-np', str(MPI_NP)]
 REF_WORK_PATH = os.path.join(my_path, '../../cylinder-des/ref')
 BASE_PATH = os.path.join(my_path, 'cylinder-des')
 HDF5_PATH = os.path.join(BASE_PATH, 'hdf5')
-S_BASELINE = 10
+S_BASELINE = 1
 
 H5FOAM = os.path.join(my_path, '../tools/openfoam4/scripts/h5_to_foam.py')
 FOAMH5 = os.path.join(my_path, '../tools/openfoam4/scripts/foam_to_h5.py')
