@@ -23,20 +23,22 @@ program ensemble_tangent
     call mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
 
 		
-	D = 38	
-	ntau =2
+	D = 40	
+	ntau = 40
 	dt = 0.01d0
-	T = 5000
+	T = 100000
 	
-	ns = 100
+	ns = 1000
 	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
-	F = 4.99	
+	F = 1.0d0	
     istart = 3
 	iend = Dext - 1
 
-
+    if(ns < T/100) then
+        print *, "too few samples..."
+    end if 
 
 
 	!Finite Difference
@@ -91,37 +93,41 @@ program ensemble_tangent
     !Master process
     if(me==0) then
 		k=0
-        allocate(dXavgds_all(1:ns), &
-	        thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
-
-        
+        allocate(X(1:Dext),thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
         open(unit=20, file='EthetaEA_test.dat')
         open(unit=21, file='VthetaEA_test.dat')
         open(unit=22, file='Dynamics.dat')
         do k2 = 1,ntau
-			tau = 100 + (k2-1)*4930/(ntau-1)	
+			tau = 100 + (k2-1)*4930/(ntau-1)
+            print *, "Short Integration Time, tau = ", tau	
 			N = T/tau
             !ns/N : number of expts
+            print *, "Number of expts: ", ns/N
 			allocate(thetaEA(1:ns/N),dXavgds_all(1:ns))
             ns_sent = 0
 		    do j=1,min(nprocs-1,ns)
-
+                
+                call RANDOM_NUMBER(X)
+                !write(22, *) X
 			    call MPI_SEND(X, Dext, MPI_DOUBLE_PRECISION, &
-							j, j, MPI_COMM_WORLD, ierr)
+							j, tau, MPI_COMM_WORLD, ierr)
 			
 			    ns_sent = ns_sent + 1	
 				
-		    end do
-            	
+		    end do	
             do j = 1, ns
 			    !call RANDOM_SEED(SIZE=rsize)
 				!allocate(seed(rsize))
 				!call RANDOM_SEED(PUT=seed)	
 				call RANDOM_NUMBER(X)
-               
+                !write(22, *) X
                 call MPI_RECV(dXavgds_all(j), &
                      1, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, &
                      MPI_ANY_TAG, MPI_COMM_WORLD, status, ierr)
+
+                if(dXavgds_all(j) /= dXavgds_all(j)) then
+                    print *, "NaN detected! "
+                end if 
 
                 sender = status(MPI_SOURCE)
 
@@ -129,20 +135,25 @@ program ensemble_tangent
                 
                     ns_sent = ns_sent + 1
                     call MPI_SEND(X, Dext, MPI_DOUBLE_PRECISION, &
-							sender, ns_sent, MPI_COMM_WORLD, ierr)
+							sender, tau, MPI_COMM_WORLD, ierr)
                 else
                 
                     call MPI_SEND(X, Dext, MPI_DOUBLE_PRECISION, &
 							sender, 0, MPI_COMM_WORLD, ierr)
                 end if
    
-
+                if(MOD(j,25)==0) then
+                    print *, "Sample Number: ", j, "tau = ", tau, &
+                            "theta = ", dXavgds_all(j)
+                end if
 
                 
                !deallocate(seed)            
             end do
             do k1 = 1,ns/N
+               
                 thetaEA(k1) = sum(dXavgds_all((k1-1)*N+1:k1*N))/N
+                 print *, dXavgds_all(1:15) 
             enddo
             thetaEA_mean(k2) = sum(thetaEA)/(ns/N)
             thetaEA_var(k2) = 0.d0
@@ -152,8 +163,9 @@ program ensemble_tangent
             end do
             print *, thetaEA_var(k2)
             thetaEA_var(k2) = thetaEA_var(k2)/(ns/N)	
-
-            deallocate(thetaEA)
+            print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
+             print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
+            deallocate(thetaEA,dXavgds_all)
 
             write(20, *) thetaEA_mean(k2)
             write(21, *) thetaEA_var(k2)	
@@ -163,7 +175,7 @@ program ensemble_tangent
         end do
         close(20)
         close(21)
-
+        close(22)
 
     end if
 
@@ -174,29 +186,31 @@ program ensemble_tangent
 	!Ensemble Tangent
     ! Worker processes
     if(me /= 0) then
-        do k = 1,ntau
-            allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
+        allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
                 	g(1:D))
-	        g = 1.d0/D
+        do k = 1,ntau
+            g = 1.d0/D
             do while (.true.) 
            
-	            call MPI_RECV(X, 1, MPI_DOUBLE_PRECISION, &
+	            call MPI_RECV(X, Dext, MPI_DOUBLE_PRECISION, &
 						0, MPI_ANY_TAG, MPI_COMM_WORLD, &
 						status, ierr)
 			    j = status(MPI_TAG)
+                !print *,"Tag sent is: ",j, "from process", me
 	            tau = j	
 			    if(j==0) then 
 				    go to 99
                 end if	
 			    !Run until attractor is reached
-                do i = 1, 300000
+                do i = 1, 800000
                     X(1) = X(Dext-2)
                     X(2) = X(Dext-1)
                     X(Dext) = X(istart)
                     call Xnp1(X,Dext,Xnp1_res,F)
                     X(istart:iend) = Xnp1_res
                 end do
-                v = 1.d0*dt
+                print *, "X is " , X
+                v = 0.d0
                 dXavgds = DOT_PRODUCT(v(istart:iend), g)
                 do i = 1, tau	
 
@@ -217,6 +231,7 @@ program ensemble_tangent
 									0, me, MPI_COMM_WORLD, ierr)
             end do
             99 continue
+            !print *, "this is the ", k, "th tau for process", me
         end do
     end if
 			
