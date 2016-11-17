@@ -28,7 +28,7 @@ program ensemble_tangent
 	dt = 0.01d0
 	T = 10000
 	
-	ns = 1000
+	ns = 5
 	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
@@ -36,9 +36,9 @@ program ensemble_tangent
     istart = 3
 	iend = Dext - 1
 
-    if(ns < T/100) then
-        print *, "too few samples..."
-    end if 
+    !if(ns < T/100) then
+     !   print *, "too few samples..."
+    !end if 
 
 
 	!Finite Difference
@@ -99,10 +99,10 @@ program ensemble_tangent
         open(unit=22, file='Dynamics.dat')
         do k2 = 1,ntau
 			tau = 23 + (k2-1)*400/(ntau-1)
-            print *, "Short Integration Time, tau = ", tau	
+            !print *, "Short Integration Time, tau = ", tau	
 			N = T/tau
             !ns/N : number of expts
-            print *, "Number of expts: ", ns/N
+            !print *, "Number of expts: ", ns/N
 			allocate(thetaEA(1:ns/N),dXavgds_all(1:ns))
             ns_sent = 0
 		    do j=1,min(nprocs-1,ns)
@@ -143,7 +143,7 @@ program ensemble_tangent
                 end if
    
                 if(MOD(j,25)==0) then
-                    print *, "Sample Number: ", j, "tau = ", tau, &
+                    !print *, "Sample Number: ", j, "tau = ", tau, &
                             "theta = ", dXavgds_all(j)
                 end if
 
@@ -157,7 +157,7 @@ program ensemble_tangent
             do k1 = 1,ns/N
                
                 thetaEA(k1) = sum(dXavgds_all((k1-1)*N+1:k1*N))/N
-                 print *, dXavgds_all(1:15) 
+                 !print *, dXavgds_all(1:15) 
             enddo
             thetaEA_mean(k2) = sum(thetaEA)/(ns/N)
             thetaEA_var(k2) = 0.d0
@@ -169,8 +169,8 @@ program ensemble_tangent
             end if
             
             
-            print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
-             print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
+            !print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
+             !print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
             deallocate(thetaEA,dXavgds_all)
 
             write(20, *) thetaEA_mean(k2)
