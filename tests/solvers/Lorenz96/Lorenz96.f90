@@ -13,7 +13,7 @@ subroutine Xnp1(X,D,Xnp1_res,M)
 	real(kind=8), intent(in), dimension(D) :: X
     real(kind=8), dimension(D):: k1, k2, k3, k4
 	real(kind=8), intent(out), dimension(D-3) :: Xnp1_res
-    real(kind=8), dimension(D-3):: dXdt
+    real(kind=8), dimension(D-3):: ddt
 	integer :: i
 	real(kind=8) :: dt
 	
@@ -22,23 +22,23 @@ subroutine Xnp1(X,D,Xnp1_res,M)
 	end if
 	dt = 0.01d0
 		
-    call f(X,D,dXdt,M)
-    k1(3:D-1) = dt*dXdt
+    call dXdt(X,D,ddt,M)
+    k1(3:D-1) = dt*ddt
     k1(1) = k1(D-2)
     k1(2) = k1(D-1)
     k1(D) = k1(3)
-    call f(X+0.5d0*k1,D,dXdt,M)
-    k2(3:D-1) = dt*dXdt
+    call dXdt(X+0.5d0*k1,D,ddt,M)
+    k2(3:D-1) = dt*ddt
     k2(1) = k2(D-2)
     k2(2) = k2(D-1)
     k2(D) = k2(3)
-    call f(X+0.5d0*k2,D,dXdt,M)
-    k3(3:D-1) = dt*dXdt
+    call dXdt(X+0.5d0*k2,D,ddt,M)
+    k3(3:D-1) = dt*ddt
     k3(1) = k3(D-2)
     k3(2) = k3(D-1)
     k3(D) = k3(3)
-    call f(X+k3,D,dXdt,M)
-    k4(3:D-1) = dt*dXdt
+    call dXdt(X+k3,D,ddt,M)
+    k4(3:D-1) = dt*ddt
     
     Xnp1_res = X(3:D-1) + 1.d0/6.d0*k1(3:D-1) + &
                1.d0/3.d0*k2(3:D-1) + 1.d0/3.d0*k3(3:D-1) + &
@@ -47,7 +47,7 @@ subroutine Xnp1(X,D,Xnp1_res,M)
 
 
 end subroutine Xnp1
-subroutine f(X,D,Xnp1_res,M)
+subroutine dXdt(X,D,Xnp1_res,M)
     implicit none
 	integer, intent(in) :: D
 	real(kind=8), optional :: M
@@ -66,7 +66,7 @@ subroutine f(X,D,Xnp1_res,M)
 	end do
 
     
-end subroutine f
+end subroutine dXdt
 subroutine dfdX(X,D,dfdX_res)
 
 	implicit none

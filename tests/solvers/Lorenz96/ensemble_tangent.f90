@@ -7,7 +7,7 @@ program ensemble_tangent
 
     implicit none
 	real(kind=8), dimension(:), allocatable ::X,v,Xp,Xpnp1_res,Xnp1_res
-	real(kind=8), dimension(:), allocatable :: dXdt,g,thetaEA_mean, thetaEA_var	
+	real(kind=8), dimension(:), allocatable :: g,thetaEA_mean, thetaEA_var	
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res, vnp1_res
 	integer :: i, me, ierr, nprocs, Dproc, D, ns, ns_proc, j, Dext !, you_old, you_new
     integer :: istart, iend, lproc, rproc, max_iter, ns_sent	
@@ -24,15 +24,15 @@ program ensemble_tangent
 
 		
 	D = 40	
-	ntau = 40
+	ntau = 80
 	dt = 0.01d0
-	T = 100000
+	T = 1000000
 	
-	ns = 1000
+	ns = 10000
 	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
-	F = 1.0d0	
+	F = 8.0d0	
     istart = 3
 	iend = Dext - 1
 
@@ -94,11 +94,11 @@ program ensemble_tangent
     if(me==0) then
 		k=0
         allocate(X(1:Dext),thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
-        open(unit=20, file='EthetaEA_test.dat')
-        open(unit=21, file='VthetaEA_test.dat')
+        open(unit=20, file='EthetaEA_test_1e6.dat')
+        open(unit=21, file='VthetaEA_test_1e6.dat')
         open(unit=22, file='Dynamics.dat')
         do k2 = 1,ntau
-			tau = 100 + (k2-1)*4930/(ntau-1)
+			tau = 23 + (k2-1)*400/(ntau-1)
             print *, "Short Integration Time, tau = ", tau	
 			N = T/tau
             !ns/N : number of expts
@@ -150,6 +150,10 @@ program ensemble_tangent
                 
                !deallocate(seed)            
             end do
+            if(ns/N==0) then 
+                thetaEA_mean(k2) = sum(dXavgds_all(1:ns))/ns
+                thetaEA_var(k2) = sum((dXavgds_all(1:ns) - thetaEA_mean(k2))**2.d0)/(ns**2.d0)
+            else 
             do k1 = 1,ns/N
                
                 thetaEA(k1) = sum(dXavgds_all((k1-1)*N+1:k1*N))/N
@@ -161,8 +165,10 @@ program ensemble_tangent
             do k1 = 1,ns/N
                 thetaEA_var(k2) = thetaEA_var(k2) + (thetaEA(k1)-thetaEA_mean(k2))**2.0
             end do
-            print *, thetaEA_var(k2)
             thetaEA_var(k2) = thetaEA_var(k2)/(ns/N)	
+            end if
+            
+            
             print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
              print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
             deallocate(thetaEA,dXavgds_all)
@@ -202,14 +208,14 @@ program ensemble_tangent
 				    go to 99
                 end if	
 			    !Run until attractor is reached
-                do i = 1, 800000
+                do i = 1, 120000
                     X(1) = X(Dext-2)
                     X(2) = X(Dext-1)
                     X(Dext) = X(istart)
                     call Xnp1(X,Dext,Xnp1_res,F)
                     X(istart:iend) = Xnp1_res
                 end do
-                print *, "X is " , X
+                !print *, "X is " , X
                 v = 0.d0
                 dXavgds = DOT_PRODUCT(v(istart:iend), g)
                 do i = 1, tau	
