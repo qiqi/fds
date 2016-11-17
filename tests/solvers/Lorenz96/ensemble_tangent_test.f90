@@ -26,9 +26,9 @@ program ensemble_tangent
 	D = 40	
 	ntau = 2
 	dt = 0.01d0
-	T = 1000000
+	T = 10000
 	
-	ns = 10000
+	ns = 1000
 	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
