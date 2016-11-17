@@ -24,11 +24,11 @@ program ensemble_tangent
 
 		
 	D = 40	
-	ntau = 60
+	ntau = 2
 	dt = 0.01d0
 	T = 1000000
 	
-	ns = 5000
+	ns = 10000
 	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
@@ -94,8 +94,8 @@ program ensemble_tangent
     if(me==0) then
 		k=0
         allocate(X(1:Dext),thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
-        open(unit=20, file='EthetaEA_test_1e6.dat')
-        open(unit=21, file='VthetaEA_test_1e6.dat')
+        open(unit=20, file='EthetaEA_TEST_1e6.dat')
+        open(unit=21, file='VthetaEA_TEST_1e6.dat')
         open(unit=22, file='Dynamics.dat')
         do k2 = 1,ntau
 			tau = 23 + (k2-1)*400/(ntau-1)

@@ -1,6 +1,6 @@
 
 OBJECTS1 = Lorenz96.o ensemble_tangent.o 
-OBJECTS2 = Lorenz96.o test1.o 
+OBJECTS2 = Lorenz96.o ensemble_tangent_test.o 
 OBJECTS3 = Lorenz96.o longtime_average.o 
 MODULES = Lorenz96.mod
 LFLAGS = -lblas -llapack
@@ -22,11 +22,11 @@ enstan.exe: $(MODULES) $(OBJECTS1)
 lta.exe: $(MODULES) $(OBJECTS3)
 	$(FC) $(FFLAGS) $(LFLAGS) $(OBJECTS3) -o lta.exe
 
-test1: test1.exe
-	mpiexec -n $(NUM_PROCS) ./test1.exe
+test: test.exe
+	mpiexec -n $(NUM_PROCS) ./test.exe
 
-test1.exe: $(MODULES) $(OBJECTS2)
-	$(FC) $(FFLAGS) $(LFLAGS) $(OBJECTS2) -o test1.exe
+test.exe: $(MODULES) $(OBJECTS2)
+	$(FC) $(FFLAGS) $(LFLAGS) $(OBJECTS2) -o test.exe
 
 %.o : %.f90
 	$(FC) $(FFLAGS) $(LFLAGS) -c  $< 

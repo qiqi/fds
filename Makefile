@@ -16,4 +16,4 @@ tools/openfoam4/pisoFoam/pisoFoam:	tools/openfoam4/pisoFoam/*.C tools/openfoam4/
 	cd tools/openfoam4/pisoFoam/; wmake
 
 tests/solvers/lorenz96/solver:
-	cd tests/solvers/Lorenz96; make enstan
+	cd tests/solvers/Lorenz96; make test
