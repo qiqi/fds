@@ -15,11 +15,11 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 16             # number of unstable modes
-STEPS_PER_SEGMENT = 40   # number of time steps per chunk
-K_SEGMENTS = 100         # number of time chunks
+M_MODES = 32             # number of unstable modes
+STEPS_PER_SEGMENT = 200  # number of time steps per chunk
+K_SEGMENTS = 200         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
-TIME_PER_STEP = 0.05
+TIME_PER_STEP = 0.01
 SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
 MPI_NP = 36
 
@@ -29,7 +29,7 @@ MPI = ['mpiexec', '-np', str(MPI_NP)]
 REF_WORK_PATH = os.path.join(my_path, '../../cylinder-des/ref')
 BASE_PATH = os.path.join(my_path, 'cylinder-des')
 HDF5_PATH = os.path.join(BASE_PATH, 'hdf5')
-S_BASELINE = 10
+S_BASELINE = 1
 
 H5FOAM = os.path.join(my_path, '../tools/openfoam4/scripts/h5_to_foam.py')
 FOAMH5 = os.path.join(my_path, '../tools/openfoam4/scripts/foam_to_h5.py')
@@ -62,12 +62,14 @@ def solve(u0, s, nsteps, run_id, interprocess):
         final_time = nsteps * TIME_PER_STEP
         if final_time == int(final_time):
             final_time = int(final_time)
-        assert 'endTime         1;' in original
+        assert 'endTime         1000;' in original
         modified = original.replace(
-                'endTime         1;',
+                'endTime         1000;',
                 'endTime         {0};'.format(final_time)).replace(
                 'writeInterval   200;',
-                'writeInterval   {0};'.format(nsteps))
+                'writeInterval   {0};'.format(nsteps)).replace(
+                'deltaT          0.05;',
+                'deltaT          {0};'.format(TIME_PER_STEP))
         with open(controlDict, 'wt') as f:
             f.write(modified)
         for u in ['U.gz', 'U_0.gz']:
@@ -85,8 +87,12 @@ def solve(u0, s, nsteps, run_id, interprocess):
             spawnJob(pisofoam_bin, ['-parallel'],
                      cwd=work_path, stdout=f, stderr=f)
         spawnJob(PYTHON, [FOAMH5, work_path, str(final_time), u1])
-        # shutil.rmtree(os.path.join(work_path, '0'))
         shutil.rmtree(os.path.join(work_path, 'constant'))
+        for rank in range(MPI_NP):
+            p = 'processor{0}'.format(rank)
+            shutil.rmtree(os.path.join(work_path, p, '0'))
+            shutil.rmtree(os.path.join(work_path, p, str(final_time)))
+            shutil.rmtree(os.path.join(work_path, p, 'constant'))
         if not os.path.exists(u1):
             shutil.move(work_path, work_path + '.failed')
     return u1, zeros(nsteps)
