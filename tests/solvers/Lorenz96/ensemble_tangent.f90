@@ -10,7 +10,8 @@ program ensemble_tangent
 	real(kind=8), dimension(:), allocatable :: g,thetaEA_mean, thetaEA_var	
 	real(kind=8), dimension(:,:), allocatable :: dfdX_res, vnp1_res
 	integer :: i, me, ierr, nprocs, Dproc, D, ns, ns_proc, j, Dext !, you_old, you_new
-    integer :: istart, iend, lproc, rproc, max_iter, ns_sent	
+    integer :: istart, iend, lproc, rproc, max_iter, ns_sent
+    character :: arg	
 	integer, allocatable :: seed(:)
 	integer :: rsize, req1, req2, sender
 	real(kind=8), pointer, dimension(:) :: p
@@ -29,17 +30,17 @@ program ensemble_tangent
 	T = 1000000
 	
 	ns = 5000
-	ns_proc = ns/nprocs
 	Dext = D+3
 	dF = 0.01d0	
 	F = 8.0d0	
     istart = 3
 	iend = Dext - 1
 
-    if(ns < T/100) then
-        print *, "too few samples..."
-    end if 
+    !if(ns < T/100) then
+     !   print *, "too few samples..."
+    !end if 
 
+    
 
 	!Finite Difference
 !	
@@ -92,17 +93,26 @@ program ensemble_tangent
     !Ensemble Tangent
     !Master process
     if(me==0) then
-		k=0
+        call GETARG(1,arg) 	
+        if(arg=='1') then
+            ntau = 2
+	        T = 500
+	        ns = 5
+        end if 
+    	k=0
         allocate(X(1:Dext),thetaEA_mean(1:ntau), thetaEA_var(1:ntau))
         open(unit=20, file='EthetaEA_test_1e6.dat')
         open(unit=21, file='VthetaEA_test_1e6.dat')
         open(unit=22, file='Dynamics.dat')
         do k2 = 1,ntau
 			tau = 23 + (k2-1)*400/(ntau-1)
+            if(arg /= '1') then
             print *, "Short Integration Time, tau = ", tau	
+            print *, "Number of expts: ", ns/N
+            end if
 			N = T/tau
             !ns/N : number of expts
-            print *, "Number of expts: ", ns/N
+            
 			allocate(thetaEA(1:ns/N),dXavgds_all(1:ns))
             ns_sent = 0
 		    do j=1,min(nprocs-1,ns)
@@ -143,8 +153,10 @@ program ensemble_tangent
                 end if
    
                 if(MOD(j,25)==0) then
+                    if(arg /= '1') then
                     print *, "Sample Number: ", j, "tau = ", tau, &
                             "theta = ", dXavgds_all(j)
+                    end if
                 end if
 
                 
@@ -157,7 +169,9 @@ program ensemble_tangent
             do k1 = 1,ns/N
                
                 thetaEA(k1) = sum(dXavgds_all((k1-1)*N+1:k1*N))/N
-                 print *, dXavgds_all(1:15) 
+                if(arg /= '1') then 
+                    print *, dXavgds_all(1:15) 
+                end if
             enddo
             thetaEA_mean(k2) = sum(thetaEA)/(ns/N)
             thetaEA_var(k2) = 0.d0
@@ -168,9 +182,10 @@ program ensemble_tangent
             thetaEA_var(k2) = thetaEA_var(k2)/(ns/N)	
             end if
             
-            
-            print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
-             print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
+            if(arg /= '1') then 
+                print *, "For tau = ", tau, " E[theta_{EA}] = ", thetaEA_mean(k2)
+                print *, "For tau = ", tau, " Var[theta_{EA}] = ", thetaEA_var(k2) 
+            end if
             deallocate(thetaEA,dXavgds_all)
 
             write(20, *) thetaEA_mean(k2)
@@ -182,7 +197,7 @@ program ensemble_tangent
         close(20)
         close(21)
         close(22)
-
+        !print *, "End"
     end if
 
 
@@ -192,7 +207,12 @@ program ensemble_tangent
 	!Ensemble Tangent
     ! Worker processes
     if(me /= 0) then
-        allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
+        call GETARG(1,arg) 	
+        if(arg=='1') then
+            ntau = 2
+        end if 
+
+       allocate(X(1:Dext),v(1:Dext),vnp1_res(1:D,1),Xnp1_res(1:D), &
                 	g(1:D))
         do k = 1,ntau
             g = 1.d0/D
@@ -242,5 +262,5 @@ program ensemble_tangent
     end if
 			
     call mpi_finalize(ierr)	
-	
+   	
 end program ensemble_tangent
