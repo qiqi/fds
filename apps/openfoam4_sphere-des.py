@@ -15,19 +15,19 @@ sys.path.append(os.path.join(my_path, '..'))
 from fds import *
 from fds.checkpoint import *
 
-M_MODES = 42             # number of unstable modes
-STEPS_PER_SEGMENT = 200  # number of time steps per chunk
+M_MODES = 256            # number of unstable modes
+STEPS_PER_SEGMENT = 100  # number of time steps per chunk
 K_SEGMENTS = 200         # number of time chunks
 STEPS_RUNUP = 0          # additional run up time steps
-TIME_PER_STEP = 0.01
-SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
-MPI_NP = 36
+TIME_PER_STEP = 0.02
+SIMULTANEOUS_RUNS = 9    # max number of simultaneous MPI runs
+MPI_NP = 4
 
 MPI = ['mpiexec', '-np', str(MPI_NP)]
 
 # modify to point to openfoam binary
-REF_WORK_PATH = os.path.join(my_path, '../../cylinder-des/ref')
-BASE_PATH = os.path.join(my_path, 'cylinder-des')
+REF_WORK_PATH = os.path.join(my_path, '../../sphere-des/ref')
+BASE_PATH = os.path.join(my_path, 'sphere-des')
 HDF5_PATH = os.path.join(BASE_PATH, 'hdf5')
 S_BASELINE = 1
 
@@ -67,9 +67,9 @@ def solve(u0, s, nsteps, run_id, interprocess):
         modified = original.replace(
                 'endTime         1000;',
                 'endTime         {0};'.format(final_time)).replace(
-                'writeInterval   200;',
+                'writeInterval   50;',
                 'writeInterval   {0};'.format(nsteps)).replace(
-                'deltaT          0.05;',
+                'deltaT          0.02;',
                 'deltaT          {0};'.format(TIME_PER_STEP))
         with open(controlDict, 'wt') as f:
             f.write(modified)
