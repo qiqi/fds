@@ -18,7 +18,7 @@ from fds.checkpoint import *
 M_MODES = 16             # number of unstable modes
 STEPS_PER_SEGMENT = 100  # number of time steps per chunk
 K_SEGMENTS = 200         # number of time chunks
-STEPS_RUNUP = 0          # additional run up time steps
+STEPS_RUNUP = 100        # additional run up time steps
 TIME_PER_STEP = 0.01
 SIMULTANEOUS_RUNS = 1    # max number of simultaneous MPI runs
 MPI_NP = 36
@@ -55,7 +55,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
     work_path = os.path.join(BASE_PATH, run_id)
     u1 = os.path.join(work_path, 'final.hdf5')
     pTDrop = os.path.join(work_path,
-            'foam/postProcessing/pTDrop/0/fieldValueDelta.dat')
+            'postProcessing/pTDrop/0/fieldValueDelta.dat')
     while not os.path.exists(u1) or not os.path.exists(pTDrop):
         if os.path.exists(work_path):
             shutil.rmtree(work_path)
@@ -99,7 +99,7 @@ def solve(u0, s, nsteps, run_id, interprocess):
             shutil.rmtree(os.path.join(work_path, p, 'constant'))
         if not os.path.exists(u1) or not os.path.exists(pTDrop):
             shutil.move(work_path, work_path + '.failed')
-    J = loadtxt(pTDrop)[:,1:]
+    J = loadtxt(pTDrop).reshape([-1,3])[:,1:]
     return u1, J
 
 def getHostDir(run_id):
