@@ -128,7 +128,7 @@ def continue_shadowing(
         g_lss.append(g)
 
         # time dilation contribution
-        run_id = 'time_dilation_{0:02d}'.format(i)
+        run_id = 'time_dilation_{0:02d}'.format(i+1)
         if run_ddt is not None:
             time_dil = TimeDilationExact(run_ddt, u0, parameter)
         else:

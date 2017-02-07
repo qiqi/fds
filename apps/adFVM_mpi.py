@@ -1,9 +1,11 @@
+#!/usr/bin/python2 -u
 import os
 import sys
 import subprocess
 import numpy as np
 import shutil
 import glob
+sys.setrecursionlimit(10000)
 
 def isfloat(s):
     try:
@@ -14,20 +16,20 @@ def isfloat(s):
 fileName = os.path.abspath(__file__)
 python = sys.executable
 
-nProcessors = 128
-nProcsPerNode = 8
-nRuns = 32
+nProcessors = 16
+nProcsPerNode = 16
+nRuns = 4
 subBlockShape = '1x2x2x2x2'
 
 parameter = 1.0
-dims = 128
+dims = 120
 segments = 20
 steps = 5000
 
 time = 1.0
-source = '/projects/LESOpt/talnikar/'
-problem = 'periodic_wake_fds.py'
-case = source + 'periodic_wake/'
+source = '/master/home/talnikar/'
+problem = 'periodic_wake.py'
+case = '/scratch/talnikar/periodic_wake/'
 
 def getTime(time):
     stime = str(time)
@@ -37,7 +39,7 @@ def getTime(time):
 stime = getTime(time)
 
 fieldNames = ['rho', 'rhoU', 'rhoE']
-program = source + 'local/src/adFVM/apps/problem.py'
+program = source + 'adFVM/apps/problem.py'
 
 reference = [1., 200., 2e5]
 
@@ -46,8 +48,10 @@ def getParallelInfo():
     from mpi4py import MPI
     mpi = MPI.COMM_WORLD
     rank = mpi.rank 
+    #print rank, mpi.Get_size(), MPI.Get_processor_name()
+    sys.stdout.flush()
     
-    with h5py.File(case + 'mesh.hdf5', 'r') as mesh:
+    with h5py.File(case + 'mesh.hdf5', 'r', driver='mpio', comm=mpi) as mesh:
         nCount = mesh['parallel/end'][rank]-mesh['parallel/start'][rank]
         nInternalCells = nCount[4]
         nGhostCells = nCount[2]-nCount[3]
@@ -99,26 +103,19 @@ def getHostDir(run_id):
     return '{}/temp/{}/'.format(case, run_id)
 
 def spawnJob(exe, args, **kwargs):
-    global cobalt
-    if 'interprocess' in kwargs:
-        cobalt.interprocess = kwargs['interprocess']
-        del kwargs['interprocess']
-    block, corner = cobalt.get_alloc()
-    print('spawnJob', exe, args, block, corner)
-    returncode = subprocess.call(['runjob', '-n', str(nProcessors), 
-                       '-p', str(nProcsPerNode),
-                       '--block', block,
-                       '--corner', corner,
-                       '--shape', subBlockShape,
-                       '--exp-env', 'PYTHONPATH',
-                       '--verbose', 'INFO',
-                       ':', exe] + args, **kwargs)
-    cobalt.free_alloc((block, corner))
+    from fds.slurm import grab_from_SLURM_NODELIST
+    interprocess = kwargs['interprocess']
+    del kwargs['interprocess']
+    nodes = grab_from_SLURM_NODELIST(1, interprocess)
+    print('spawnJob', nodes, exe, args)
+    returncode = subprocess.call(['mpirun', '--host', ','.join(nodes.grabbed_nodes)
+                       , exe] + args, **kwargs)
+    nodes.release()
     #returncode = subprocess.call(['mpirun', '-np', str(nProcessors), exe] + args, **kwargs)
     return returncode
 
 def runCase(initFields, parameter, nSteps, run_id, interprocess):
-    cobalt.interprocess = interprocess
+    #cobalt.interprocess = interprocess
 
     # generate case folders
     caseDir = getHostDir(run_id)
@@ -133,7 +130,7 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     # write initial field
     outputFile = caseDir  + 'writeFields.log'
     with open(outputFile, 'w') as f:
-        if spawnJob(python, [fileName, 'RUN', 'writeFields', initFields, caseDir, str(time)], stdout=f, stderr=f):
+        if spawnJob(python, [fileName, 'RUN', 'writeFields', initFields, caseDir, str(time)], stdout=f, stderr=f, interprocess=interprocess):
             raise Exception('initial field conversion failed')
     print('initial field written', initFields)
 
@@ -154,7 +151,7 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     errorFile = caseDir  + 'error.log'
     with open(outputFile, 'w') as f, open(errorFile, 'w') as fe:
         #if spawnJob(python, [problemFile], stdout=f, stderr=f):
-        if spawnJob(python, [program, problemFile, '--mira', '-n', '--coresPerNode', str(nProcsPerNode), '--unloadingStages', '4'], stdout=f, stderr=fe):
+        if spawnJob(python, [program, problemFile, '--coresPerNode', str(nProcsPerNode)], stdout=f, stderr=fe, interprocess=interprocess):
             raise Exception('Execution failed, check error log:', outputFile)
     print('execution finished', caseDir)
 
@@ -164,7 +161,7 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     finalFields = caseDir + 'output.h5'
     outputFile = caseDir  + 'getInternalFields.log'
     with open(outputFile, 'w') as f:
-        if spawnJob(python, [fileName, 'RUN', 'getInternalFields', caseDir, str(lastTime), finalFields], stdout=f, stderr=f):
+        if spawnJob(python, [fileName, 'RUN', 'getInternalFields', caseDir, str(lastTime), finalFields], stdout=f, stderr=f, interprocess=interprocess):
             raise Exception('final field conversion failed')
     print('final field written', finalFields)
 
@@ -172,8 +169,8 @@ def runCase(initFields, parameter, nSteps, run_id, interprocess):
     objectiveSeries = np.loadtxt(caseDir + 'timeSeries.txt')
     print caseDir
 
-    cobalt.interprocess = None
-    return finalFields, objectiveSeries[:-1]
+    #cobalt.interprocess = None
+    return finalFields, objectiveSeries
 
 if __name__ == '__main__':
 
@@ -182,19 +179,24 @@ if __name__ == '__main__':
         args = sys.argv[3:]
         func(*args)
     else:
-        from fds.cobalt import CobaltManager
-        cobalt = CobaltManager(subBlockShape, 128)
-        cobalt.boot_blocks()
+        #from fds.cobalt import CobaltManager
+        #cobalt = CobaltManager(subBlockShape, 128)
+        #cobalt.boot_blocks()
 
         init = getHostDir('init')
         if not os.path.exists(init):
             os.makedirs(init)
         u0 = init + 'init.h5'
-        if spawnJob(sys.executable, [fileName, 'RUN', 'getInternalFields', case, str(time), u0]):
-            raise Exception('final field conversion failed')
+	with open(init + 'getInternalFields.log', 'w') as f:
+            if spawnJob(sys.executable, [fileName, 'RUN', 'getInternalFields', case, str(time), u0], stdout=f, stderr=f, interprocess=None):
+                raise Exception('final field conversion failed')
 
         #runCase(u0, parameter, steps, 'random', None)
-        from fds import shadowing
-        shadowing(runCase, u0, parameter, dims, segments, steps, 0, simultaneous_runs=nRuns, get_host_dir=getHostDir, spawn_compute_job=spawnJob)
+        #from fds import shadowing
+        #shadowing(runCase, u0, parameter, dims, segments, steps, 0, simultaneous_runs=nRuns, get_host_dir=getHostDir, spawn_compute_job=spawnJob, checkpoint_path=case + '/checkpoint')
+        from fds import shadowing, continue_shadowing
+        from fds.checkpoint import *
+        checkpoint = load_last_checkpoint(case + '/checkpoint', dims)
+        continue_shadowing(runCase, parameter, checkpoint, segments, steps, simultaneous_runs=nRuns, get_host_dir=getHostDir, spawn_compute_job=spawnJob, checkpoint_path=case + '/checkpoint')
 
-        cobalt.free_blocks()
+        #cobalt.free_blocks()
