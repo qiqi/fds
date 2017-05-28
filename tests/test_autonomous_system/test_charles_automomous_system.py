@@ -8,11 +8,13 @@ from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(my_path, '../..'))
+sys.path.append(os.path.join(my_path, '../../apps'))
 
 from fds.cti_restart_io import *
+from charles import load_compressible_les, save_compressible_les
 
 ref_fname = os.path.join(my_path, '..', 'data', 'charles-sample-restart-file.les')
-initial_state = load_les(ref_fname, verbose=True)
+initial_state = load_compressible_les(ref_fname, verbose=True)
 base_dir = os.path.join(my_path, 'charles')
 
 def run_charles_in(run_dir, state, steps):
@@ -23,14 +25,14 @@ def run_charles_in(run_dir, state, steps):
     fname = os.path.join(run_dir, 'initial.les')
     shutil.copy(ref_fname, fname)
     state['STEP'] = 1
-    save_les(fname, state, verbose=True)
+    save_compressible_les(fname, state, verbose=True)
     with open(os.path.join(run_dir, 'charles.in'), 'w') as f:
         f.write(template.substitute(NSTEPS=str(steps+1)))
     with open(os.path.join(run_dir, 'charles.out'), 'w') as f:
         subprocess.check_call('/home/niangxiu/Working/cylinder_fds_ref/charles.exe',
                               cwd=run_dir, stdout=f, stderr=f)
-    fname = os.path.join(run_dir, 'result.les')
-    return load_les(fname, verbose=True)
+    fname = os.path.join(run_dir, 'final.les')
+    return load_compressible_les(fname, verbose=True)
 
 DUMMY_VARS =  [ 'STEP', 'DT', 'TIME', 'MU_LAM', 'CP', 
         'K_LAM', 'MU_SGS', 'K_SGS', 'T', 'P', 'U', 

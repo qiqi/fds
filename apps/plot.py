@@ -17,7 +17,7 @@ K = size(cp.g_dil)
 c = zeros([K, N_objectives])
 for i in range(start_seg, K):
     c[i] = fds.lss_gradient(cp,[start_seg,i+1])
-savetxt('djds_segment', c)
+savetxt('djds_segment.txt', c)
 
 # compute the confidence interval of a converging sequence a[start_seg:],
 # the convenging rate is assumed to be C1 * n^-0.5
