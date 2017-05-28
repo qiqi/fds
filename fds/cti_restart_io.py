@@ -16,6 +16,11 @@ UGP_IO_NO_D1 = 32
 UGP_IO_NO_D2 = 33
 UGP_IO_FAZONE_NO_D2 = 114
 
+UGP_IO_CV_D1 = 42
+UGP_IO_CV_D2 = 43
+UGP_IO_FAZONE_FA_D1 = 113
+UGP_IO_FAZONE_FA_D2 = 115
+
 UGP_IO_HEADER_NAME_LEN = 52
 
 def read_header(fp):
@@ -72,6 +77,10 @@ def load_les(fname, verbose=True):
         UGP_IO_NO_D1 = 32
         UGP_IO_NO_D2 = 33
         UGP_IO_FAZONE_NO_D2 = 114
+        UGP_IO_CV_D1 = 42
+        UGP_IO_CV_D2 = 43
+        UGP_IO_FAZONE_FA_D1 = 113
+        UGP_IO_FAZONE_FA_D2 = 115
     Other record types are ignored.
     '''
     fp = open(fname, 'rb')
@@ -91,19 +100,18 @@ def load_les(fname, verbose=True):
         elif iid == UGP_IO_D0:
             data[name] = rdata[0]
             if verbose: print(name, data[name])
-        elif iid == UGP_IO_NO_D1:
+        elif (iid == UGP_IO_NO_D1 or
+              iid == UGP_IO_CV_D1 or
+              iid == UGP_IO_FAZONE_FA_D1):
             size = idata[0]
             if verbose: print(name, size)
             data[name] = frombuffer(fp.read(size*8), 'd')
-        elif iid == UGP_IO_NO_D2:
-            size, dim = idata[:2]
-            if verbose: print(name, size, dim)
-            if dim != 3:
-                raise IOError('dim!=3 in UGP_IO_NO_D2, load_les')
-            data[name] = frombuffer(fp.read(size*3*8), 'd').reshape([size, 3])
-        elif iid == UGP_IO_FAZONE_NO_D2:
+        elif (iid == UGP_IO_NO_D2 or
+              iid == UGP_IO_CV_D2 or
+              iid == UGP_IO_FAZONE_NO_D2 or
+              iid == UGP_IO_FAZONE_FA_D2):
             size, dim = idata[0], 3
-            if verbose: print(name, size)
+            if verbose: print(name, size, dim)
             data[name] = frombuffer(fp.read(size*3*8), 'd').reshape([size, 3])
         else:
             if verbose: print('skipping ', name, iid)
@@ -138,6 +146,10 @@ def save_les(fname, data, verbose=True):
         UGP_IO_NO_D1 = 32
         UGP_IO_NO_D2 = 33
         UGP_IO_FAZONE_NO_D2 = 114
+        UGP_IO_CV_D1 = 42
+        UGP_IO_CV_D2 = 43
+        UGP_IO_FAZONE_FA_D1 = 113
+        UGP_IO_FAZONE_FA_D2 = 115
     Other record types are ignored.
     '''
     fp = open(fname, 'r+b')
@@ -169,19 +181,18 @@ def save_les(fname, data, verbose=True):
             rdata[0] = unsaved[name]
             del unsaved[name]
             write_header(fp, name, iid, skip, idata, rdata)
-        elif iid == UGP_IO_NO_D1:
+        elif (iid == UGP_IO_NO_D1 or
+              iid == UGP_IO_CV_D1 or
+              iid == UGP_IO_FAZONE_FA_D1):
             size = idata[0]
             if verbose: print(name, size)
             save_data_field(fp, size, unsaved, name)
-        elif iid == UGP_IO_NO_D2:
-            size, dim = idata[:2]
-            if verbose: print(name, size, dim)
-            if dim != 3:
-                raise IOError('dim!=3 in UGP_IO_NO_D2, save_les')
-            save_data_field(fp, size*3, unsaved, name)
-        elif iid == UGP_IO_FAZONE_NO_D2:
+        elif (iid == UGP_IO_NO_D2 or
+              iid == UGP_IO_CV_D2 or
+              iid == UGP_IO_FAZONE_NO_D2 or
+              iid == UGP_IO_FAZONE_FA_D2):
             size, dim = idata[0], 3
-            if verbose: print(name, size)
+            if verbose: print(name, size, dim)
             save_data_field(fp, size*3, unsaved, name)
     sys.stdout.flush()
     if len(unsaved):

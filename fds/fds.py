@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import sys
 import argparse
@@ -217,3 +218,73 @@ def shadowing(
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
             simultaneous_runs, run_ddt, return_checkpoint, get_host_dir, spawn_compute_job)
+
+def printvV(v, V, spawn_compute_job, interprocess):
+    run_compute([v] + [V], spawn_compute_job=spawn_compute_job, interprocess=interprocess)
+    print(v.field)
+    print(V.field)
+    print(np.linalg.norm(v.field))
+    print(np.linalg.norm(V.field))
+
+
+def test_linearity(
+        run, parameter, checkpoint,
+        steps_per_segment, epsilon=1E-6,
+        checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
+        run_ddt=None, return_checkpoint=False, get_host_dir=None, spawn_compute_job=None):
+    """
+    """
+    compute_outputs = []
+
+    run = RunWrapper(run)
+    assert verify_checkpoint(checkpoint)
+    u0, V, v, lss, G_lss, g_lss, J_hist, G_dil, g_dil = checkpoint
+
+    manager = Manager()
+    interprocess = (manager.Lock(), manager.dict())
+
+    i = lss.K_segments()
+    run_id = 'time_dilation_{0:02d}'.format(i)
+    if run_ddt is not None:
+        time_dil = TimeDilationExact(run_ddt, u0, parameter)
+    else:
+        time_dil = TimeDilation(run, u0, parameter, run_id,
+                                simultaneous_runs, interprocess)
+
+    V = time_dil.project(V)
+    v = time_dil.project(v)
+    V, v = lss.checkpoint(V, v)
+   
+    # first run
+    print(v.shape, V.shape)
+    v1 = v/1.0
+    V1 = V[0:2]/1.0
+    print(v1.shape, V1.shape)
+    printvV(v1, V1, spawn_compute_job, interprocess)
+
+    _, V1, v1, J0, G, g = run_segment(
+            run, u0, V1, v1, parameter, i, steps_per_segment,
+            epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
+            compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
+
+    print(v1.shape, V1.shape)
+    printvV(v1, V1, spawn_compute_job, interprocess)
+
+    # # shrink V by 2 and run
+    # v2 = v/1.0
+    # V2 = V[0:2]/1.0
+    # print(v2.shape, V2.shape)
+    # printvV(v2, V2, spawn_compute_job, interprocess)
+
+    # _, V2, v2, J0, G, g = run_segment(
+            # run, u0, V2, v2, parameter, i, steps_per_segment,
+            # epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
+            # compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
+
+    # print(v2.shape, V2.shape)
+    # printvV(v2, V2, spawn_compute_job, interprocess)
+
+    # # check if still within linear region
+    # print('-'*20)
+    # print(np.linalg.norm(V1.field))
+    # print(np.linalg.norm(V2.field))

@@ -1,1 +1,10 @@
 *.pyc
+apps/*/
+*.png
+tests/solvers/
+apps/.txt
+tests/test_autonomous_system/charles/
+*.ipynb
+tools/openfoam4
+docs/tutorials/src/vanderpol_python/
+Makefile
