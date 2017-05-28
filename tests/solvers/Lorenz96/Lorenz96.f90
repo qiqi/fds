@@ -1,30 +1,72 @@
 ! Lorenz ' 96 system
 
 module Lorenz96
-	! system parameters:
-    real(kind=8), parameter :: M = 8.1d0
+	
 contains
 
-subroutine Xnp1(X,D,Xnp1_res)
+subroutine Xnp1(X,D,Xnp1_res,M)
 
         
     implicit none
 	integer, intent(in) :: D
+	real(kind=8), optional :: M
+	real(kind=8), intent(in), dimension(D) :: X
+    real(kind=8), dimension(D):: k1, k2, k3, k4
+	real(kind=8), intent(out), dimension(D-3) :: Xnp1_res
+    real(kind=8), dimension(D-3):: ddt
+	integer :: i
+	real(kind=8) :: dt
+	
+	if(present(M) .eqv. .false.) then
+		M = 8.1d0
+	end if
+	dt = 0.01d0
+		
+    call dXdt(X,D,ddt,M)
+    k1(3:D-1) = dt*ddt
+    k1(1) = k1(D-2)
+    k1(2) = k1(D-1)
+    k1(D) = k1(3)
+    call dXdt(X+0.5d0*k1,D,ddt,M)
+    k2(3:D-1) = dt*ddt
+    k2(1) = k2(D-2)
+    k2(2) = k2(D-1)
+    k2(D) = k2(3)
+    call dXdt(X+0.5d0*k2,D,ddt,M)
+    k3(3:D-1) = dt*ddt
+    k3(1) = k3(D-2)
+    k3(2) = k3(D-1)
+    k3(D) = k3(3)
+    call dXdt(X+k3,D,ddt,M)
+    k4(3:D-1) = dt*ddt
+    
+    Xnp1_res = X(3:D-1) + 1.d0/6.d0*k1(3:D-1) + &
+               1.d0/3.d0*k2(3:D-1) + 1.d0/3.d0*k3(3:D-1) + &
+                1.d0/6.d0*k4(3:D-1)    
+
+
+
+end subroutine Xnp1
+subroutine dXdt(X,D,Xnp1_res,M)
+    implicit none
+	integer, intent(in) :: D
+	real(kind=8), optional :: M
 	real(kind=8), intent(in), dimension(D) :: X
 	real(kind=8), intent(out), dimension(D-3) :: Xnp1_res
 	integer :: i
 	real(kind=8) :: dt
+    
+    dt = 0.01d0
+    if(present(M) .eqv. .false.) then
+		M = 8.1d0
+	end if
 
-	dt = 0.01d0
-	do i=3,D-1
+    do i=3,D-1
 		Xnp1_res(i-2) = (-X(i-2) + X(i+1))*X(i-1) - X(i) + M	
 	end do
-	!dXdt(1) = (-X(D-1) + X(2))*X(D) - X(1) + M
-  	!dXdt(2) = (-X(D) + X(3))*X(1) - X(2) + M
-	!dXdt(D) = (-X(D-2) + X(1))*X(D-1) - X(D) + M
-	Xnp1_res = X(3:D-1) + dt*Xnp1_res
-end subroutine Xnp1
 
+    
+end subroutine dXdt
 subroutine dfdX(X,D,dfdX_res)
 
 	implicit none
@@ -76,7 +118,7 @@ subroutine dvdt(X,D,v1,dvdt_res)
 		dfdX_ext(2,1) = -X(3) 	
 		dfdX_ext(D-3,D) = X(D-2) 
 		
-		dvdt_res = matmul(dfdX_ext,v1)	
+		dvdt_res = matmul(dfdX_ext,v1) + 1.d0	
 end subroutine dvdt
 subroutine rk45_full(X,D,v,vnp1)
 !Assumes full perturbation vector.
@@ -90,7 +132,7 @@ subroutine rk45_full(X,D,v,vnp1)
 
     
 
-	dt = 0.001d0	
+	dt = 0.01d0	
 	v1 = reshape(v,[D,1])
 	call dvdt(X,D,v1,dvdt_res)	
 	k1(3:D-1,1) = dt*dvdt_res(:,1)
