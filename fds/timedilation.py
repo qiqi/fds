@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import pascal_lite as pascal
 from multiprocessing import Pool
+from pdb import set_trace
 
 def set_order_of_accuracy(order_of_accuracy):
     if order_of_accuracy < 2:
@@ -68,6 +69,7 @@ class TimeDilation(TimeDilationBase):
         res = []
         for steps in range(1, self.order_of_accuracy + 1):
             run_id_steps = run_id + '_{0}steps'.format(steps)
+            # set_trace()
             res.append(threads.apply_async(
                 run, (u0.field, parameter, steps, run_id_steps, interprocess)))
         

@@ -7,10 +7,10 @@ tests/solvers/circular/solver:
 	cd tests/solvers/circular; make
 
 tests/solvers/vanderpol/solver:
-	cd tests/solvers/vanderpol; make
+	#cd tests/solvers/vanderpol; make
 
 tests/solvers/mock_fun3d/final.data.0:
-	cd tests/solvers/mock_fun3d; make
+	#cd tests/solvers/mock_fun3d; make
 
 tools/openfoam4/pisoFoam/pisoFoam:	tools/openfoam4/pisoFoam/*.C tools/openfoam4/pisoFoam/*.H
-	cd tools/openfoam4/pisoFoam/; wmake
+	#cd tools/openfoam4/pisoFoam/; wmake
