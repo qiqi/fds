@@ -29,7 +29,7 @@ def run_charles_in(run_dir, state, steps):
     with open(os.path.join(run_dir, 'charles.in'), 'w') as f:
         f.write(template.substitute(NSTEPS=str(steps+1)))
     with open(os.path.join(run_dir, 'charles.out'), 'w') as f:
-        subprocess.check_call('/home/niangxiu/Working/cylinder_fds_ref/charles.exe',
+        subprocess.check_call('/scratch/niangxiu/cylinder_fds_ref/charles.exe',
                               cwd=run_dir, stdout=f, stderr=f)
     fname = os.path.join(run_dir, 'final.les')
     return load_compressible_les(fname, verbose=True)
@@ -38,23 +38,30 @@ DUMMY_VARS =  [ 'STEP', 'DT', 'TIME', 'MU_LAM', 'CP',
         'K_LAM', 'MU_SGS', 'K_SGS', 'T', 'P', 'U', 
         'left:P_BC', 'left:U_BC', 'left:RHO_BC',
         'cylinder:RHO_BC', 'cylinder:P_BC', 'cylinder:U_BC']
+# DUMMY_VARS = []
+print(DUMMY_VARS)
 
 if __name__ == '__main__':
     if os.path.exists(base_dir):
         shutil.rmtree(base_dir)
 
     os.mkdir(base_dir)
-    intermediate_state = run_charles_in(os.path.join(base_dir, 'first_50_steps'),
+    intermediate_state1 = run_charles_in(os.path.join(base_dir, 'first_50_steps'),
                                      initial_state, 50)
     for v in DUMMY_VARS:
-        intermediate_state[v] = NO_CHANGE
+        intermediate_state1[v] = NO_CHANGE
     final_state_1 = run_charles_in(os.path.join(base_dir, 'second_50_steps'),
-                                     intermediate_state, 50)
-    final_state_2 = run_charles_in(os.path.join(base_dir, 'all_100_steps_at_once'),
-                                     initial_state, 100)
+                                     intermediate_state1, 50)
+
+    intermediate_state2 = run_charles_in(os.path.join(base_dir, 'no_stop_first_50_steps'),
+                                     initial_state, 50)
+    final_state_2 = run_charles_in(os.path.join(base_dir, 'no_stop_second_50_steps'),
+                                     intermediate_state2, 50)
+    # final_state_2 = run_charles_in(os.path.join(base_dir, 'all_100_steps_at_once'),
+                                     # initial_state, 100)
     for k in final_state_1:
-        if k != 'STEP':
+        if k != 'STEP' and k != 'TIME':
             if (final_state_1[k] == final_state_2[k]).all():
-                print(k, ' matches')
+                print(' matches', k)
             else:
-                print(k, ' does not match')
+                print(' does not match', k)

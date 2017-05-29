@@ -6,9 +6,10 @@ import shutil
 import string
 import tempfile
 import argparse
-import subprocess 
+import subprocess
 from pdb import set_trace
 from numpy import *
+from copy import deepcopy
 
 sys.path.append("/scratch/niangxiu/fds")
 from fds import *
@@ -26,7 +27,8 @@ def load_compressible_les(fname, verbose=True):
     les['right:U_BC']   = les['right:U_BC']   / 30.0
     return les
 
-def save_compressible_les(fname, les, verbose=True):
+def save_compressible_les(fname, les0, verbose=True):
+    les = deepcopy(les0)
     les['RHO']  = les['RHO']  * 1.18
     les['RHOU'] = les['RHOU'] * 30.0
     les['RHOE'] = les['RHOE'] * 2.5e5

@@ -3,7 +3,7 @@
 # ==========================
 RESTART = initial.les
 REPART = FALSE
-WRITE_RESULT 50000
+WRITE_RESULT 51
 RESULT = final.les 
 
 # ==========================
