@@ -270,21 +270,21 @@ def test_linearity(
     print(v1.shape, V1.shape)
     printvV(v1, V1, spawn_compute_job, interprocess)
 
-    # # shrink V by 2 and run
-    # v2 = v/1.0
-    # V2 = V[0:2]/1.0
-    # print(v2.shape, V2.shape)
-    # printvV(v2, V2, spawn_compute_job, interprocess)
+    # shrink V by 2 and run
+    v2 = v/2.0
+    V2 = V[0:2]/2.0
+    print(v2.shape, V2.shape)
+    printvV(v2, V2, spawn_compute_job, interprocess)
 
-    # _, V2, v2, J0, G, g = run_segment(
-            # run, u0, V2, v2, parameter, i, steps_per_segment,
-            # epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
-            # compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
+    _, V2, v2, J0, G, g = run_segment(
+            run, u0, V2, v2, parameter, i, steps_per_segment,
+            epsilon, simultaneous_runs, interprocess, get_host_dir=get_host_dir,
+            compute_outputs=compute_outputs, spawn_compute_job=spawn_compute_job)
 
-    # print(v2.shape, V2.shape)
-    # printvV(v2, V2, spawn_compute_job, interprocess)
+    print(v2.shape, V2.shape)
+    printvV(v2, V2, spawn_compute_job, interprocess)
 
-    # # check if still within linear region
-    # print('-'*20)
-    # print(np.linalg.norm(V1.field))
-    # print(np.linalg.norm(V2.field))
+    # check if still within linear region
+    print('-'*20)
+    print(np.linalg.norm(V1.field))
+    print(np.linalg.norm(V2.field)*2.0)

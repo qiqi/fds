@@ -6,10 +6,14 @@ import sys
 sys.path.append('/scratch/niangxiu/fds/')
 import fds
 from matplotlib.pyplot import *
+rcParams.update({'axes.labelsize':'large'})
+rcParams.update({'xtick.labelsize':'large'})
+rcParams.update({'ytick.labelsize':'large'})
+rcParams.update({'legend.fontsize':'large'})
 
 N_objectives = 4
-start_seg = 5 # we look at only segments 5,6,7,8,...
-N_homo = 20
+start_seg = 150 # we look at only segments 5,6,7,8,...
+N_homo = 40
 
 # compute djds v.s. # segment
 cp = fds.checkpoint.load_last_checkpoint('charles', N_homo)
@@ -25,7 +29,7 @@ savetxt('djds_segment.txt', c)
 def compute(d,start_seg):
     assert len(d.shape) == 1
     n_partition = 1001
-    delta = 0.0000001 * d.max()
+    delta = 0.001 * absolute(d).max()
     C = zeros(n_partition)
     for j in range(n_partition):
         temp = zeros (d.shape[0])
@@ -70,7 +74,7 @@ for i in range(4):
     close(fig)
 
 # for LE
-L = cp.lss.lyapunov_exponents()
+L = cp.lss.lyapunov_exponents([start_seg, K])
 L = fds.timeseries.exp_cum_mean(L)
 
 LE  = zeros(N_homo)

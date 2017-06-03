@@ -9,4 +9,5 @@ tools/openfoam4
 docs/tutorials/src/vanderpol_python/
 Makefile
 *.les
-
+apps/djds_segment.txt
+*.out

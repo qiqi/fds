@@ -38,13 +38,13 @@ def save_compressible_les(fname, les0, verbose=True):
     save_les(fname, les, verbose)
 
 INLET_U = 33.0                  # nominal inlet velocity
-M_MODES = 20                    # number of unstable modes
-K_SEGMENTS = 20                 # number of time chunks
-STEPS_PER_SEGMENT = 20          # number of time steps per chunk
+M_MODES = 40                    # number of unstable modes
+K_SEGMENTS = 400                # number of time chunks
+STEPS_PER_SEGMENT = 200         # number of time steps per chunk
 STEPS_RUNUP = 200               # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 0        # how long to wait for file IO to sync
 MPI_NP = 16                     # number of MPI processes for each instance
-SIMULTANEOUS_RUNS = 1           # max number of simultaneous MPI runs
+SIMULTANEOUS_RUNS = 4           # max number of simultaneous MPI runs
 
 STATE_VARS =  [ 'RHO', 'RHOU', 'RHOE',
                 'right:RHO_BC', 'right:P_BC', 'right:U_BC' ]
@@ -139,35 +139,35 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
     assert J.shape == (nsteps, 4)
     solution = load_compressible_les(final_data_file, verbose=False)
     u1 = hstack([ravel(solution[state]) for state in STATE_VARS])
-    # os.remove(work_path + '/initial.les')
-    # os.remove(work_path + '/final.les')
+    os.remove(work_path + '/initial.les')
+    os.remove(work_path + '/final.les')
     return ravel(u1), J
 
 if __name__ == '__main__':
     u0 = hstack([ravel(REF_STATE[state]) for state in STATE_VARS])
 
     checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
-    fds.test_linearity(solve, S_BASELINE, checkpoint, STEPS_PER_SEGMENT, epsilon=1e-4, simultaneous_runs=SIMULTANEOUS_RUNS)
+    # fds.test_linearity(solve, S_BASELINE, checkpoint, STEPS_PER_SEGMENT, epsilon=1e-4, simultaneous_runs=SIMULTANEOUS_RUNS)
 
-    # if checkpoint is None:
-        # J, G = shadowing(
-                    # solve,
-                    # u0,
-                    # S_BASELINE,
-                    # M_MODES,
-                    # K_SEGMENTS,
-                    # STEPS_PER_SEGMENT,
-                    # STEPS_RUNUP,
-                    # epsilon=1E-4,
-                    # checkpoint_path=BASE_PATH,
-                    # simultaneous_runs=SIMULTANEOUS_RUNS
-                 # )
-    # else:
-        # J, G = continue_shadowing(solve,
-                                  # S_BASELINE,
-                                  # checkpoint,
-                                  # K_SEGMENTS,
-                                  # STEPS_PER_SEGMENT,
-                                  # epsilon=1E-4,
-                                  # checkpoint_path=BASE_PATH,
-                                  # simultaneous_runs=SIMULTANEOUS_RUNS)
+    if checkpoint is None:
+        J, G = shadowing(
+                    solve,
+                    u0,
+                    S_BASELINE,
+                    M_MODES,
+                    K_SEGMENTS,
+                    STEPS_PER_SEGMENT,
+                    STEPS_RUNUP,
+                    epsilon=1E-4,
+                    checkpoint_path=BASE_PATH,
+                    simultaneous_runs=SIMULTANEOUS_RUNS
+                 )
+    else:
+        J, G = continue_shadowing(solve,
+                                  S_BASELINE,
+                                  checkpoint,
+                                  K_SEGMENTS,
+                                  STEPS_PER_SEGMENT,
+                                  epsilon=1E-4,
+                                  checkpoint_path=BASE_PATH,
+                                  simultaneous_runs=SIMULTANEOUS_RUNS)

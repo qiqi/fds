@@ -55,8 +55,10 @@ class LssTangent:
             a.append(np.dot(self.Rs[i], a[-1]) + self.bs[i])
         return array(a)[:-1]
 
-    def lyapunov_exponents(self):
+    def lyapunov_exponents(self, segment_range=None):
         R = np.array(self.Rs)
+        if segment_range is not None:
+            R = R[slice(*segment_range)]
         i = np.arange(self.m_modes())
         diags = R[:,i,i]
         return np.log(abs(diags))
