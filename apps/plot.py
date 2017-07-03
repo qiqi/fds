@@ -12,15 +12,15 @@ rcParams.update({'ytick.labelsize':'large'})
 rcParams.update({'legend.fontsize':'large'})
 
 N_objectives = 4
-start_seg = 150 # we look at only segments 5,6,7,8,...
+start_seg = 200 # we look at only segments 5,6,7,8,...
 N_homo = 40
 
 # compute djds v.s. # segment
 cp = fds.checkpoint.load_last_checkpoint('charles', N_homo)
 K = size(cp.g_dil)
 c = zeros([K, N_objectives])
-for i in range(start_seg, K):
-    c[i] = fds.lss_gradient(cp,[start_seg,i+1])
+for i in range(0, K):
+    c[i] = fds.lss_gradient(cp,[0,i+1])
 savetxt('djds_segment.txt', c)
 
 # compute the confidence interval of a converging sequence a[start_seg:],
@@ -74,8 +74,9 @@ for i in range(4):
     close(fig)
 
 # for LE
-L = cp.lss.lyapunov_exponents([start_seg, K])
+L = cp.lss.lyapunov_exponents() #()[start_seg, K])
 L = fds.timeseries.exp_cum_mean(L)
+print(L.shape)
 
 LE  = zeros(N_homo)
 err = zeros(N_homo)

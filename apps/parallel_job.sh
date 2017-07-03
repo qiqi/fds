@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fds_cylinder
+#SBATCH --job-name=fds_cylinder_change_rot
 #SBATCH --workdir=/scratch/niangxiu/fds/apps/
 #SBATCH --output=out.out
 #SBATCH --error=out.out

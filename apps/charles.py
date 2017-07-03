@@ -37,7 +37,8 @@ def save_compressible_les(fname, les0, verbose=True):
     les['right:U_BC']   = les['right:U_BC']   * 30.0
     save_les(fname, les, verbose)
 
-INLET_U = 33.0                  # nominal inlet velocity
+# INLET_U = 33.0                  # nominal inlet velocity
+ROTATION = 0                    # nominal rotation speed in round per time unit
 M_MODES = 40                    # number of unstable modes
 K_SEGMENTS = 400                # number of time chunks
 STEPS_PER_SEGMENT = 200         # number of time steps per chunk
@@ -63,7 +64,8 @@ REF_SUPP_FILE = os.path.join(REF_WORK_PATH, 'write_J.py')
 REF_STATE = load_compressible_les(REF_DATA_FILE, verbose=False)
 
 BASE_PATH = os.path.join(my_path, 'charles')
-S_BASELINE = INLET_U
+# S_BASELINE = INLET_U
+S_BASELINE = ROTATION
 if not os.path.exists(BASE_PATH):
     os.mkdir(BASE_PATH)
 
@@ -84,9 +86,12 @@ def make_data(u):
         raise ValueError('make_data u.size = {0} != {2}'.format(u.size, start))
     return data
 
-def solve(u0, inlet_u, nsteps, run_id, interprocess):
-    print('Starting solve, inlet_u, nsteps, run_id = ',
-                           inlet_u, nsteps, run_id)
+# def solve(u0, inlet_u, nsteps, run_id, interprocess):
+    # print('Starting solve, inlet_u, nsteps, run_id = ',
+                           # inlet_u, nsteps, run_id)
+def solve(u0, rotation, nsteps, run_id, interprocess):
+    print('Starting solve, rotation, nsteps, run_id = ',
+                           rotation, nsteps, run_id)
     sys.stdout.flush()
     work_path = os.path.join(BASE_PATH, run_id)
     initial_data_file = os.path.join(work_path, 'initial.les')
@@ -104,8 +109,10 @@ def solve(u0, inlet_u, nsteps, run_id, interprocess):
             os.mkdir(os.path.join(work_path, subdir))
         
         with open(os.path.join(work_path, 'charles.in'), 'w') as f:
+            # f.write(PARAMS_TEMPLATE.substitute(
+                # INLET_U=str(inlet_u), NSTEPS=nsteps))
             f.write(PARAMS_TEMPLATE.substitute(
-                INLET_U=str(inlet_u), NSTEPS=nsteps))
+                ROTATION=str(rotation), NSTEPS=nsteps))
         shutil.copy(REF_DATA_FILE, initial_data_file)
         shutil.copy(REF_SUPP_FILE, work_path)
         save_compressible_les(initial_data_file, make_data(u0), verbose=False)
