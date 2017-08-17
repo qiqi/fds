@@ -37,10 +37,10 @@ def save_compressible_les(fname, les0, verbose=True):
     les['right:U_BC']   = les['right:U_BC']   * 30.0
     save_les(fname, les, verbose)
 
-# INLET_U = 33.0                  # nominal inlet velocity
+# INLET_U = 33.0                # nominal inlet velocity
 ROTATION = 0                    # nominal rotation speed in round per time unit
 M_MODES = 40                    # number of unstable modes
-K_SEGMENTS = 400                # number of time chunks
+K_SEGMENTS = 600                # number of time chunks
 STEPS_PER_SEGMENT = 200         # number of time steps per chunk
 STEPS_RUNUP = 200               # additional run up time steps
 SLEEP_SECONDS_FOR_IO = 0        # how long to wait for file IO to sync

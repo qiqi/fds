@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=fds_cylinder_change_rot
+#SBATCH --job-name=fds_cylinder_change_rot_finer_reso
 #SBATCH --workdir=/scratch/niangxiu/fds/apps/
-#SBATCH --output=out.out
-#SBATCH --error=out.out
+#SBATCH --output=out
+#SBATCH --error=out
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=16
 
