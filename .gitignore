@@ -11,3 +11,4 @@ Makefile
 *.les
 apps/djds_segment.txt
 *.out
+out
