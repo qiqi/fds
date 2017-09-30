@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 import numpy as np
 import os
@@ -21,8 +22,8 @@ if __name__ == '__main__':
     import sys
     A = np.loadtxt(sys.argv[1])
     size = A.shape[1]
-    start = rank * size/nprocs
-    end = (rank + 1) * size/nprocs
+    start = rank * size // nprocs
+    end = (rank + 1) * size // nprocs
     A = A[:,start:end]
     Q, R = pQR(comm,A.T)
     Q = comm.gather(Q, root=0)

@@ -58,7 +58,8 @@ def test_plinalg():
     Q = np.dot(Q,S)
     Q = Q.T
     plinalg_file = os.path.join(my_path, 'test_plinalg.py')
-    
+
+    print(sys.executable, plinalg_file, V_path, v_path)
     returncode = subprocess.call(['mpirun', '-np', '4', sys.executable, plinalg_file, V_path, v_path])
     assert returncode == 0
 
