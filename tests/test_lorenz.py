@@ -36,7 +36,7 @@ def test_gradient():
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):
         print(i)
-        Ji, Gi = shadowing(solve, u0, si-28, 2, 10, 1000, 5000)
+        Ji, Gi = shadowing(solve, u0, si, 2, 10, 1000, 5000)
         J[i,:] = Ji
         G[i,:] = Gi
     assert all(abs(J[:,1] - 100) < 1E-12)
@@ -51,7 +51,7 @@ def test_lyapunov():
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
     m = 2
-    J, G = shadowing(solve, u0, 0, m, 20, 1000, 5000, checkpoint_path=cp_path)
+    J, G = shadowing(solve, u0, 28, m, 20, 1000, 5000, checkpoint_path=cp_path)
     cp = checkpoint.load_last_checkpoint(cp_path, m)
     L = cp.lss.lyapunov_exponents()
 

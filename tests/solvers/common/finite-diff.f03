@@ -7,7 +7,7 @@ PROGRAM Verification
     REAL(8), PARAMETER :: EPS=1E-5
     INTEGER, PARAMETER :: nSteps = 1000000
     INTEGER :: iStep
-    REAL(8) :: x(NDIM), y(NDIM), s(1)
+    REAL(8) :: x(NDIM), y(NDIM), s(NPARAMS)
     REAL(8) :: J
 
     s = S0
