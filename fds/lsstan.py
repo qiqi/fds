@@ -2,7 +2,6 @@ import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from .timeseries import windowed_mean
 import pascal_lite as pascal
 
 class LssTangent:
@@ -33,6 +32,9 @@ class LssTangent:
         self.bs.append(b)
         return V, v
 
+    def adjoint_checkpoint(self, i, V, v_adj, b_adj):
+        R = self.Rs[i]
+
     def solve(self):
         R, b = np.array(self.Rs), np.array(self.bs)
         assert R.ndim == 3 and b.ndim == 2
@@ -42,12 +44,30 @@ class LssTangent:
         eyes = np.eye(subdim, subdim) * np.ones([nseg, 1, 1])
         matrix_shape = (subdim * nseg, subdim * (nseg+1))
         I = sparse.bsr_matrix((eyes, np.r_[1:nseg+1], np.r_[:nseg+1]))
-        D = sparse.bsr_matrix((R, np.r_[:nseg], np.r_[:nseg+1]), shape=matrix_shape)
+        D = sparse.bsr_matrix((R, np.r_[:nseg], np.r_[:nseg+1]),
+                              shape=matrix_shape)
         B = (D - I).tocsr()
         Schur = B * B.T #+ 1E-5 * sparse.eye(B.shape[0])
         alpha = -(B.T * splinalg.spsolve(Schur, np.ravel(b)))
         # alpha1 = splinalg.lsqr(B, ravel(bs), iter_lim=10000)
         return alpha.reshape([nseg+1,-1])[:-1]
+
+    def adjoint(self, alpha_adj):
+        R = np.array(self.Rs)
+        assert R.ndim == 3
+        assert R.shape[0] == alpha_adj.shape[0]
+        assert R.shape[1] == R.shape[2] == alpha_adj.shape[1]
+        nseg, subdim = alpha_adj.shape
+        alpha_adj = np.vstack([alpha_adj, np.zeros([1, subdim])]).ravel()
+        eyes = np.eye(subdim, subdim) * np.ones([nseg, 1, 1])
+        matrix_shape = (subdim * nseg, subdim * (nseg+1))
+        I = sparse.bsr_matrix((eyes, np.r_[1:nseg+1], np.r_[:nseg+1]))
+        D = sparse.bsr_matrix((R, np.r_[:nseg], np.r_[:nseg+1]),
+                              shape=matrix_shape)
+        B = (D - I).tocsr()
+        Schur = B * B.T #+ 1E-5 * sparse.eye(B.shape[0])
+        b_adj = -splinalg.spsolve(Schur, B * alpha_adj)
+        return b_adj.reshape([nseg, subdim])
 
     def solve_ivp(self):
         a = [np.zeros(self.bs[0].shape)]

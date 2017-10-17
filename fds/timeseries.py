@@ -7,9 +7,12 @@ def mean_std(x):
     return x.mean(0), x_i.std(0) / sqrt(len(x_i))
 
 def windowed_mean(a):
-    win = sin(linspace(0, pi, a.shape[0]+2)[1:-1])**2
-    # win = ones(a.shape[0]) 
-    return (a * win[:,newaxis]).sum(0) / win.sum()
+    win = windowed_mean_weights(a.shape[0])
+    return dot(win, a)
+
+def windowed_mean_weights(n):
+    win = sin(linspace(0, pi, n+2)[1:-1])**2
+    return win / win.sum()
 
 def exp_cum_mean(x):
     x, x_mean = array(x), []

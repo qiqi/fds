@@ -198,6 +198,9 @@ def shadowing(
                    J:            quantities of interest, a numpy array of shape
                                  (steps, n_qoi), where n_qoi is an arbitrary
                                  but consistent number, # quantities of interest.
+    returns: (J, G)
+        J: Time-averaged objective function, array of length n_qoi.
+        G: Derivative of time-averaged objective function, array of length n_qoi
     '''
     u0 = pascal.symbolic_array(field=u0)
 
