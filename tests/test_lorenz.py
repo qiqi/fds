@@ -7,7 +7,7 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-#sys.path.append(os.path.join(my_path, '..'))
+sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 
@@ -20,7 +20,7 @@ def solve(u, s, nsteps):
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
-        f.write(asarray([10, s, 8./3], dtype='>d').tobytes())
+        f.write(asarray([10, 28., 8./3, s], dtype='>d').tobytes())
     call([solver, str(int(nsteps))], cwd=tmp_path)
     with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
@@ -36,7 +36,7 @@ def test_gradient():
     J, G = zeros([s.size, 2]), zeros([s.size, 2])
     for i, si in enumerate(s):
         print(i)
-        Ji, Gi = shadowing(solve, u0, si, 2, 10, 1000, 5000)
+        Ji, Gi = shadowing(solve, u0, si, 2, 10, 10000, 50000)
         J[i,:] = Ji
         G[i,:] = Gi
     assert all(abs(J[:,1] - 100) < 1E-12)
@@ -51,7 +51,7 @@ def test_lyapunov():
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
     m = 2
-    J, G = shadowing(solve, u0, 28, m, 20, 1000, 5000, checkpoint_path=cp_path)
+    J, G = shadowing(solve, u0, 0, m, 20, 10000, 10000, checkpoint_path=cp_path)
     cp = checkpoint.load_last_checkpoint(cp_path, m)
     L = cp.lss.lyapunov_exponents()
 
@@ -63,5 +63,6 @@ def test_lyapunov():
         return (x * w).sum(0) / w.sum()
 
     lam1, lam2 = exp_mean(L[:,:5])
+    print(lam1, lam2)
     assert 0.5 < lam1 < 1.5
     assert -15 < lam2 < -5

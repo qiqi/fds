@@ -1,9 +1,10 @@
 from __future__ import division
 import sys
 import numpy as np
-import pascal_lite as pascal
 from multiprocessing import Pool
 from pdb import set_trace
+
+from .state import state_dot, state_outer, state_norm
 
 def set_order_of_accuracy(order_of_accuracy):
     if order_of_accuracy < 2:
@@ -18,7 +19,6 @@ def compute_dxdt_of_order(u, order):
     b[1] = 1
     c = np.linalg.solve(A, b)
     return sum([c[i]*u[i] for i in range(0, order+1)])
-    #return pascal.dot(c, u[:order+1])
 
 def compute_dxdt(u):
     '''
@@ -26,8 +26,7 @@ def compute_dxdt(u):
     '''
     dxdt_higher_order = compute_dxdt_of_order(u, len(u) - 1)
     dxdt_lower_order = compute_dxdt_of_order(u, len(u) - 2)
-    ravel = lambda x: x
-    difference = pascal.norm(ravel(dxdt_higher_order - dxdt_lower_order))
+    #difference = pascal.norm(ravel(dxdt_higher_order - dxdt_lower_order))
     #relative_difference = difference / pascal.norm(ravel(dxdt_higher_order))
     #if relative_difference > 0.01:
     #    sys.stderr.write('Warning: dxdt in time dilation inaccurate. ')
@@ -37,18 +36,17 @@ def compute_dxdt(u):
 class TimeDilationBase:
     def contribution(self, v):
         if self.dxdt is None:
-            if len(v.shape) == 0:
-                return pascal.dot(v, v*0)
-            else:
-                return pascal.dot(v, v[0]*0)
+            return 0
         else:
-            return pascal.dot(v, self.dxdt) / pascal.dot(self.dxdt, self.dxdt)
+            return state_dot(v, self.dxdt) / state_dot(self.dxdt, self.dxdt)
 
     def project(self, v):
         if self.dxdt_normalized is None:
             return v
         else:
-            dv = pascal.outer(pascal.dot(v, self.dxdt_normalized), self.dxdt_normalized)
+            dv = state_outer(state_dot(v, self.dxdt_normalized),
+                             self.dxdt_normalized)
+            v = np.array(v)
             return v - dv.reshape(v.shape)
 
 class TimeDilationExact(TimeDilationBase):
@@ -61,22 +59,20 @@ class TimeDilationExact(TimeDilationBase):
             self.dxdt_normalized = None
 
 class TimeDilation(TimeDilationBase):
-    order_of_accuracy = 3
+    order_of_accuracy = 4
 
-    def __init__(self, run, u0, parameter, run_id,
-                 simultaneous_runs, interprocess):
+    def __init__(self, run, u0, parameter, run_id, simultaneous_runs):
         threads = Pool(simultaneous_runs)
         res = []
         for steps in range(1, self.order_of_accuracy + 1):
             run_id_steps = run_id + '_{0}steps'.format(steps)
             # set_trace()
             res.append(threads.apply_async(
-                run, (u0.field, parameter, steps, run_id_steps, interprocess)))
-        
-        u = [res_i.get()[0] for res_i in res]
-        u = [u0] + [pascal.symbolic_array(field=ui) for ui in u]
+                run, (u0, parameter, steps, run_id_steps)))
+
+        u = [u0] + [res_i.get()[0] for res_i in res]
 
         threads.close()
         threads.join()
         self.dxdt = compute_dxdt(u)
-        self.dxdt_normalized = self.dxdt / pascal.norm(self.dxdt)
+        self.dxdt_normalized = self.dxdt / state_norm(self.dxdt)

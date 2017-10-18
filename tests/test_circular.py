@@ -40,3 +40,6 @@ def test_gradient():
         G[i,:] = Gi
     assert all(abs(J[:,0] - (s + 1)) < 0.001)
     assert all(abs(G[:,0] - 1) < 0.01)
+
+#if __name__ == '__main__':
+#    J, G = shadowing(solve, u0, 0, 1, 50, 4800, 10000)

@@ -2,7 +2,7 @@ import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-import pascal_lite as pascal
+from .state import qr_transpose_states, state_dot
 
 class LssTangent:
     def __init__(self):
@@ -17,16 +17,10 @@ class LssTangent:
         return self.Rs[0].shape[0]
 
     def checkpoint(self, V, v):
-        #Q, R = pascal.qr(V.T)
-        #b = pascal.dot(Q.T, v)
-        #V[:] = Q.T
-        #v -= pascal.dot(Q, b)
-        Q, R = pascal.qr_transpose(V)
-        b = pascal.dot(Q, v)
-        #V[:] = Q
-        #v -= pascal.dot(b, Q)
+        Q, R = qr_transpose_states(V)
+        b = state_dot(Q, v)
         V = Q
-        v = v - pascal.dot(b, Q)
+        v = v - state_dot(b, Q)
 
         self.Rs.append(R)
         self.bs.append(b)
@@ -36,7 +30,9 @@ class LssTangent:
         R = self.Rs[i]
 
     def solve(self):
-        R, b = np.array(self.Rs), np.array(self.bs)
+        if len(self.bs) == 1:
+            return np.zeros_like(self.bs)
+        R, b = np.array(self.Rs[1:]), np.array(self.bs[1:])
         assert R.ndim == 3 and b.ndim == 2
         assert R.shape[0] == b.shape[0]
         assert R.shape[1] == R.shape[2] == b.shape[1]
@@ -50,15 +46,14 @@ class LssTangent:
         Schur = B * B.T #+ 1E-5 * sparse.eye(B.shape[0])
         alpha = -(B.T * splinalg.spsolve(Schur, np.ravel(b)))
         # alpha1 = splinalg.lsqr(B, ravel(bs), iter_lim=10000)
-        return alpha.reshape([nseg+1,-1])[:-1]
+        return alpha.reshape([nseg+1,-1])
 
     def adjoint(self, alpha_adj):
-        R = np.array(self.Rs)
+        R = np.array(self.Rs[1:])
         assert R.ndim == 3
-        assert R.shape[0] == alpha_adj.shape[0]
+        assert R.shape[0] == alpha_adj.shape[0] - 1
         assert R.shape[1] == R.shape[2] == alpha_adj.shape[1]
-        nseg, subdim = alpha_adj.shape
-        alpha_adj = np.vstack([alpha_adj, np.zeros([1, subdim])]).ravel()
+        nseg, subdim = R.shape[:2]
         eyes = np.eye(subdim, subdim) * np.ones([nseg, 1, 1])
         matrix_shape = (subdim * nseg, subdim * (nseg+1))
         I = sparse.bsr_matrix((eyes, np.r_[1:nseg+1], np.r_[:nseg+1]))
@@ -66,17 +61,18 @@ class LssTangent:
                               shape=matrix_shape)
         B = (D - I).tocsr()
         Schur = B * B.T #+ 1E-5 * sparse.eye(B.shape[0])
-        b_adj = -splinalg.spsolve(Schur, B * alpha_adj)
-        return b_adj.reshape([nseg, subdim])
+        b_adj = -splinalg.spsolve(Schur, B * np.ravel(alpha_adj))
+        return np.vstack([np.zeros([1, subdim]),
+                          b_adj.reshape([nseg, subdim])])
 
     def solve_ivp(self):
         a = [np.zeros(self.bs[0].shape)]
-        for i in range(len(self.bs)):
+        for i in range(1, len(self.bs)):
             a.append(np.dot(self.Rs[i], a[-1]) + self.bs[i])
-        return array(a)[:-1]
+        return array(a)
 
     def lyapunov_exponents(self, segment_range=None):
-        R = np.array(self.Rs)
+        R = np.array(self.Rs[1:])
         if segment_range is not None:
             R = R[slice(*segment_range)]
         i = np.arange(self.m_modes())
@@ -88,7 +84,7 @@ class LssTangent:
         multiplier = np.exp(exponents)
         vi = np.eye(self.m_modes())
         v = [vi]
-        for Ri in reversed(self.Rs):
+        for Ri in reversed(self.Rs[1:]):
             vi = np.linalg.solve(Ri, vi) * multiplier
             v.insert(0, vi)
         v = np.array(v)

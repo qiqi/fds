@@ -17,7 +17,7 @@ SUBROUTINE Step(x, s)
     REAL(8) :: dx(2)
     dx(1) = +x(2) - (x(1)*x(1) + x(2)*x(2) - s(1) - 1) * x(1)
     dx(2) = -x(1) - (x(1)*x(1) + x(2)*x(2) - s(1) - 1) * x(2)
-    x(:) = x(:) + dt * dx(:)
+    x(:) = x(:) + dt * (1 + s(1)) * dx(:)
 END SUBROUTINE
 
 REAL(8) FUNCTION Objective(x, s)

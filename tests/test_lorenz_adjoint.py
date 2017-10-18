@@ -26,7 +26,7 @@ def solve(u, s, nsteps):
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
-        f.write(asarray([10, s, 8./3], dtype='>d').tobytes())
+        f.write(asarray([10, 28., 8./3, s], dtype='>d').tobytes())
     call([solver, str(int(nsteps))], cwd=tmp_path)
     with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
