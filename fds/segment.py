@@ -76,7 +76,8 @@ def tangent_segment(tangent_run, u0, V, v, parameter, i_segment, steps,
     threads.join()
     return u0p, V, v, J0, G, g
 
-def adjoint_segment(adjoint_run, u0, w, parameter, i_segment, steps):
+def adjoint_segment(adjoint_run, u0, w, parameter, i_segment, steps, weight):
     run_id = 'segment{0:02d}_adjoint'.format(i_segment)
+    w /= weight
     wp, dJds = adjoint_run(u0, parameter, steps, w, run_id)
-    return wp, dJds
+    return wp * weight, dJds * weight

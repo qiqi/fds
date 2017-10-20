@@ -93,28 +93,31 @@ if __name__ == '__main__':
     u0, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = cp
     g_lss = np.array(g_lss)
     J = np.array(J)
-    dJ = trapez_mean(J.mean(0), 0) - J[:,-1]
+    dJ = trapez_mean(J, 1) - J[:,-1]
     assert dJ.ndim == 2 and dJ.shape[1] == 1
 
-    win = windowed_mean_weights(dJ.shape[0])
-    g_lss_adj = win[:,newaxis]
-    alpha_adj_lss = win[:,newaxis] * np.array(G_lss)[:,:,0]
+    win_lss = windowed_mean_weights(dJ.shape[0])
+    g_lss_adj = win_lss[:,newaxis]
+    alpha_adj_lss = win_lss[:,newaxis] * np.array(G_lss)[:,:,0]
 
-    dil_adj = win * ravel(dJ)
+    win_dil = windowed_mean_weights(dJ.shape[0] - 1)
+    dil_adj = win_dil * ravel(dJ)[:-1]
     g_dil_adj = dil_adj / steps_per_segment
-    alpha_adj_dil = dil_adj[:,newaxis] * G_dil / steps_per_segment
+    alpha_adj_dil = dil_adj[:,newaxis] * array(G_dil)[1:] / steps_per_segment
 
-    alpha_adj = alpha_adj_lss + alpha_adj_dil
+    alpha_adj = alpha_adj_lss
+    alpha_adj[:-1] += alpha_adj_dil
     b_adj = lss.adjoint(alpha_adj)
+    bs = np.array(lss.bs)
 
     'verification'
     print()
-    print((g_lss_adj * g_lss).sum() + (b_adj * np.array(lss.bs)).sum() + (g_dil_adj * g_dil).sum())
+    print((g_lss_adj * g_lss).sum() + (b_adj * bs).sum() + (g_dil_adj * g_dil[1:]).sum())
     alpha = lss.solve()
-    print((g_lss_adj * g_lss).sum() + (alpha_adj * alpha).sum() + (g_dil_adj * g_dil).sum())
+    print((g_lss_adj * g_lss).sum() + (alpha_adj * alpha).sum() + (g_dil_adj * g_dil[1:]).sum())
     grad_lss = (alpha[:,:,np.newaxis] * np.array(G_lss)).sum(1) + g_lss
-    dil = ((alpha * G_dil).sum(1) + g_dil) / steps_per_segment
-    grad_dil = dil[:,np.newaxis] * dJ
+    dil = ((alpha[:-1] * array(G_dil)[1:]).sum(1) + np.array(g_dil)[1:]) / steps_per_segment
+    grad_dil = dil[:,np.newaxis] * dJ[:-1]
     print(windowed_mean(grad_lss) + windowed_mean(grad_dil))
 
     w = zeros_like(u0)
@@ -122,19 +125,27 @@ if __name__ == '__main__':
     cp_file = 'm{}_segment{}'.format(m, k)
     u0, V, v, _,_,_,_,_,_ = load_checkpoint(os.path.join(cp_path, cp_file))
     w, dJds = adjoint_segment(AdjointWrapper(adjoint),
-                              u0, w, s, k, steps_per_segment)
+                              u0, w, s, k, steps_per_segment, g_lss_adj[-1])
 
     time_dil = TimeDilation(RunWrapper(solve), u0, s, 'time_dilation_test', 4)
     V = time_dil.project(V)
-    v = time_dil.project(v)
+    v0 = time_dil.project(v)
 
-    _, v1 = lss.checkpoint(V, v)
+    _, v1 = lss.checkpoint(V, v0)
 
     #g_lss[-1] = 0
-    grad_lss = (alpha[:,:,np.newaxis] * np.array(G_lss)).sum(1) + g_lss
-    print(g_lss[-1] + dot(b_adj[-1], lss.bs[-1]))
-    print(dJds[3] + dot(v1,w) + dot(b_adj[-1], lss.bs[-1]))
+    print()
+    print((g_lss_adj * g_lss).sum() + (b_adj * bs).sum() + (g_dil_adj * g_dil[1:]).sum())
+    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
+          g_lss[-1] * g_lss_adj[-1] + dot(b_adj[-1], bs[-1]))
+    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
+          dJds[3] + dot(v1,w) + dot(b_adj[-1], bs[-1]))
 
     w1 = lss.adjoint_checkpoint(V, w, b_adj[-1])
-    print(dJds[3] + dot(v,w1))
+    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
+          dJds[3] + dot(v0,w1))
+
+    w2 = time_dil.project(w1)
+    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
+          dJds[3] + dot(v,w2))
 
