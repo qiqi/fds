@@ -17,7 +17,7 @@ PROGRAM Adj
     CALL get_command_argument(1, arg)
     Read(arg, '(i10)') nSteps
 
-    Allocate(x(NDIM, nSteps))
+    Allocate(x(NDIM, nSteps + 1))
 
     Open(1, file="input.bin", form="unformatted", access="stream", &
             status="old", convert='big_endian')
@@ -29,7 +29,7 @@ PROGRAM Adj
     Read(1) s
     Close(1)
 
-    DO iStep = 1, nSteps-1
+    DO iStep = 1, nSteps
         x(:,iStep+1) = x(:,iStep)
         CALL Step(x(:,iStep+1), s)
     END DO
@@ -40,10 +40,15 @@ PROGRAM Adj
     Close(1)
 
     dJds(:) = 0.0
+    CALL AdjointSource(x(:,nSteps+1), s, ax, 0.5_8 / nSteps)
     DO iStep = nSteps, 1, -1
-        CALL AdjointDJDS(x(:,iStep), S0, ax, dJds)
-        CALL AdjointStep(x(:,iStep), S0, ax)
+        CALL AdjointDJDS(x(:,iStep), s, ax, dJds)
+        CALL AdjointStep(x(:,iStep), s, ax)
+        if (iStep .GT. 1) then
+            CALL AdjointSource(x(:,iStep), s, ax, 1.0_8 / nSteps)
+        end if
     END DO
+    CALL AdjointSource(x(:,1), s, ax, 0.5_8 / nSteps)
 
     Open(1, file="adj-output.bin", form="unformatted", access="stream", &
          status='replace', convert='big_endian')

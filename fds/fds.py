@@ -11,7 +11,7 @@ import numpy as np
 import pascal_lite as pascal
 from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
-from .segment import run_segment, trapez_mean
+from .segment import run_segment, tangent_segment, trapez_mean
 from .lsstan import LssTangent#, tangent_initial_condition
 from .timeseries import windowed_mean
 from .compute import run_compute
@@ -31,7 +31,7 @@ def lss_gradient(checkpoint):
              + np.array(g_lss)
     J = np.array(J)
     dJ = trapez_mean(J, 1) - J[:,-1]
-    steps_per_segment = J.shape[1]
+    steps_per_segment = J.shape[1] - 1
     dil = ((alpha[:-1] * np.array(G_dil)[1:]).sum(1)
             + np.array(g_dil)[1:]) / steps_per_segment
     grad_dil = dil[:,np.newaxis] * dJ[:-1]
@@ -41,25 +41,55 @@ class RunWrapper:
     def __init__(self, run):
         self.run = run
 
-    def variable_args(self, u0, parameter, steps, run_id):
+    def variable_args(self, u0, *args, **kwargs):
         u0 = decode_state(u0)
         try:
-            return self.run(u0, parameter, steps, run_id=run_id)
+            return self.run(u0, *args, **kwargs)
         except TypeError as e1:
             # does not expect run_id
+            args = args[:-1]
             tb1 = traceback.format_exc()
         try:
-            return self.run(u0, parameter, steps)
+            return self.run(u0, *args, **kwargs)
         except TypeError as e2:
             tb2 = traceback.format_exc() # failed
         for tb in (tb1, tb2):
             sys.stderr.write(str(tb) + '\n')
         raise TypeError
 
-    def __call__(self, u0, parameter, steps, run_id):
+    def __call__(self, u, s, steps, *args, **kwargs):
         try:
-            u1, J = self.variable_args( u0, parameter, steps, run_id)
-            return encode_state(u1), np.array(J).reshape([steps, -1])
+            u1, J = self.variable_args(u, s, steps, *args, **kwargs)
+            return encode_state(u1), np.array(J).reshape([steps+1, -1])
+        except Exception as e:
+            tb = traceback.format_exc()
+            sys.stderr.write(str(tb) + '\n')
+            raise e
+
+class TangentWrapper(RunWrapper):
+    def __init__(self, run):
+        self.run = run
+
+    def __call__(self, u, s, du, ds, steps, *args, **kwargs):
+        try:
+            u, v, J, dJ = self.variable_args(u, s, du, ds, steps,
+                                             *args, **kwargs)
+            return encode_state(v), encode_state(v), \
+                   np.array(J).reshape([steps+1, -1]), \
+                   np.array(dJ).reshape([steps+1, -1])
+        except Exception as e:
+            tb = traceback.format_exc()
+            sys.stderr.write(str(tb) + '\n')
+            raise e
+
+class AdjointWrapper(RunWrapper):
+    def __init__(self, run):
+        self.run = run
+
+    def __call__(self, u, s, steps, *args, **kwargs):
+        try:
+            u1, J = self.variable_args(u, s, steps, *args, **kwargs)
+            return encode_state(u1), np.array(J)
         except Exception as e:
             tb = traceback.format_exc()
             sys.stderr.write(str(tb) + '\n')
@@ -69,7 +99,7 @@ def continue_shadowing(
         run, parameter, checkpoint,
         num_segments, steps_per_segment, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        tangent_run=None, run_ddt=None, return_checkpoint=False):
     """
     """
     run = RunWrapper(run)
@@ -90,9 +120,14 @@ def continue_shadowing(
 
         V, v = lss.checkpoint(V, v)
 
-        u0, V, v, J0, G, g = run_segment(
-                run, u0, V, v, parameter, i, steps_per_segment,
-                epsilon, simultaneous_runs)
+        if tangent_run:
+            u0, V, v, J0, G, g = tangent_segment(
+                    tangent_run, u0, V, v, parameter, i, steps_per_segment,
+                    simultaneous_runs)
+        else:
+            u0, V, v, J0, G, g = run_segment(
+                    run, u0, V, v, parameter, i, steps_per_segment,
+                    epsilon, simultaneous_runs)
         J_hist.append(J0)
         G_lss.append(G)
         g_lss.append(g)
@@ -114,7 +149,7 @@ def shadowing(
         run, u0, parameter, subspace_dimension, num_segments,
         steps_per_segment, runup_steps, epsilon=1E-6,
         checkpoint_path=None, checkpoint_interval=1, simultaneous_runs=None,
-        run_ddt=None, return_checkpoint=False):
+        tangent_run=None, run_ddt=None, return_checkpoint=False):
     '''
     run: a function in the form
          u1, J = run(u0, parameter, steps, run_id)
@@ -134,6 +169,8 @@ def shadowing(
         G: Derivative of time-averaged objective function, array of length n_qoi
     '''
     run = RunWrapper(run)
+    if tangent_run:
+        tangent_run = TangentWrapper(tangent_run)
     if runup_steps > 0:
         u0, _ = run(u0, parameter, runup_steps, 'runup')
 
@@ -144,4 +181,4 @@ def shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
-            simultaneous_runs, run_ddt, return_checkpoint)
+            simultaneous_runs, tangent_run, run_ddt, return_checkpoint)

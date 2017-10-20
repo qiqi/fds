@@ -8,8 +8,7 @@ from .compute import run_compute
 
 def trapez_mean(J, dim):
     J = np.rollaxis(J, dim)
-    J_m1 = 2 * J[0] - J[1]
-    return (J.sum(0) + J[:-1].sum(0) + J_m1) / (2 * J.shape[0])
+    return (J[1:].sum(0) + J[:-1].sum(0)) / (2 * (J.shape[0] - 1))
 
 def run_segment(run, u0, V, v, parameter, i_segment, steps,
                 epsilon, simultaneous_runs):
@@ -52,3 +51,32 @@ def run_segment(run, u0, V, v, parameter, i_segment, steps,
     threads.close()
     threads.join()
     return u0p, V, v, J0, G, g
+
+def tangent_segment(tangent_run, u0, V, v, parameter, i_segment, steps,
+                    simultaneous_runs):
+    threads = Pool(simultaneous_runs)
+    homogeneous_runs = []
+    for j, Vj in enumerate(V):
+        run_id = 'segment{0:02d}_init_tan{1:03d}'.format(i_segment, j)
+        homogeneous_runs.append(threads.apply_async(
+            tangent_run, (u0, parameter, Vj, 0, steps, run_id)))
+
+    run_id = 'segment{0:02d}_param_tan{1:03d}'.format(i_segment, len(V))
+    inhomogeneous_run = threads.apply_async(
+            tangent_run, (u0, parameter, v, 1, steps, run_id))
+
+    V, G = [], []
+    for j, run in enumerate(homogeneous_runs):
+        u0p, vp, J0, dJ = run.get()
+        V.append(vp)
+        G.append(trapez_mean(dJ, 0))
+    u0p, vp, J0, dJ = inhomogeneous_run.get()
+    v, g = vp, trapez_mean(dJ, 0)
+    threads.close()
+    threads.join()
+    return u0p, V, v, J0, G, g
+
+def adjoint_segment(adjoint_run, u0, w, parameter, i_segment, steps):
+    run_id = 'segment{0:02d}_adjoint'.format(i_segment)
+    wp, dJds = adjoint_run(u0, parameter, steps, w, run_id)
+    return wp, dJds

@@ -26,8 +26,11 @@ class LssTangent:
         self.bs.append(b)
         return V, v
 
-    def adjoint_checkpoint(self, i, V, v_adj, b_adj):
-        R = self.Rs[i]
+    def adjoint_checkpoint(self, V, w, b_adj):
+        Q, R = qr_transpose_states(V)
+        c = state_dot(Q, w) - b_adj
+        w = w - state_dot(c, Q)
+        return w
 
     def solve(self):
         if len(self.bs) == 1:
