@@ -40,6 +40,10 @@ class TimeDilationBase:
         else:
             return state_dot(v, self.dxdt) / state_dot(self.dxdt, self.dxdt)
 
+    def adjoint_contribution(self, w, contribution_adj):
+        c = contribution_adj / state_dot(self.dxdt, self.dxdt)
+        return w + c * self.dxdt
+
     def project(self, v):
         if self.dxdt_normalized is None:
             return v

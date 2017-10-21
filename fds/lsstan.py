@@ -5,7 +5,8 @@ import scipy.sparse.linalg as splinalg
 from .state import qr_transpose_states, state_dot
 
 class LssTangent:
-    def __init__(self):
+    def __init__(self, m_modes):
+        self.m_modes = m_modes
         self.Rs = []
         self.bs = []
 
@@ -13,10 +14,8 @@ class LssTangent:
         assert len(self.Rs) == len(self.bs)
         return len(self.Rs)
 
-    def m_modes(self):
-        return self.Rs[0].shape[0]
-
     def checkpoint(self, V, v):
+        assert self.m_modes == len(V)
         Q, R = qr_transpose_states(V)
         b = state_dot(Q, v)
         V = Q
@@ -78,14 +77,14 @@ class LssTangent:
         R = np.array(self.Rs[1:])
         if segment_range is not None:
             R = R[slice(*segment_range)]
-        i = np.arange(self.m_modes())
+        i = np.arange(self.m_modes)
         diags = R[:,i,i]
         return np.log(abs(diags))
 
     def lyapunov_covariant_vectors(self):
         exponents = self.lyapunov_exponents().mean(0)
         multiplier = np.exp(exponents)
-        vi = np.eye(self.m_modes())
+        vi = np.eye(self.m_modes)
         v = [vi]
         for Ri in reversed(self.Rs[1:]):
             vi = np.linalg.solve(Ri, vi) * multiplier

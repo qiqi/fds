@@ -17,7 +17,7 @@ from fds.checkpoint import load_checkpoint
 from fds.segment import run_segment, trapez_mean, adjoint_segment
 from fds.fds import AdjointWrapper, RunWrapper
 from fds.timedilation import TimeDilation, TimeDilationExact
-
+from fds.state import state_dot
 from fds import *
 
 solver_path = os.path.join(my_path, 'solvers', 'lorenz')
@@ -90,7 +90,7 @@ if __name__ == '__main__':
                    checkpoint_path=cp_path, return_checkpoint=True,
                    tangent_run=tangent)
 
-    u0, _, _, lss, G_lss, g_lss, J, G_dil, g_dil = cp
+    u0, _, v, lss, G_lss, g_lss, J, G_dil, g_dil = cp
     g_lss = np.array(g_lss)
     J = np.array(J)
     dJ = trapez_mean(J, 1) - J[:,-1]
@@ -120,32 +120,44 @@ if __name__ == '__main__':
     grad_dil = dil[:,np.newaxis] * dJ[:-1]
     print(windowed_mean(grad_lss) + windowed_mean(grad_dil))
 
+    dJds_adj = 0
     w = zeros_like(u0)
-    k = cp.lss.K_segments() - 1
-    cp_file = 'm{}_segment{}'.format(m, k)
-    u0, V, v, _,_,_,_,_,_ = load_checkpoint(os.path.join(cp_path, cp_file))
-    w, dJds = adjoint_segment(AdjointWrapper(adjoint),
-                              u0, w, s, k, steps_per_segment, g_lss_adj[-1])
+    for k in reversed(range(cp.lss.K_segments())):
+        #k = cp.lss.K_segments() - 1
+        print('k = ', k)
 
-    time_dil = TimeDilation(RunWrapper(solve), u0, s, 'time_dilation_test', 4)
-    V = time_dil.project(V)
-    v0 = time_dil.project(v)
+        print((g_lss_adj * g_lss)[:k+1].sum() + (b_adj * bs)[:k+1].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+                state_dot(v, w))
 
-    _, v1 = lss.checkpoint(V, v0)
+        cp_file = 'm{}_segment{}'.format(m, k)
+        u0, V, v, _,_,_,_,_,_ = load_checkpoint(os.path.join(cp_path, cp_file))
+        w0, dJds = adjoint_segment(AdjointWrapper(adjoint),
+                                  u0, w, s, k, steps_per_segment, g_lss_adj[k])
 
-    #g_lss[-1] = 0
-    print()
-    print((g_lss_adj * g_lss).sum() + (b_adj * bs).sum() + (g_dil_adj * g_dil[1:]).sum())
-    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
-          g_lss[-1] * g_lss_adj[-1] + dot(b_adj[-1], bs[-1]))
-    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
-          dJds[3] + dot(v1,w) + dot(b_adj[-1], bs[-1]))
+        time_dil = TimeDilation(RunWrapper(solve), u0, s, 'time_dilation_test', 4)
+        V = time_dil.project(V)
+        # v0 = time_dil.project(v)
 
-    w1 = lss.adjoint_checkpoint(V, w, b_adj[-1])
-    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
-          dJds[3] + dot(v0,w1))
+        # _, v1 = lss.checkpoint(V, v0)
 
-    w2 = time_dil.project(w1)
-    print((g_lss[:-1] * g_lss_adj[:-1]).sum() + (b_adj * bs)[:-1].sum() + (g_dil_adj * g_dil[1:]).sum() + \
-          dJds[3] + dot(v,w2))
+        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+        #       g_lss[k] * g_lss_adj[k] + dot(b_adj[k], bs[k]))
+        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+        #       dJds[3] + dot(v1,w0) + dot(b_adj[k], bs[k]))
 
+        w1 = lss.adjoint_checkpoint(V, w0, b_adj[k])
+        w2 = time_dil.project(w1)
+        print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+              dJds[3] + state_dot(v,w2))
+
+        if k > 0:
+            w3 = time_dil.adjoint_contribution(w2, g_dil_adj[k-1])
+            print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k-1].sum() + dJds_adj + \
+                  dJds[3] + state_dot(v,w3))
+            w = w3
+        else:
+            w = w2
+        dJds_adj += dJds[3]
+
+    print('Final:')
+    print(dJds_adj)

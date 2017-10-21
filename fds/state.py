@@ -48,13 +48,16 @@ def random_states(n):
 def zero_state():
     return SymbolicState(Zeros())
 
+def try_convert_to_ndarray(u, size):
+    u.ndarray = u.parent.generator(size)
+    u.parent = None
+
 def state_dot(u, v):
     if isinstance(u, SymbolicStateArray):
         return [state_dot(ui, v) for ui in u.states]
     elif isinstance(u, SymbolicState) and hasattr(u.parent, 'generator'):
         if isinstance(v, np.ndarray):
-            u.ndarray = u.parent.generator(v.shape[0])
-            u.parent = None
+            try_convert_to_ndarray(u, v.shape[0])
     return np.dot(u, v)
 
 def state_outer(u, v):
@@ -64,5 +67,5 @@ def state_norm(u):
     return np.linalg.norm(u)
 
 def qr_transpose_states(V):
-    Q, R = np.linalg.qr(V.T)
+    Q, R = np.linalg.qr(np.transpose(V))
     return Q.T, R

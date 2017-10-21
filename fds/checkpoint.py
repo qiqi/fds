@@ -10,7 +10,7 @@ def save_checkpoint(checkpoint_path, cp):
     save a checkpoint file under the path checkpoint_path,
     naming convention is mXX_segmentYYY, where XX and YY are given by cp.lss
     '''
-    filename = 'm{0}_segment{1}'.format(cp.lss.m_modes(), cp.lss.K_segments())
+    filename = 'm{0}_segment{1}'.format(cp.lss.m_modes, cp.lss.K_segments())
     with open(os.path.join(checkpoint_path, filename), 'wb') as f:
         pickle.dump(cp, f)
 

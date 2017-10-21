@@ -175,8 +175,10 @@ def shadowing(
         u0, _ = run(u0, parameter, runup_steps, 'runup')
 
     V, v = tangent_initial_condition(subspace_dimension)
-    lss = LssTangent()
+    lss = LssTangent(subspace_dimension)
     checkpoint = Checkpoint(u0, V, v, lss, [], [], [], [], [])
+    if checkpoint_path:
+        save_checkpoint(checkpoint_path, checkpoint)
     return continue_shadowing(
             run, parameter, checkpoint,
             num_segments, steps_per_segment, epsilon,

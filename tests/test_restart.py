@@ -52,7 +52,7 @@ def test_checkpoint():
               checkpoint_path=BASE_PATH, checkpoint_interval=5)
     cp = checkpoint.load_last_checkpoint(BASE_PATH, m_modes)
     assert cp.lss.K_segments() == segments0
-    assert cp.lss.m_modes() == m_modes
+    assert cp.lss.m_modes == m_modes
     J2, G2 = continue_shadowing(solve, s, cp, segments1, 100,
                                 checkpoint_path=BASE_PATH,
                                 checkpoint_interval=5)
