@@ -79,14 +79,14 @@ def adjoint(u, s, nsteps, ua):
     return out, dJds
 
 if __name__ == '__main__':
-    m = 1
+    m = 2
     s = 28
-    steps_per_segment = 1000
+    steps_per_segment = 10000
     cp_path = 'tests/lorenz_adj'
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    cp = shadowing(solve, u0, s, m, 3, steps_per_segment, 5000,
+    cp = shadowing(solve, u0, s, m, 10, steps_per_segment, 100000,
                    checkpoint_path=cp_path, return_checkpoint=True,
                    tangent_run=tangent)
 
