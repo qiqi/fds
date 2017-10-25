@@ -31,14 +31,14 @@ def solve(u, s, nsteps):
 
 #if __name__ == '__main__':
 def test_gradient():
-    s = linspace(0, 5, 6)
+    s = linspace(1, 6, 6)
     J, G = zeros([s.size, 1]), zeros([s.size, 1])
     for i, si in enumerate(s):
         print(i)
         Ji, Gi = shadowing(solve, u0, si, 1, 5, 5000, 10000)
         J[i,:] = Ji
         G[i,:] = Gi
-    assert all(abs(J[:,0] - (s + 1)) < 0.001)
+    assert all(abs(J[:,0] - (s + 1)) < 0.005)
     assert all(abs(G[:,0] - 1) < 0.01)
 
 #if __name__ == '__main__':

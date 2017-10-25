@@ -9,13 +9,16 @@ from multiprocessing import Manager
 import numpy as np
 
 import pascal_lite as pascal
-from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint
+from .checkpoint import Checkpoint, verify_checkpoint, save_checkpoint, \
+                        load_checkpoint, load_last_checkpoint
 from .timedilation import TimeDilation, TimeDilationExact
-from .segment import run_segment, tangent_segment, trapez_mean
+from .segment import run_segment, tangent_segment, adjoint_segment, \
+                     trapez_mean
 from .lsstan import LssTangent#, tangent_initial_condition
-from .timeseries import windowed_mean
+from .timeseries import windowed_mean, windowed_mean_weights
 from .compute import run_compute
-from .state import random_states, zero_state, decode_state, encode_state
+from .state import random_states, zero_state, decode_state, encode_state, \
+                   state_dot
 
 # ---------------------------------------------------------------------------- #
 
@@ -184,3 +187,51 @@ def shadowing(
             num_segments, steps_per_segment, epsilon,
             checkpoint_path, checkpoint_interval,
             simultaneous_runs, tangent_run, run_ddt, return_checkpoint)
+
+def adjoint_shadowing(run, adjoint, parameter, subspace_dimension,
+        checkpoint_path, run_ddt=None):
+    run = RunWrapper(run)
+    adjoint = AdjointWrapper(adjoint)
+
+    cp = load_last_checkpoint(checkpoint_path, subspace_dimension)
+    u0, _, v, lss, G_lss, g_lss, J, G_dil, g_dil = cp
+    g_lss = np.array(g_lss)
+    J = np.array(J)
+    steps_per_segment = J.shape[1] - 1
+    dJ = trapez_mean(J, 1) - J[:,-1]
+    assert dJ.ndim == 2 and dJ.shape[1] == 1
+
+    win_lss = windowed_mean_weights(dJ.shape[0])
+    g_lss_adj = win_lss[:,np.newaxis]
+    alpha_adj_lss = win_lss[:,np.newaxis] * np.array(G_lss)[:,:,0]
+
+    win_dil = windowed_mean_weights(dJ.shape[0] - 1)
+    dil_adj = win_dil * np.ravel(dJ)[:-1]
+    g_dil_adj = dil_adj / steps_per_segment
+    alpha_adj_dil = dil_adj[:,np.newaxis] * np.array(G_dil)[1:] \
+                  / steps_per_segment
+
+    alpha_adj = alpha_adj_lss
+    alpha_adj[:-1] += alpha_adj_dil
+    b_adj = lss.adjoint(alpha_adj)
+    bs = np.array(lss.bs)
+
+    dJds_adj = 0
+    w = np.zeros_like(u0)
+    for k in reversed(range(cp.lss.K_segments())):
+        cp_file = 'm{}_segment{}'.format(subspace_dimension, k)
+        u0, V, v, _,_,_,_,_,_ = load_checkpoint(
+                os.path.join(checkpoint_path, cp_file))
+        w, dJds = adjoint_segment(adjoint, u0, w, parameter, k,
+                                  steps_per_segment, g_lss_adj[k])
+
+        time_dil = TimeDilation(run, u0, parameter, 'time_dilation_test', 4)
+        V = time_dil.project(V)
+
+        w = lss.adjoint_checkpoint(V, w, b_adj[k])
+        w = time_dil.project(w)
+        if k > 0:
+            w = time_dil.adjoint_contribution(w, g_dil_adj[k-1])
+        dJds_adj = dJds_adj + dJds
+
+    return dJds_adj

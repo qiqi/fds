@@ -35,8 +35,9 @@ def encode_state(u):
 def decode_state(u):
     if isinstance(u, np.ndarray):
         return u
+    elif isinstance(u, str):
+        return u
     else:
-        # need to compute it and store it in a file
         raise NotImplementedError
 
 def random_state():
