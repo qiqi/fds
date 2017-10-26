@@ -161,8 +161,8 @@ subroutine dXdt(X,dXdt_res,beta,Dcheb)
 	do i = 1, Ncheb, 1
 		dXdt_res(2*N+i) = -2.d0/tau*Dcheb(i+1,1)*velocity_flame 
 		do j = 2, Ncheb+1, 1 
-			dXdt_res(2*N+i) = dXdt_res(2*N+i) + &
-							X(2*N +j)*Dcheb(i+1,j)
+			dXdt_res(2*N+i) = dXdt_res(2*N+i) &
+							 - 2.d0/tau*X(2*N +j-1)*Dcheb(i+1,j)
 		end do	
 	end do
  
