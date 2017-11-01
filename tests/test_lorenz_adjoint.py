@@ -78,7 +78,7 @@ def adjoint(u, s, nsteps, ua):
     shutil.rmtree(tmp_path)
     return out, dJds
 
-if __name__ == '__main__':
+def test_lorenz_adjoint():
     m = 2
     s = 28
     steps_per_segment = 10000
@@ -86,10 +86,23 @@ if __name__ == '__main__':
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    cp = shadowing(solve, u0, s, m, 10, steps_per_segment, 100000,
-                   checkpoint_path=cp_path, return_checkpoint=True,
-                   tangent_run=tangent)
+    J, dJds_tan = shadowing(solve, u0, s, m, 2, steps_per_segment, 100000,
+                            checkpoint_path=cp_path, tangent_run=tangent)
+    dJds_adj = adjoint_shadowing(solve, adjoint, s, m, cp_path)
+    assert abs(dJds_tan[0] - dJds_adj[3]) < 1E-10
 
+#if __name__ == '__main__':
+def lorenz_adjoint_oldfashioned_test():
+    m = 2
+    s = 28
+    steps_per_segment = 10000
+    cp_path = 'tests/lorenz_adj'
+    if os.path.exists(cp_path):
+        shutil.rmtree(cp_path)
+    os.mkdir(cp_path)
+    cp = shadowing(solve, u0, s, m, 3, steps_per_segment, 100000,
+                   checkpoint_path=cp_path, tangent_run=tangent,
+                   return_checkpoint=True)
     u0, _, v, lss, G_lss, g_lss, J, G_dil, g_dil = cp
     g_lss = np.array(g_lss)
     J = np.array(J)

@@ -22,3 +22,10 @@ def exp_cum_mean(x):
         w = w.reshape([-1] + [1] * (x.ndim - 1))
         x_mean.append((x[:n] * w).sum(0) / w.sum())
     return array(x_mean)
+
+def extrapolate_time_series(J, dim=0):
+    J = rollaxis(J, dim)
+    J_ext = empty((J.shape[0] + 1,) + J.shape[1:])
+    J_ext[1:] = J
+    J_ext[0] = 2 * J[1] - J[0]
+    return rollaxis(J_ext, 0, dim+1)

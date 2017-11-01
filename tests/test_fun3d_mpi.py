@@ -11,10 +11,11 @@ from subprocess import *
 from numpy import *
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-#sys.path.append(os.path.join(my_path, '..'))
+sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 from fds.checkpoint import *
+from fds.timeseries import extrapolate_time_series
 
 XMACH = 0.1              # nominal xmach parameter
 M_MODES = 16             # number of unstable modes
@@ -44,6 +45,7 @@ def save_hdf5(arr, path):
         with h5py.File(path, 'w') as handle:
             handle.create_dataset('field', data=arr)
         return
+
 def load_hdf5(path):
     with h5py.File(path, 'r') as handle:
         field = handle['/field'][:].copy()
@@ -79,7 +81,7 @@ def lift_drag_from_text(text):
             lift_drag.append([line[1], line[3]])
     return array(lift_drag, float)
 
-def solve(u0, mach, nsteps, run_id, interprocess):
+def solve(u0, mach, nsteps, run_id):
     print('Starting solve, mach, nsteps, run_id = ', mach, nsteps, run_id)
     u0 = load_hdf5(u0)
     work_path = get_host_dir(run_id)
@@ -92,7 +94,7 @@ def solve(u0, mach, nsteps, run_id, interprocess):
             not os.path.exists(lift_drag_file):
         if not os.path.exists(work_path):
             os.mkdir(work_path)
-        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, interprocess, True)
+        sub_nodes = pbs.grab_from_PBS_NODEFILE(MPI_NP, True)
         sub_nodefile = os.path.join(work_path, 'PBS_NODEFILE')
         sub_nodes.write_to_sub_nodefile(sub_nodefile)
         env = dict(os.environ)
@@ -112,10 +114,10 @@ def solve(u0, mach, nsteps, run_id, interprocess):
             time.sleep(SLEEP_SECONDS_FOR_IO)
         savetxt(lift_drag_file, lift_drag_from_text(open(outfile).read()))
         sub_nodes.release()
-    J = loadtxt(lift_drag_file).reshape([-1,2])
+    J = extrapolate_time_series(loadtxt(lift_drag_file).reshape([-1,2]))
     u1 = hstack([frombuffer(open(f, 'rb').read(), dtype='>d')
                  for f in final_data_files])
-    assert len(J) == nsteps
+    assert len(J) == nsteps + 1
     u1 = ravel(u1)
     path = os.path.join(work_path, 'output.h5')
     save_hdf5(u1, path)
@@ -138,9 +140,7 @@ def test_fun3d():
               STEPS_RUNUP,
               epsilon=1E-4,
               checkpoint_path=BASE_PATH,
-              simultaneous_runs=SIMULTANEOUS_RUNS,
-              get_host_dir=get_host_dir,
-              spawn_compute_job=spawn_compute_job)
+              simultaneous_runs=SIMULTANEOUS_RUNS)
 
     checkpoint = load_last_checkpoint(BASE_PATH, M_MODES)
     J, G = continue_shadowing(solve,
@@ -150,9 +150,7 @@ def test_fun3d():
                               STEPS_PER_SEGMENT,
                               epsilon=1E-4,
                               checkpoint_path=BASE_PATH,
-                              simultaneous_runs=SIMULTANEOUS_RUNS,
-                              get_host_dir=get_host_dir,
-                              spawn_compute_job=spawn_compute_job)
+                              simultaneous_runs=SIMULTANEOUS_RUNS)
 
     assert 1 < J[0] < 4
     assert 10 < J[1] < 40

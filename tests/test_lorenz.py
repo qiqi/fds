@@ -20,14 +20,14 @@ def solve(u, s, nsteps):
     with open(os.path.join(tmp_path, 'input.bin'), 'wb') as f:
         f.write(asarray(u, dtype='>d').tobytes())
     with open(os.path.join(tmp_path, 'param.bin'), 'wb') as f:
-        f.write(asarray([10, 28., 8./3, s], dtype='>d').tobytes())
+        f.write(asarray([10, s, 8./3, 0], dtype='>d').tobytes())
     call([solver, str(int(nsteps))], cwd=tmp_path)
     with open(os.path.join(tmp_path, 'output.bin'), 'rb') as f:
         out = frombuffer(f.read(), dtype='>d')
     with open(os.path.join(tmp_path, 'objective.bin'), 'rb') as f:
         J = frombuffer(f.read(), dtype='>d')
     shutil.rmtree(tmp_path)
-    J = transpose([J, 100 * ones(J.size)])
+    J = transpose([(J - 28)**2, 100 * ones(J.size)])
     return out, J
 
 #if __name__ == '__main__':
@@ -42,7 +42,7 @@ def test_gradient():
     assert all(abs(J[:,1] - 100) < 1E-12)
     assert all(abs(G[:,1]) < 1E-12)
     assert all(abs(J[:,0] - ((s-31)**2 + 85)) < 20)
-    assert all(abs(G[:,0] - (2 * (s-31))) < 2)
+    assert all(abs(G[:,0] - (2 * (s-31))) < 3)
 
 #if __name__ == '__main__':
 def test_lyapunov():
@@ -51,7 +51,8 @@ def test_lyapunov():
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
     m = 2
-    J, G = shadowing(solve, u0, 0, m, 20, 10000, 10000, checkpoint_path=cp_path)
+    J, G = shadowing(solve, u0, 28., m, 20, 10000, 10000,
+                     checkpoint_path=cp_path)
     cp = checkpoint.load_last_checkpoint(cp_path, m)
     L = cp.lss.lyapunov_exponents()
 
