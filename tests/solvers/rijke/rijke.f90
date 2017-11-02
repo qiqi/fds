@@ -1,23 +1,25 @@
 !Simple model of combustion in gas turbines
 
-module rijke
+module equations
 	implicit none
 	REAL, PARAMETER :: Pi = 3.1415927
 	double precision, parameter :: dt = 0.001d0
 	integer, parameter :: chaos_flag = 1
 	integer, parameter :: N = 10, Ncheb = 10
 	integer, parameter :: d = 2*N + Ncheb + 3*chaos_flag
-	integer, parameter :: N_p = 5	
+	integer, parameter :: Nparam = 10	
 	double precision, parameter :: sigma = 10., b = 8./3., rho = 28.
 	double precision, parameter :: alpha = 0.01, tauL = 10.d0, tau = 0.04
 	double precision, parameter :: c1 = 0.05 , c2 = 0.01, xf = 0.3
 contains
-
-subroutine Xnp1(X,Xnp1_res,beta,Dcheb)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Primal solver
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine step(X,Xnp1,s,Dcheb)
 
 	implicit none
-	double precision :: beta
-	double precision, dimension(d):: X, Xnp1_res
+	double precision, dimension(nparams) :: s
+	double precision, dimension(d):: X, Xnp1
     double precision, dimension(d):: k1, k2, k3, k4
 	double precision, dimension(d):: ddt
 	double precision, dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
@@ -26,34 +28,51 @@ subroutine Xnp1(X,Xnp1_res,beta,Dcheb)
 	if(present(Dcheb) .eqv. .false.) then
         Dcheb = cheb_diff_matrix()
     endif
-    call dXdt(X,ddt,beta,Dcheb)
+	
+    call dXdt(X,ddt,s,Dcheb)
     do i = 1, d, 1
 		k1(i) = dt*ddt(i)
-		Xnp1_res(i) = X(i) + 0.5d0*k1(i) 
+		Xnp1(i) = X(i) + 0.5d0*k1(i) 
 	end do
-	call dXdt(Xnp1_res,ddt,beta,Dcheb)
+	call dXdt(Xnp1,ddt,s,Dcheb)
     do i = 1, d, 1
 		k2(i) = dt*ddt(i)
-		Xnp1_res(i) = X(i) + 0.5d0*k2(i) 
+		Xnp1(i) = X(i) + 0.5d0*k2(i) 
 	end do
-	call dXdt(Xnp1_res,ddt,beta,Dcheb)
+	call dXdt(Xnp1,ddt,s,Dcheb)
     do i = 1, d, 1
 		k3(i) = dt*ddt(i)
-		Xnp1_res(i) = X(i) + k3(i) 
+		Xnp1(i) = X(i) + k3(i) 
 	end do
-	call dXdt(Xnp1_res,ddt,beta,Dcheb)
+	call dXdt(Xnp1,ddt,s,Dcheb)
 	do i = 1, d, 1
 		k4(i) = dt*ddt(i) 
 	end do
   
 	do i = 1, d, 1
-		Xnp1_res(i) = X(i) + 1.d0/6.d0*k1(i) + &
+		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
                1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
                 1.d0/6.d0*k4(i)   
 
 	end do
 
-end subroutine Xnp1
+end subroutine step
+double precision function Objective(X,s)
+	implicit none
+	double precision, intent(in), dimension(d) :: X
+	double precision, dimension(Nparam) :: s
+	integer :: t
+	double precision :: heat_release
+
+	heat_release = qdot(X(2*N+Ncheb))
+	Objective = 0.d0
+	do t = 1, N, 1
+		Objective = Objective - X(N+t)*sin(t*pi*s(6))
+	end do
+    Objective = Objective*heat_release
+end subroutine Objective
+
+
 double precision function uf(X,xf)
 	
 	implicit none
@@ -135,9 +154,12 @@ function cheb_diff_matrix()
 		end do
 	end do
 end function cheb_diff_matrix 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Primal step
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine dXdt(X,dXdt_res,beta,Dcheb)
 	implicit none
-	double precision :: beta
+	double precision, dimension(Nparam) :: s
 	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
 	double precision :: velocity_fluctuation
 	double precision :: velocity_flame
@@ -146,43 +168,27 @@ subroutine dXdt(X,dXdt_res,beta,Dcheb)
 	double precision, intent(out), dimension(d) :: dXdt_res
 	integer :: i,j
 
-	dXdt_res(d-2) = 1.d0/tauL*(sigma*(X(d-1)-X(d-2)))
-	dXdt_res(d-1) = 1.d0/tauL*(X(d-2)*(rho-X(d)) - X(d-1))
-	dXdt_res(d) = 1.d0/tauL*(X(d-2)*X(d-1) - b*X(d))
-	velocity_fluctuation = alpha*X(d-2)/(rho - 1.d0)
-	velocity_flame = uf(X,xf) + velocity_fluctuation
-	heat_release = beta*qdot(X(2*N+Ncheb))		
+	dXdt_res(d-2) = 1.d0/s(1)*(s(2)*(X(d-1)-X(d-2)))
+	dXdt_res(d-1) = 1.d0/s(1)*(X(d-2)*(s(3)-X(d)) - X(d-1))
+	dXdt_res(d) = 1.d0/s(1)*(X(d-2)*X(d-1) - s(4)*X(d))
+	velocity_fluctuation = s(5)*X(d-2)/(s(3) - 1.d0)
+	velocity_flame = uf(X,s(6)) + velocity_fluctuation
+	heat_release = s(7)*qdot(X(2*N+Ncheb))		
 
 	do i = 1, N, 1
 		dXdt_res(i) = i*pi*X(N+i)
-		dXdt_res(N+i) = -1.d0*i*pi*X(i) - zeta(i,c1,c2)*X(N+i) &
-						- 2.d0*heat_release*sin(i*pi*xf)
+		dXdt_res(N+i) = -1.d0*i*pi*X(i) - zeta(i,s(8),s(9))*X(N+i) &
+						- 2.d0*heat_release*sin(i*pi*s(6))
 	end do
 	do i = 1, Ncheb, 1
-		dXdt_res(2*N+i) = -2.d0/tau*Dcheb(i+1,1)*velocity_flame 
+		dXdt_res(2*N+i) = -2.d0/s(10)*Dcheb(i+1,1)*velocity_flame 
 		do j = 2, Ncheb+1, 1 
 			dXdt_res(2*N+i) = dXdt_res(2*N+i) &
-							 - 2.d0/tau*X(2*N +j-1)*Dcheb(i+1,j)
+							 - 2.d0/s(10)*X(2*N +j-1)*Dcheb(i+1,j)
 		end do	
 	end do
  
 end subroutine dXdt
-subroutine Objective(X,J,param_active,params_passive)
-	implicit none
-	double precision, intent(in), dimension(d) :: X
-	double precision, intent(out) :: J
-	double precision :: xf
-	double precision, dimension(N_p-1):: params_passive
-	double precision :: param_active
-	integer :: t
-
-	J = 0.d0
-	xf = params_passive(N_p-2)
-	do t = 1, N, 1
-		J = J - X(N+t)*sin(t*pi*xf)
-	end do
-
-end subroutine Objective
 subroutine FlameOutput(X,Xtmtau,pf,ufvar,heat,param_active,params_passive)
 	implicit none
 	double precision, intent(in), dimension(d) :: X, Xtmtau
@@ -273,4 +279,4 @@ subroutine rk45_full(X,v,vnp1)
 
 end subroutine rk45_full 
 
-end module rijke
+end module equations
