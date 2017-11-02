@@ -28,33 +28,7 @@ subroutine step(X,Xnp1,s,Dcheb)
 	if(present(Dcheb) .eqv. .false.) then
         Dcheb = cheb_diff_matrix()
     endif
-	
-    call dXdt(X,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k1(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k1(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k2(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k2(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k3(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + k3(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-	do i = 1, d, 1
-		k4(i) = dt*ddt(i) 
-	end do
-  
-	do i = 1, d, 1
-		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
-               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-                1.d0/6.d0*k4(i)   
-
-	end do
+	call rk45(X,Xnp1,s,dXdt,Dcheb)
 
 end subroutine step
 double precision function Objective(X,s)
@@ -234,7 +208,7 @@ subroutine dfdX(X,dfdX_res)
     
 end subroutine dfdX  
 
-subroutine dvdt(X,v1,dvdt_res)
+subroutine dvdt(X,v1,dvdt_res,Dcheb)
 
 		implicit none
 		double precision, dimension(d) :: X
@@ -254,28 +228,45 @@ subroutine dvdt(X,v1,dvdt_res)
 		dvdt_res(3,1) = dvdt_res(3,1) + 0.d0	
 
 end subroutine dvdt
-subroutine rk45_full(X,v,vnp1)
+subroutine rk45(X,Xnp1,s,dXdt,Dcheb)
 !Assumes full perturbation vector.
 	implicit none
+    external :: dXdt
 	double precision , dimension(d) :: X
-	double precision , intent(out), dimension(d,1) :: vnp1
-	double precision , dimension(d,1) :: v
-	double precision , dimension(d,1) :: v1,k1,k2,k3,k4
-	double precision , dimension(d,1):: dvdt_res
+	double precision , intent(out), dimension(d) :: Xnp1
+	double precision , dimension(Nparam) :: s
+	double precision , dimension(d) :: k1,k2,k3,k4,ddt
+    double precision , dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
 
-	v1 = v
-	call dvdt(X,v1,dvdt_res)	
-	k1 = dt*dvdt_res
-	call dvdt(X,v1 + 0.5d0*k1,dvdt_res)
-	k2 = dt*dvdt_res
-	call dvdt(X,v1 + 0.5d0*k2,dvdt_res)
-	k3 = dt*dvdt_res
-	call dvdt(X,v1 + k3,dvdt_res)
-	k4 = dt*dvdt_res
-	vnp1 = v1 + 1.d0/6.d0*k1 + &
-		 1.d0/3.d0*k2 + 1.d0/3.d0*k3 + &
-		1.d0/6.d0*k4
-    
+	
+    call dXdt(X,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k1(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k2(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + k3(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
+  
+	do i = 1, d, 1
+		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
+
+	end do
+   
+
 
 end subroutine rk45_full 
 
