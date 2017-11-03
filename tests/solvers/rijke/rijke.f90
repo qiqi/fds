@@ -71,8 +71,6 @@ double precision function Objective(X,s)
 	end do
     Objective = Objective*heat_release
 end subroutine Objective
-
-
 double precision function uf(X,xf)
 	
 	implicit none
@@ -171,6 +169,53 @@ function cheb_diff_matrix()
 		end do
 	end do
 end function cheb_diff_matrix 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Tangent solver
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
+
+	implicit none
+	double precision, dimension(nparams) :: s, ds
+	double precision, dimension(d):: X, v, vnp1
+    double precision, dimension(d):: k1, k2, k3, k4
+	double precision, dimension(d):: ddt
+	double precision, dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
+	integer :: i, imax
+			
+	if(present(Dcheb) .eqv. .false.) then
+        Dcheb = cheb_diff_matrix()
+    endif
+	call dvdt(X,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k1(i) 
+	end do
+	call dvdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k2(i) 
+	end do
+	call dvdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + k3(i) 
+	end do
+	call dvdt(Xnp1,ddt,s,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
+  
+	do i = 1, d, 1
+		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
+
+	end do
+
+
+end subroutine step
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Primal step
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
