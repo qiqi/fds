@@ -28,7 +28,33 @@ subroutine step(X,Xnp1,s,Dcheb)
 	if(present(Dcheb) .eqv. .false.) then
         Dcheb = cheb_diff_matrix()
     endif
-	call rk45(X,Xnp1,s,dXdt,Dcheb)
+	call dXdt(X,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k1(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k2(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + k3(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
+  
+	do i = 1, d, 1
+		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
+
+	end do
+
 
 end subroutine step
 double precision function Objective(X,s)
@@ -85,6 +111,23 @@ double precision function qdot(delayed_velocity)
 			qdot = qdot + coeffs(i)*(delayed_velocity**i)
 	end do
 end function qdot
+double precision function dqdot(delayed_velocity)
+	implicit none
+	double precision :: delayed_velocity
+	double precision, dimension(5) :: coeffs
+	integer :: i 
+	coeffs(1) = 0.5d0
+	coeffs(2) = -0.108d0
+	coeffs(3) = -0.044d0
+	coeffs(4) = 0.059d0
+	coeffs(5) = -0.012d0
+	dqdot = 0.d0
+	do i = 1, 5, 1
+			dqdot = dqdot + i*coeffs(i)*(delayed_velocity**(i-1))
+	end do
+end function dqdot
+
+
 real(kind=8) function cheb_pts(k,n)
 		implicit none
 		integer:: k,n
@@ -163,111 +206,66 @@ subroutine dXdt(X,dXdt_res,beta,Dcheb)
 	end do
  
 end subroutine dXdt
-subroutine FlameOutput(X,Xtmtau,pf,ufvar,heat,param_active,params_passive)
-	implicit none
-	double precision, intent(in), dimension(d) :: X, Xtmtau
-	double precision, intent(out) :: pf,ufvar,heat
-	double precision :: xf
-	double precision, dimension(N_p-1):: params_passive
-	double precision :: param_active
-	integer :: t
-
-	pf = 0.d0
-    ufvar = 0.d0
-    heat = 0.d0
-	xf = params_passive(N_p-2)
-	do t = 1, N, 1
-		pf = pf - X(N+t)*sin(t*pi*xf)
-        ufvar = ufvar + X(t)*cos(t*pi*xf)
-        heat = heat + Xtmtau(t)*cos(t*pi*xf)
-    end do
-    heat = ((1.d0/3.d0 + heat)**2.d0 + 0.001d0)**0.25d0 - (1.d0/3.d0)**0.5d0
-end subroutine FlameOutput
-
-subroutine dfdX(X,dfdX_res)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Tangent step
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine tangentstep(X,s,v,ds,dvdt,Dcheb)
 
 	implicit none
 	double precision, dimension(d) :: X
-	double precision, intent(out), dimension(d,d) :: dfdX_res	
-	integer :: i,j
-	double precision:: r
+	double precision, dimension(d) :: dvdt
+	double precision, dimension(d) :: v
+	double precision, dimension(Nparam) :: s,ds
+	double precision :: heat_release, velocity_flame
+	integer :: i, j		
 
-	dfdX_res = 0.d0
-	r = 28.d0
- 
-	dfdX_res(1,1) = -1.d0*sigma
-	dfdX_res(1,2) =	sigma 
-	
-	dfdX_res(2,1) = r - X(3)
-	dfdX_res(2,2) = -1.d0
-	dfdX_res(2,3) = -1.d0*X(1)	
-	
-	dfdX_res(3,1) = X(2)
-	dfdX_res(3,2) = X(1)
-	dfdX_res(3,3) = -1.d0*b
-    
-end subroutine dfdX  
+	dvdt(d-2) = s(2)/s(1)*(v(d-1)-v(d-2)) + &
+		ds(2)/s(1)*(X(d-1) - X(d-2)) &
+		- ds(1)/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))
+      
+	dvdt(d-1) = -1.d0*ds(1)/s(1)/s(1)*((s(3)-X(d))*X(d-2) &
+			- X(d-1)) + &
+			+ 1.d0/s(1)*ds(3)*X(d-2) &
+			+ 1.d0/s(1)*((s(3)-X(d))*v(d-2) - X(d-2)*v(d) &
+				- v(d-1))
+			 
+	dvdt(d) = -1.d0*ds(1)/s(1)/s(1)*(X(d-2)*X(d-1) - s(4)*X(d)) &
+			  - ds(4)/s(1)*X(d) &
+			  + 1.d0/s(1)*(v(d-2)*X(d-1) + v(d-1)*X(d-2) - s(4)*v(d))
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	do i = 1, N, 1
+		dvdt(i) = i*pi*v(N+i)
+		dvdt(N+i) = -i*pi*v(i) - zeta(i,s(8),s(9))*v(N+i) &
+					-2.d0*i*pi*ds(6)*heat_release*cos(i*pi*s(6)) &
+					- i*i*ds(8)*X(N+i) - ds(9)*X(N+i)/(i**0.5d0) &
+					- 2.d0*sin(i*pi*s(6))*qdot(X(2*N+Ncheb))*ds(7) &
+					-2.d0*s(7)*sin(i*pi*s(6))*dqdot(X(2*N+Ncheb))*v(2*N+Ncheb)	  
+		
+	end do
+	velocity_flame = uf(X,s(6)) + s(5)*X(d-2)/(s(3) - 1.d0)
 
-subroutine dvdt(X,v1,dvdt_res,Dcheb)
-
-		implicit none
-		double precision, dimension(d) :: X
-		double precision, intent(out), dimension(d,1) :: dvdt_res
-		double precision, dimension(d,d) :: dfdX_res
-		double precision, dimension(d,1) :: v1
-		double precision, dimension(d,1):: dfdX_times_v
-		integer :: i		
 	
-		call dfdX(X,dfdX_res)
-		!Manual matrix-vector product
-		do i = 1,d,1
-			dvdt_res(i,1) = dfdX_res(i,1)*v1(1,1) + dfdX_res(i,2)*v1(2,1) + dfdX_res(i,3)*v1(3,1)
+	do i = 1, Ncheb, 1
+	
+		dvdt(2*N+i) = 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,1)*velocity_flame 
+		do j = 2, Ncheb + 1, 1	
+		
+			dvdt(2*N+i) = dvdt(2*N+i) + 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,j)*X(2*N+j-1) &
+		- 2.d0/s(10)*Dcheb(i+1,j)*v(2*N+j-1) 		
 		end do
-		dvdt_res(1,1) = dvdt_res(1,1) + 0.d0
-		dvdt_res(2,1) = dvdt_res(2,1) + X(1)
-		dvdt_res(3,1) = dvdt_res(3,1) + 0.d0	
+
+		dvdt(2*N+i) = dvdt(2*N+i) + X(d-2)*ds(5)/(s(3)-1.d0) + &
+					s(5)/(s(3)-1.d0)*v(d-2) &
+					- s(5)/(s(3)-1.d0)/(s(3)-1.d0)*X(d-2)
+		do j = 1, N, 1
+		
+			dvdt(2*N+i) = dvdt(2*N+i) - j*pi*ds(6)*X(j)*sin(j*pi*s(6)) &
+			+ sin(j*pi*s(6))*v(j) 	
+
+		end do
+
+	end do	
 
 end subroutine dvdt
-subroutine rk45(X,Xnp1,s,dXdt,Dcheb)
-!Assumes full perturbation vector.
-	implicit none
-    external :: dXdt
-	double precision , dimension(d) :: X
-	double precision , intent(out), dimension(d) :: Xnp1
-	double precision , dimension(Nparam) :: s
-	double precision , dimension(d) :: k1,k2,k3,k4,ddt
-    double precision , dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
-
-	
-    call dXdt(X,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k1(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k1(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k2(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k2(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k3(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + k3(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-	do i = 1, d, 1
-		k4(i) = dt*ddt(i) 
-	end do
-  
-	do i = 1, d, 1
-		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
-               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-                1.d0/6.d0*k4(i)   
-
-	end do
-   
-
-
-end subroutine rk45_full 
 
 end module equations
