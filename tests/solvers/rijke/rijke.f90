@@ -64,7 +64,7 @@ double precision function Objective(X,s)
 	integer :: t
 	double precision :: heat_release
 
-	heat_release = qdot(X(2*N+Ncheb))
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	Objective = 0.d0
 	do t = 1, N, 1
 		Objective = Objective - X(N+t)*sin(t*pi*s(6))
@@ -213,7 +213,7 @@ subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
 	end do
 
 
-end subroutine step
+end subroutine tangentstep
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -254,33 +254,33 @@ end subroutine dXdt
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Tangent step
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine tangentstep(X,s,v,ds,dvdt,Dcheb)
+subroutine dvdt(X,s,v,ds,dvdt_res,Dcheb)
 
 	implicit none
 	double precision, dimension(d) :: X
-	double precision, dimension(d) :: dvdt
+	double precision, dimension(d) :: dvdt_res
 	double precision, dimension(d) :: v
 	double precision, dimension(Nparam) :: s,ds
 	double precision :: heat_release, velocity_flame
 	integer :: i, j		
 
-	dvdt(d-2) = s(2)/s(1)*(v(d-1)-v(d-2)) + &
+	dvdt_res(d-2) = s(2)/s(1)*(v(d-1)-v(d-2)) + &
 		ds(2)/s(1)*(X(d-1) - X(d-2)) &
 		- ds(1)/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))
       
-	dvdt(d-1) = -1.d0*ds(1)/s(1)/s(1)*((s(3)-X(d))*X(d-2) &
+	dvdt_res(d-1) = -1.d0*ds(1)/s(1)/s(1)*((s(3)-X(d))*X(d-2) &
 			- X(d-1)) + &
 			+ 1.d0/s(1)*ds(3)*X(d-2) &
 			+ 1.d0/s(1)*((s(3)-X(d))*v(d-2) - X(d-2)*v(d) &
 				- v(d-1))
 			 
-	dvdt(d) = -1.d0*ds(1)/s(1)/s(1)*(X(d-2)*X(d-1) - s(4)*X(d)) &
+	dvdt_res(d) = -1.d0*ds(1)/s(1)/s(1)*(X(d-2)*X(d-1) - s(4)*X(d)) &
 			  - ds(4)/s(1)*X(d) &
 			  + 1.d0/s(1)*(v(d-2)*X(d-1) + v(d-1)*X(d-2) - s(4)*v(d))
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	do i = 1, N, 1
-		dvdt(i) = i*pi*v(N+i)
-		dvdt(N+i) = -i*pi*v(i) - zeta(i,s(8),s(9))*v(N+i) &
+		dvdt_res(i) = i*pi*v(N+i)
+		dvdt_res(N+i) = -i*pi*v(i) - zeta(i,s(8),s(9))*v(N+i) &
 					-2.d0*i*pi*ds(6)*heat_release*cos(i*pi*s(6)) &
 					- i*i*ds(8)*X(N+i) - ds(9)*X(N+i)/(i**0.5d0) &
 					- 2.d0*sin(i*pi*s(6))*qdot(X(2*N+Ncheb))*ds(7) &
@@ -292,19 +292,19 @@ subroutine tangentstep(X,s,v,ds,dvdt,Dcheb)
 	
 	do i = 1, Ncheb, 1
 	
-		dvdt(2*N+i) = 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,1)*velocity_flame 
+		dvdt_res(2*N+i) = 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,1)*velocity_flame 
 		do j = 2, Ncheb + 1, 1	
 		
-			dvdt(2*N+i) = dvdt(2*N+i) + 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,j)*X(2*N+j-1) &
+			dvdt_res(2*N+i) = dvdt_res(2*N+i) + 2.d0/s(10)/s(10)*ds(10)*Dcheb(i+1,j)*X(2*N+j-1) &
 		- 2.d0/s(10)*Dcheb(i+1,j)*v(2*N+j-1) 		
 		end do
 
-		dvdt(2*N+i) = dvdt(2*N+i) + X(d-2)*ds(5)/(s(3)-1.d0) + &
+		dvdt_res(2*N+i) = dvdt_res(2*N+i) + X(d-2)*ds(5)/(s(3)-1.d0) + &
 					s(5)/(s(3)-1.d0)*v(d-2) &
 					- s(5)/(s(3)-1.d0)/(s(3)-1.d0)*X(d-2)
 		do j = 1, N, 1
 		
-			dvdt(2*N+i) = dvdt(2*N+i) - j*pi*ds(6)*X(j)*sin(j*pi*s(6)) &
+			dvdt_res(2*N+i) = dvdt_res(2*N+i) - j*pi*ds(6)*X(j)*sin(j*pi*s(6)) &
 			+ sin(j*pi*s(6))*v(j) 	
 
 		end do
@@ -312,5 +312,58 @@ subroutine tangentstep(X,s,v,ds,dvdt,Dcheb)
 	end do	
 
 end subroutine dvdt
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Adjoint Step
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine dydt(X,s,y,dydt_res,Dcheb)
+
+	implicit none
+	double precision, dimension(d) :: X
+	double precision, dimension(d) :: dydt_res
+	double precision, dimension(d) :: y
+	double precision, dimension(Nparam) :: s
+	double precision :: heat_release, velocity_flame
+	double precision :: dheat_release
+	integer :: i, j		
+
+	dydt_res(d-2) = 2.d0/s(10)*Dcheb(Ncheb+1,1)*s(5)/(s(3)-1.d0)*y(2*N+Ncheb) - &
+	(s(3)-X(d))/s(1)*y(d-1) + &
+	s(2)/s(1)*y(d-2) - &
+	X(d-1)/s(1)*y(d)	
+       
+	dydt_res(d-1) = -1.d0*s(2)/s(1)*y(d-2) &
+	+ 1.d0/s(1)*y(d-1) &
+	- X(d-2)/s(1)*y(d)  
+   			 
+	dydt_res(d) = X(d-2)/s(1)*y(d-1) &
+	+ s(4)/s(1)*y(d)	
+	
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
+	do i = 1, N, 1
+		dydt_res(i) = i*pi*y(N+i) 
+		do j = 1, Ncheb, 1
+			dydt_res(i) = dydt_res(i) + &
+				2.d0/s(10)*Dcheb(j+1,1)*cos(j*pi*s(6))*y(2*N+j)
+		end do	
+
+		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i)  
+	end do
+	!velocity_flame = uf(X,s(6)) + s(5)*X(d-2)/(s(3) - 1.d0)
+
+	do i = 1, Ncheb, 1
+		
+		dydt_res(2*N+i) = 0.d0
+		do j = 2, Ncheb + 1, 1	
+			dydt_res(2*N+i) = dydt_res(2*N+i) + &
+				2.d0/s(10)*Dcheb(j,i+1)*y(2*N+j-1) 
+		end do
+	end do	
+
+	do j = 1, N, 1
+		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) + &
+		+ 2.d0*dheat_release*y(N+j)	
+	end do
+end subroutine dydt
 
 end module equations
