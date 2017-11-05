@@ -214,6 +214,51 @@ subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
 
 
 end subroutine tangentstep
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Adjoint Solver
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine adjointstep(X,s,y,ynp1,Dcheb)
+
+	implicit none
+	double precision, dimension(nparams) :: s
+	double precision, dimension(d):: X, ynp1, y
+    double precision, dimension(d):: k1, k2, k3, k4
+	double precision, dimension(d):: ddt
+	double precision, dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
+	integer :: i, imax
+			
+	if(present(Dcheb) .eqv. .false.) then
+        Dcheb = cheb_diff_matrix()
+    endif
+	call dydt(X,s,y,ddt,Dcheb)
+    do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		ynp1(i) = y(i) + 0.5d0*k1(i) 
+	end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		ynp1(i) = y(i) + 0.5d0*k2(i) 
+	end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		ynp1(i) = y(i) + k3(i) 
+	end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
+  
+	do i = 1, d, 1
+		ynp1(i) = y(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
+
+	end do
+
+
+end subroutine adjointstep
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -344,7 +389,7 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 		dydt_res(i) = i*pi*y(N+i) 
 		do j = 1, Ncheb, 1
 			dydt_res(i) = dydt_res(i) + &
-				2.d0/s(10)*Dcheb(j+1,1)*cos(j*pi*s(6))*y(2*N+j)
+				2.d0/s(10)*Dcheb(j+1,1)*cos(i*pi*s(6))*y(2*N+j)
 		end do	
 
 		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i)  
@@ -362,7 +407,7 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 
 	do j = 1, N, 1
 		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) + &
-		+ 2.d0*dheat_release*y(N+j)	
+		+ 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j)	
 	end do
 end subroutine dydt
 
