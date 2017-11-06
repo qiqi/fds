@@ -1,4 +1,4 @@
-PROGRAM AdjoingVerification
+PROGRAM AdjointVerification
 
     Use Equations
 
@@ -46,4 +46,4 @@ PROGRAM AdjoingVerification
         nSteps = nSteps * 2
         DEALLOCATE(x)
     END DO
-END PROGRAM
+END PROGRAM AdjointVerification

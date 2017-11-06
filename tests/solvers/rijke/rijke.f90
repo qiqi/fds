@@ -7,10 +7,8 @@ module equations
 	integer, parameter :: chaos_flag = 1
 	integer, parameter :: N = 10, Ncheb = 10
 	integer, parameter :: d = 2*N + Ncheb + 3*chaos_flag
-	integer, parameter :: Nparam = 10	
-	double precision, parameter :: sigma = 10., b = 8./3., rho = 28.
-	double precision, parameter :: alpha = 0.01, tauL = 10.d0, tau = 0.04
-	double precision, parameter :: c1 = 0.05 , c2 = 0.01, xf = 0.3
+	integer, parameter :: Nparams = 10	
+    double precision, parameter :: S0(Nparams) = (/ 10.d0,10.d0,28.d0,8.d0/3.d0,0.01d0,0.3d0,0.865d0,0.05d0,0.01d0,0.04d0/) 
 contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Primal solver
@@ -18,7 +16,7 @@ contains
 subroutine step(X,Xnp1,s,Dcheb)
 
 	implicit none
-	double precision, dimension(nparams) :: s
+	double precision, dimension(Nparams) :: s
 	double precision, dimension(d):: X, Xnp1
     double precision, dimension(d):: k1, k2, k3, k4
 	double precision, dimension(d):: ddt
@@ -60,7 +58,7 @@ end subroutine step
 double precision function Objective(X,s)
 	implicit none
 	double precision, intent(in), dimension(d) :: X
-	double precision, dimension(Nparam) :: s
+	double precision, dimension(Nparams) :: s
 	integer :: t
 	double precision :: heat_release
 
@@ -70,7 +68,24 @@ double precision function Objective(X,s)
 		Objective = Objective - X(N+t)*sin(t*pi*s(6))
 	end do
     Objective = Objective*heat_release
-end subroutine Objective
+end function Objective
+double precision function TangentObjective(X,s,v,ds)
+	implicit none
+	double precision, intent(in), dimension(d) :: X,v
+	double precision, dimension(Nparams) :: s,ds
+	integer :: t
+	double precision :: heat_release
+
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	TangentObjective = 0.d0
+	do t = 1, N, 1
+		TangentObjective = TangentObjective - X(N+t)*sin(t*pi*s(6))
+	end do
+    TangentObjective = TangentObjective*heat_release
+end function TangentObjective
+
+
+
 double precision function uf(X,xf)
 	
 	implicit none
@@ -175,38 +190,38 @@ end function cheb_diff_matrix
 subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
 
 	implicit none
-	double precision, dimension(nparams) :: s, ds
+	double precision, dimension(Nparams) :: s, ds
 	double precision, dimension(d):: X, v, vnp1
     double precision, dimension(d):: k1, k2, k3, k4
 	double precision, dimension(d):: ddt
 	double precision, dimension(Ncheb+1,Ncheb+1),optional :: Dcheb
 	integer :: i, imax
-			
+
 	if(present(Dcheb) .eqv. .false.) then
         Dcheb = cheb_diff_matrix()
     endif
-	call dvdt(X,ddt,s,Dcheb)
+	call dvdt(X,s,v,ds,ddt,Dcheb)
     do i = 1, d, 1
 		k1(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k1(i) 
+		vnp1(i) = v(i) + 0.5d0*k1(i) 
 	end do
-	call dvdt(Xnp1,ddt,s,Dcheb)
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
     do i = 1, d, 1
 		k2(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k2(i) 
+		vnp1(i) = v(i) + 0.5d0*k2(i) 
 	end do
-	call dvdt(Xnp1,ddt,s,Dcheb)
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
     do i = 1, d, 1
 		k3(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + k3(i) 
+		vnp1(i) = v(i) + k3(i) 
 	end do
-	call dvdt(Xnp1,ddt,s,Dcheb)
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
 	do i = 1, d, 1
 		k4(i) = dt*ddt(i) 
 	end do
   
 	do i = 1, d, 1
-		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
+		vnp1(i) = v(i) + 1.d0/6.d0*k1(i) + &
                1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
                 1.d0/6.d0*k4(i)   
 
@@ -220,7 +235,7 @@ end subroutine tangentstep
 subroutine adjointstep(X,s,y,ynp1,Dcheb)
 
 	implicit none
-	double precision, dimension(nparams) :: s
+	double precision, dimension(Nparams) :: s
 	double precision, dimension(d):: X, ynp1, y
     double precision, dimension(d):: k1, k2, k3, k4
 	double precision, dimension(d):: ddt
@@ -264,9 +279,9 @@ end subroutine adjointstep
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Primal step
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine dXdt(X,dXdt_res,beta,Dcheb)
+subroutine dXdt(X,dXdt_res,s,Dcheb)
 	implicit none
-	double precision, dimension(Nparam) :: s
+	double precision, dimension(Nparams) :: s
 	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
 	double precision :: velocity_fluctuation
 	double precision :: velocity_flame
@@ -302,10 +317,11 @@ end subroutine dXdt
 subroutine dvdt(X,s,v,ds,dvdt_res,Dcheb)
 
 	implicit none
+    double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
 	double precision, dimension(d) :: X
 	double precision, dimension(d) :: dvdt_res
 	double precision, dimension(d) :: v
-	double precision, dimension(Nparam) :: s,ds
+	double precision, dimension(Nparams) :: s,ds
 	double precision :: heat_release, velocity_flame
 	integer :: i, j		
 
@@ -363,10 +379,11 @@ end subroutine dvdt
 subroutine dydt(X,s,y,dydt_res,Dcheb)
 
 	implicit none
+    double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
 	double precision, dimension(d) :: X
 	double precision, dimension(d) :: dydt_res
 	double precision, dimension(d) :: y
-	double precision, dimension(Nparam) :: s
+	double precision, dimension(Nparams) :: s
 	double precision :: heat_release, velocity_flame
 	double precision :: dheat_release
 	integer :: i, j		
@@ -406,7 +423,7 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 	end do	
 
 	do j = 1, N, 1
-		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) + &
+		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) &
 		+ 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j)	
 	end do
 end subroutine dydt
