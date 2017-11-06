@@ -13,22 +13,22 @@ PROGRAM AdjointVerification
     DO iSteps = 1, 3
         ALLOCATE(x(NDIM, nSteps))
         DO iS = 1, NPARAMS
-            ds = 0.0
-            ds(iS) = 1.0
-            x(:,1) = 1.0
-            dx(:) = 0.0
-            dJtan(iS) = DT / 2 * TangentObjective(x(:,iStep), S0, dx, ds)
+            ds = 0.d0
+            ds(iS) = 1.d0
+            x(:,1) = 1.d0
+            dx(:) = 0.d0
+            dJtan(iS) = DT / 2.d0 * TangentdJds(x(:,iStep), S0, dx, ds)
             DO iStep = 1, nSteps
                 if (iStep .GT. 1) then
                     dJtan(iS) = dJtan(iS) &
-                              + DT * TangentObjective(x(:,iStep), S0, dx, ds)
+                              + DT * TangentdJds(x(:,iStep), S0, dx, ds)
                 end if
-                CALL TangentStep(x(:,iStep), S0, dx, ds)
+                CALL TangentStep(x(:,iStep), S0, dx, ds, dxp1, Dcheb)
                 x(:,iStep+1) = x(:,iStep)
                 CALL Step(x(:,iStep+1), S0)
             END DO
             dJtan(iS) = dJtan(iS) &
-                      + DT / 2.0_8 * TangentObjective(x(:,nSteps+1), S0, dx, ds)
+                      + DT / 2.d0 * TangentdJds(x(:,nSteps+1), S0, dx, ds)
         END DO
         PRINT *, dJTan
         ax(:) = 0.0

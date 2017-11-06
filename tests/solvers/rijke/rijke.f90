@@ -69,23 +69,62 @@ double precision function Objective(X,s)
 	end do
     Objective = Objective*heat_release
 end function Objective
-double precision function TangentObjective(X,s,v,ds)
+double precision function TangentdJds(X,s,v,ds)
 	implicit none
 	double precision, intent(in), dimension(d) :: X,v
 	double precision, dimension(Nparams) :: s,ds
 	integer :: t
-	double precision :: heat_release
+	double precision :: heat_release, pressure_flame
 
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
-	TangentObjective = 0.d0
+	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
+	pressure_flame = 0.d0
+	TangentdJds = 0.d0
 	do t = 1, N, 1
-		TangentObjective = TangentObjective - X(N+t)*sin(t*pi*s(6))
+		TangentdJds = TangentdJds - heat_release*sin(t*pi*s(6))*v(N+t) 
+		pressure_flame = pressure_flame - X(N+t)*sin(pi*t*s(6))
 	end do
-    TangentObjective = TangentObjective*heat_release
-end function TangentObjective
+    TangentdJds = TangentdJds + pressure_flame*dheat_release*v(2*N+Ncheb) 
+end function TangentdJds
+double precision function AdjointdJds(X,s,y,ds,Dcheb)
+
+	implicit none
+	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
+	double precision, intent(in), dimension(d) :: X,y
+	double precision, dimension(Nparams) :: s,ds
+	integer :: t, j
+	double precision :: heat_release, dvelocity_flame, velocity_flame
+	double precision :: dvelocity1,dvelocity2
+
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	velocity_flame = uf(X,s(6))
+	dvelocity_flame = 0.d0
+	dvelocity1 = X(d-2)*s(5)/(s(3)-1.d0)+velocity_flame  
+
+	AdjointdJds = 0.d0
+	do t = 1, N, 1
+		AdjointdJds = AdjointdJds + ds(8)*t*t*X(N+t)*y(N+t) + &
+		 ds(9)*(j**0.5d0)*X(N+t)*y(N+t) + &
+		 ds(7)*2.d0/s(7)*heat_release*sin(t*pi*s(6))*y(N+t) + &
+		 ds(6)*t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				
+		
+		dvelocity_flame = dvelocity_flame - sin(t*pi*s(6))*t*pi*X(t)
+	end do
+	do t = 1, Ncheb, 1
+		dvelocity2 = 0.d0
+		do j = 2, Ncheb+1, 1
+			dvelocity2 = dvelocity2 + X(2*N+t-1)*Dcheb(t+1,j)	
+		end do
 
 
-
+		AdjointdJds = AdjointdJds + &
+		ds(5)*2.d0/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t) &
+		- ds(3)*2.d0*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) &
+	    + ds(6)*dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t) &
+		- ds(10)/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
+		
+	end do 
+end function AdjointdJds
 double precision function uf(X,xf)
 	
 	implicit none
