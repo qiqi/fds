@@ -36,7 +36,7 @@ rijke.o test_primal.o
 	${F90C} -o $@ $^ 
 
 test_adjoint: \
-../common/tan-adj.f03 rijke.f90
+tan-adj.f03 rijke.f90
 	${F90C} -o $@ $^ 
 
 numCoreh.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90, $(RTSUPP)) iaddr.c : toolChainh 

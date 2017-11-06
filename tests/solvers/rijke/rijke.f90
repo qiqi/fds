@@ -74,6 +74,7 @@ double precision function TangentdJds(X,s,v,ds)
 	double precision, intent(in), dimension(d) :: X,v
 	double precision, dimension(Nparams) :: s,ds
 	integer :: t
+	double precision :: dheat_release
 	double precision :: heat_release, pressure_flame
 
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
@@ -378,7 +379,7 @@ subroutine dvdt(X,s,v,ds,dvdt_res,Dcheb)
 		- ds(1)/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))
       
 	dvdt_res(d-1) = -1.d0*ds(1)/s(1)/s(1)*((s(3)-X(d))*X(d-2) &
-			- X(d-1)) + &
+			- X(d-1))  &
 			+ 1.d0/s(1)*ds(3)*X(d-2) &
 			+ 1.d0/s(1)*((s(3)-X(d))*v(d-2) - X(d-2)*v(d) &
 				- v(d-1))
