@@ -12,35 +12,36 @@ PROGRAM AdjointVerification
 	REAL(8) :: Dcheb(Ncheb+1,Ncheb+1)
 	
 	Dcheb = cheb_diff_matrix()	 
-    DO iSteps = 1, 3
+    !DO iSteps = 1, 3
         ALLOCATE(x(NDIM, nSteps))
         DO iS = 1, NPARAMS
             ds = 0.d0
             ds(iS) = 1.d0
             x(:,1) = 1.d0
             dx(:) = 0.d0
-            dJtan(iS) = DT / 2.d0 * TangentdJds(x(:,iStep), S0, dx, ds, Dcheb)
-            DO iStep = 1, nSteps
+            dJtan(iS) = DT / 2.d0 * TangentdJds(x(:,1), S0, dx, ds)
+			
+            DO iStep = 1, nSteps-1
                 if (iStep .GT. 1) then
                     dJtan(iS) = dJtan(iS) &
-                              + DT * TangentdJds(x(:,iStep), S0, dx, ds, Dcheb)
+                              + DT * TangentdJds(x(:,iStep), S0, dx, ds)
                 end if
                 CALL TangentStep(x(:,iStep), S0, dx, ds, Dcheb)
                 x(:,iStep+1) = x(:,iStep)
-                CALL Step(x(:,iStep+1), S0, Dcheb)
+                CALL Step(x(:,iStep), S0, Dcheb)
             END DO
             dJtan(iS) = dJtan(iS) &
-                      + DT / 2.d0 * TangentdJds(x(:,nSteps+1), S0, dx, ds, Dcheb)
+                      + DT / 2.d0 * TangentdJds(x(:,nSteps), S0, dx, ds)
         END DO
         PRINT *, dJTan
         ax(:) = 0.0
         dJadj(:) = 0.0
-		CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj, Dcheb)
-		dJdadj = dJadj*0.5*dT
+		CALL AdjointDJDS(x(:,nsteps), S0, ax, dJadj_res, Dcheb)
+		dJadj = dJadj*0.5*dT
         DO iStep = nSteps, 1, -1
-            CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj_res, Dcheb)
+             CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj_res, Dcheb)
 		
-            CALL AdjointStep(x(:,iStep), S0, ax, Dcheb)
+             CALL AdjointStep(x(:,iStep), S0, ax, Dcheb)
 
      		if (iStep .GT. 1) then
                 	dJadj = dJadj + dT*dJadj_res
@@ -51,5 +52,5 @@ PROGRAM AdjointVerification
         PRINT *, dJAdj
         nSteps = nSteps * 2
         DEALLOCATE(x)
-    END DO
+    !END DO
 END PROGRAM AdjointVerification

@@ -103,7 +103,7 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 	velocity_flame = uf(X,s(6))
 	dvelocity_flame = 0.d0
 	dvelocity1 = X(d-2)*s(5)/(s(3)-1.d0)+velocity_flame  
-
+	dJds = 0.d0
 	dJds(1) = dJds(1) + 1.d0/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))*y(d-2) + &
 			  1.d0/s(1)/s(1)*((s(3)-X(d))*X(d-2)-X(d-1))*y(d-1) + &
 		      1.d0/s(1)/s(1)*(X(d-1)*X(d-2)-s(4)*X(d))*y(d) 
