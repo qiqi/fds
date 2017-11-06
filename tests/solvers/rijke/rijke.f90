@@ -13,7 +13,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Primal solver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine step(X,Xnp1,s,Dcheb)
+subroutine step(X,s,Dcheb)
 
 	implicit none
 	double precision, dimension(Nparams) :: s
@@ -47,7 +47,7 @@ subroutine step(X,Xnp1,s,Dcheb)
 	end do
   
 	do i = 1, d, 1
-		Xnp1(i) = X(i) + 1.d0/6.d0*k1(i) + &
+		X(i) = X(i) + 1.d0/6.d0*k1(i) + &
                1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
                 1.d0/6.d0*k4(i)   
 
@@ -86,7 +86,7 @@ double precision function TangentdJds(X,s,v,ds)
 	end do
     TangentdJds = TangentdJds + pressure_flame*dheat_release*v(2*N+Ncheb) 
 end function TangentdJds
-double precision function AdjointdJds(X,s,y,ds,Dcheb)
+subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 
 	implicit none
 	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
@@ -95,36 +95,45 @@ double precision function AdjointdJds(X,s,y,ds,Dcheb)
 	integer :: t, j
 	double precision :: heat_release, dvelocity_flame, velocity_flame
 	double precision :: dvelocity1,dvelocity2
+	double precision, dimension(Nparams) :: dJds
+
 
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	velocity_flame = uf(X,s(6))
 	dvelocity_flame = 0.d0
 	dvelocity1 = X(d-2)*s(5)/(s(3)-1.d0)+velocity_flame  
 
-	AdjointdJds = 0.d0
+	dJds(1) = dJds(1) + 1.d0/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))*y(d-2) + &
+			  1.d0/s(1)/s(1)*((s(3)-X(d))*X(d-2)-X(d-1))*y(d-1) + &
+		      1.d0/s(1)/s(1)*(X(d-1)*X(d-2)-s(4)*X(d))*y(d) 
+	dJds(2) = dJds(2) - 1.d0/s(1)*(X(d-1)-X(d-2))*y(d-2) 
+	dJds(3) = dJds(3) - 1.d0*X(d-2)/s(1)*y(d-1)
+	dJds(4) = dJds(4) + 1.d0/s(1)*X(d)*y(d)
 	do t = 1, N, 1
-		AdjointdJds = AdjointdJds + ds(8)*t*t*X(N+t)*y(N+t) + &
-		 ds(9)*(j**0.5d0)*X(N+t)*y(N+t) + &
-		 ds(7)*2.d0/s(7)*heat_release*sin(t*pi*s(6))*y(N+t) + &
-		 ds(6)*t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				
-		
+		dJds(6) = dJds(6) + t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				 	
+
+		dJds(7) = dJds(7) + 2.d0/s(7)*heat_release*sin(t*pi*s(6))*y(N+t)
+
+		dJds(8) = dJds(8) +  t*t*X(N+t)*y(N+t)  
+
+		dJds(9) = dJds(9) + (j**0.5d0)*X(N+t)*y(N+t) 	
+	
 		dvelocity_flame = dvelocity_flame - sin(t*pi*s(6))*t*pi*X(t)
 	end do
+
 	do t = 1, Ncheb, 1
 		dvelocity2 = 0.d0
 		do j = 2, Ncheb+1, 1
 			dvelocity2 = dvelocity2 + X(2*N+t-1)*Dcheb(t+1,j)	
 		end do
-
-
-		AdjointdJds = AdjointdJds + &
-		ds(5)*2.d0/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t) &
-		- ds(3)*2.d0*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) &
-	    + ds(6)*dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t) &
-		- ds(10)/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
+		dJds(5) = dJds(5) +	2.d0/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t)  
+		dJds(3) = dJds(3) - 2.d0*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) 
+		dJds(6) = dJds(6) + dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t)
+ 		dJds(10) = dJds(10) - &
+		1.d0/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
 		
 	end do 
-end function AdjointdJds
+end subroutine AdjointdJds
 double precision function uf(X,xf)
 	
 	implicit none
@@ -226,7 +235,7 @@ end function cheb_diff_matrix
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Tangent solver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
+subroutine tangentstep(X,s,v,ds,Dcheb)
 
 	implicit none
 	double precision, dimension(Nparams) :: s, ds
@@ -260,7 +269,7 @@ subroutine tangentstep(X,s,v,ds,vnp1,Dcheb)
 	end do
   
 	do i = 1, d, 1
-		vnp1(i) = v(i) + 1.d0/6.d0*k1(i) + &
+		v(i) = v(i) + 1.d0/6.d0*k1(i) + &
                1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
                 1.d0/6.d0*k4(i)   
 
@@ -271,7 +280,7 @@ end subroutine tangentstep
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Adjoint Solver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine adjointstep(X,s,y,ynp1,Dcheb)
+subroutine adjointstep(X,s,y,Dcheb)
 
 	implicit none
 	double precision, dimension(Nparams) :: s
@@ -305,7 +314,7 @@ subroutine adjointstep(X,s,y,ynp1,Dcheb)
 	end do
   
 	do i = 1, d, 1
-		ynp1(i) = y(i) + 1.d0/6.d0*k1(i) + &
+		y(i) = y(i) + 1.d0/6.d0*k1(i) + &
                1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
                 1.d0/6.d0*k4(i)   
 
