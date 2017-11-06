@@ -4,7 +4,7 @@ PROGRAM AdjointVerification
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 100000
+    INTEGER :: nSteps = 10
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM)

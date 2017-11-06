@@ -409,7 +409,8 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 				2.d0/s(10)*Dcheb(j+1,1)*cos(i*pi*s(6))*y(2*N+j)
 		end do	
 
-		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i)  
+		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i) - &
+		 heat_release*sin(i*pi*s(6))	  
 	end do
 	!velocity_flame = uf(X,s(6)) + s(5)*X(d-2)/(s(3) - 1.d0)
 
@@ -424,7 +425,9 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 
 	do j = 1, N, 1
 		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) &
-		+ 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j)	
+		+ 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j) &
+		- dheat_release*X(N+j)*sin(j*pi*s(6)) 	
+				
 	end do
 end subroutine dydt
 
