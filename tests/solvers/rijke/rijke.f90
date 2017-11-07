@@ -437,8 +437,7 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 	double precision :: dheat_release
 	integer :: i, j		
 
-	dydt_res(d-2) = 2.d0/s(10)*Dcheb(Ncheb+1,1)*s(5)/(s(3)-1.d0)*y(2*N+Ncheb) - &
-	(s(3)-X(d))/s(1)*y(d-1) + &
+	dydt_res(d-2) = -1.d0*(s(3)-X(d))/s(1)*y(d-1) + &
 	s(2)/s(1)*y(d-2) - &
 	X(d-1)/s(1)*y(d)	
        
@@ -458,8 +457,7 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 				2.d0/s(10)*Dcheb(j+1,1)*cos(i*pi*s(6))*y(2*N+j)
 		end do	
 
-		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i) - &
-		 heat_release*sin(i*pi*s(6))	  
+		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i)  
 	end do
 	!velocity_flame = uf(X,s(6)) + s(5)*X(d-2)/(s(3) - 1.d0)
 
@@ -470,6 +468,8 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 			dydt_res(2*N+i) = dydt_res(2*N+i) + &
 				2.d0/s(10)*Dcheb(j,i+1)*y(2*N+j-1) 
 		end do
+		dydt_res(d-2) = dydt_res(d-2) + &
+		2.d0/s(10)*Dcheb(i+1,1)*s(5)/(s(3)-1.d0)*y(2*N+i)
 	end do	
 
 	do j = 1, N, 1

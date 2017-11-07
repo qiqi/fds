@@ -4,7 +4,7 @@ PROGRAM AdjointVerification
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 10
+    INTEGER :: nSteps = 400
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM)
@@ -14,7 +14,7 @@ PROGRAM AdjointVerification
 	Dcheb = cheb_diff_matrix()	 
     !DO iSteps = 1, 3
         ALLOCATE(x(NDIM, nSteps))
-        DO iS = 1, NPARAMS
+        DO iS = 1, 1
             ds = 0.d0
             ds(iS) = 1.d0
             x(:,1) = 1.d0
@@ -26,14 +26,16 @@ PROGRAM AdjointVerification
                     dJtan(iS) = dJtan(iS) &
                               + DT * TangentdJds(x(:,iStep), S0, dx, ds)
                 end if
-                CALL TangentStep(x(:,iStep), S0, dx, ds, Dcheb)
-                x(:,iStep+1) = x(:,iStep)
                 CALL Step(x(:,iStep), S0, Dcheb)
+				CALL TangentStep(x(:,iStep), S0, dx, ds, Dcheb)
+                x(:,iStep+1) = x(:,iStep)
+				
             END DO
             dJtan(iS) = dJtan(iS) &
                       + DT / 2.d0 * TangentdJds(x(:,nSteps), S0, dx, ds)
         END DO
-        PRINT *, dJTan
+		print *, X(:,nsteps)
+        !PRINT *, dJTan
         ax(:) = 0.0
         dJadj(:) = 0.0
 		CALL AdjointDJDS(x(:,nsteps), S0, ax, dJadj_res, Dcheb)
@@ -49,7 +51,7 @@ PROGRAM AdjointVerification
 
         END DO
   		dJadj = dJadj + 0.5*DT*dJadj_res       
-        PRINT *, dJAdj
+        !PRINT *, dJAdj
         nSteps = nSteps * 2
         DEALLOCATE(x)
     !END DO
