@@ -3,7 +3,7 @@
 module equations
 	implicit none
 	REAL, PARAMETER :: Pi = 3.1415927
-	double precision, parameter :: dt = 0.00001d0
+	double precision, parameter :: dt = 0.001d0
 	integer, parameter :: chaos_flag = 1
 	integer, parameter :: N = 10, Ncheb = 10
 	integer, parameter :: d = 2*N + Ncheb + 3*chaos_flag
@@ -27,34 +27,31 @@ subroutine step(X,s,Dcheb)
         Dcheb = cheb_diff_matrix()
     endif
 	call dXdt(X,ddt,s,Dcheb)
-    do i = 1, d, 1
-		X(i) = X(i) + dt*ddt(i)
+   	do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k1(i) 
 	end do
-	!do i = 1, d, 1
-	!	k1(i) = dt*ddt(i)
-	!	Xnp1(i) = X(i) + 0.5d0*k1(i) 
-	!end do
-	!call dXdt(Xnp1,ddt,s,Dcheb)
-    !do i = 1, d, 1
-	!	k2(i) = dt*ddt(i)
-	!	Xnp1(i) = X(i) + 0.5d0*k2(i) 
-	!end do
-	!call dXdt(Xnp1,ddt,s,Dcheb)
-    !do i = 1, d, 1
-	!	k3(i) = dt*ddt(i)
-	!	Xnp1(i) = X(i) + k3(i) 
-	!end do
-	!call dXdt(Xnp1,ddt,s,Dcheb)
-	!do i = 1, d, 1
-	!	k4(i) = dt*ddt(i) 
-	!end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + 0.5d0*k2(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		Xnp1(i) = X(i) + k3(i) 
+	end do
+	call dXdt(Xnp1,ddt,s,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
   
-	!do i = 1, d, 1
-	!	X(i) = X(i) + 1.d0/6.d0*k1(i) + &
-     !          1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-      !          1.d0/6.d0*k4(i)   
+	do i = 1, d, 1
+		X(i) = X(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
 
-	!end do
+	end do
 
 
 end subroutine step
@@ -134,7 +131,7 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 		dJds(3) = dJds(3) - 2.d0*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) 
 		dJds(6) = dJds(6) + dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t)
  		dJds(10) = dJds(10) - &
-		1.d0/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
+		2.d0/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
 		
 	end do 
 end subroutine AdjointdJds
@@ -253,34 +250,34 @@ subroutine tangentstep(X,s,v,ds,Dcheb)
         Dcheb = cheb_diff_matrix()
     endif
 	call dvdt(X,s,v,ds,ddt,Dcheb)
-	do i = 1, d, 1
-		v(i) = v(i) + dt*ddt(i)
+	!do i = 1, d, 1
+	!	v(i) = v(i) + dt*ddt(i)
+	!end do
+    do i = 1, d, 1
+		k1(i) = dt*ddt(i)
+		vnp1(i) = v(i) + 0.5d0*k1(i) 
 	end do
-    !do i = 1, d, 1
-	!	k1(i) = dt*ddt(i)
-	!	vnp1(i) = v(i) + 0.5d0*k1(i) 
-	!end do
-	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-    !do i = 1, d, 1
-	!		k2(i) = dt*ddt(i)
-	!	vnp1(i) = v(i) + 0.5d0*k2(i) 
-	!end do
-	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-    !do i = 1, d, 1
-	!		k3(i) = dt*ddt(i)
-	!	vnp1(i) = v(i) + k3(i) 
-	!end do
-	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-	!do i = 1, d, 1
-	!	k4(i) = dt*ddt(i) 
-	!end do
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+    do i = 1, d, 1
+		k2(i) = dt*ddt(i)
+		vnp1(i) = v(i) + 0.5d0*k2(i) 
+	end do
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+    do i = 1, d, 1
+		k3(i) = dt*ddt(i)
+		vnp1(i) = v(i) + k3(i) 
+	end do
+	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+	do i = 1, d, 1
+		k4(i) = dt*ddt(i) 
+	end do
   
-	!do i = 1, d, 1
-	!	v(i) = v(i) + 1.d0/6.d0*k1(i) + &
-    !           1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-    !            1.d0/6.d0*k4(i)   
+	do i = 1, d, 1
+		v(i) = v(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
 
-	!end do
+	end do
 
 
 end subroutine tangentstep
@@ -301,34 +298,34 @@ subroutine adjointstep(X,s,y,Dcheb)
         Dcheb = cheb_diff_matrix()
     endif
 	call dydt(X,s,y,ddt,Dcheb)
-	do i = 1, d, 1
-		y(i) = y(i) - dt*ddt(i)
+	!do i = 1, d, 1
+	!	y(i) = y(i) - dt*ddt(i)
+	!end do
+    do i = 1, d, 1
+		k1(i) = -dt*ddt(i)
+		ynp1(i) = y(i) + 0.5d0*k1(i) 
 	end do
-    !do i = 1, d, 1
-	!	k1(i) = dt*ddt(i)
-	!	ynp1(i) = y(i) + 0.5d0*k1(i) 
-	!end do
-	!call dydt(X,s,ynp1,ddt,Dcheb)
-    !do i = 1, d, 1
-	!	k2(i) = dt*ddt(i)
-	!	ynp1(i) = y(i) + 0.5d0*k2(i) 
-	!end do
-	!call dydt(X,s,ynp1,ddt,Dcheb)
-    !do i = 1, d, 1
-	!	k3(i) = dt*ddt(i)
-	!	ynp1(i) = y(i) + k3(i) 
-	!end do
-	!call dydt(X,s,ynp1,ddt,Dcheb)
-	!do i = 1, d, 1
-	!	k4(i) = dt*ddt(i) 
-	!end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+    do i = 1, d, 1
+		k2(i) = -dt*ddt(i)
+		ynp1(i) = y(i) + 0.5d0*k2(i) 
+	end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+    do i = 1, d, 1
+		k3(i) = -dt*ddt(i)
+		ynp1(i) = y(i) + k3(i) 
+	end do
+	call dydt(X,s,ynp1,ddt,Dcheb)
+	do i = 1, d, 1
+		k4(i) = -dt*ddt(i) 
+	end do
   
-	!do i = 1, d, 1
-	!	y(i) = y(i) + 1.d0/6.d0*k1(i) + &
-    !           1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-    !            1.d0/6.d0*k4(i)   
+	do i = 1, d, 1
+		y(i) = y(i) + 1.d0/6.d0*k1(i) + &
+               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+                1.d0/6.d0*k4(i)   
 
-	!end do
+	end do
 
 
 end subroutine adjointstep
@@ -401,8 +398,8 @@ subroutine dvdt(X,s,v,ds,dvdt_res,Dcheb)
 		dvdt_res(i) = i*pi*v(N+i)
 		dvdt_res(N+i) = -i*pi*v(i) - zeta(i,s(8),s(9))*v(N+i) &
 					-2.d0*i*pi*ds(6)*heat_release*cos(i*pi*s(6)) &
-					- i*i*ds(8)*X(N+i) - ds(9)*X(N+i)/(i**0.5d0) &
-					- 2.d0*sin(i*pi*s(6))*qdot(X(2*N+Ncheb))*ds(7) &
+					- i*i*ds(8)*X(N+i) - ds(9)*X(N+i)*(i**0.5d0) &
+					- 2.d0*sin(i*pi*s(6))*heat_release/s(7)*ds(7) &
 					-2.d0*s(7)*sin(i*pi*s(6))*dqdot(X(2*N+Ncheb))*v(2*N+Ncheb)	  
 		
 	end do
@@ -418,13 +415,14 @@ subroutine dvdt(X,s,v,ds,dvdt_res,Dcheb)
 		- 2.d0/s(10)*Dcheb(i+1,j)*v(2*N+j-1) 		
 		end do
 
-		dvdt_res(2*N+i) = dvdt_res(2*N+i) + X(d-2)*ds(5)/(s(3)-1.d0) + &
+		dvdt_res(2*N+i) = dvdt_res(2*N+i) - 2.d0/s(10)*Dcheb(i+1,1)*(X(d-2)*ds(5)/(s(3)-1.d0) + &
 					s(5)/(s(3)-1.d0)*v(d-2) &
-					- s(5)/(s(3)-1.d0)/(s(3)-1.d0)*X(d-2)
+					- ds(3)*s(5)/(s(3)-1.d0)/(s(3)-1.d0)*X(d-2))
 		do j = 1, N, 1
 		
-			dvdt_res(2*N+i) = dvdt_res(2*N+i) - j*pi*ds(6)*X(j)*sin(j*pi*s(6)) &
-			+ sin(j*pi*s(6))*v(j) 	
+			dvdt_res(2*N+i) = dvdt_res(2*N+i) - &
+		2.d0/s(10)*Dcheb(i+1,1)*(-1.d0*j*pi*ds(6)*X(j)*sin(j*pi*s(6)) &
+			+ cos(j*pi*s(6))*v(j)) 	
 
 		end do
 

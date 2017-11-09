@@ -4,15 +4,17 @@ PROGRAM AdjointVerification
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 1000
+    INTEGER :: nSteps = 500
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM)
     REAL(8) :: dJtan(NPARAMS), dJadj(NPARAMS), dJadj_res(NPARAMS)
 	REAL(8) :: Dcheb(Ncheb+1,Ncheb+1)
-	
+	REAL(8) :: err_norm(5)
+
+	err_norm = 0.d0
 	Dcheb = cheb_diff_matrix()	 
-    !DO iSteps = 1, 3
+    DO iSteps = 1, 5
         ALLOCATE(x(NDIM, nSteps))
         DO iS = 1, NPARAMS, 1
             ds = 0.d0
@@ -52,7 +54,9 @@ PROGRAM AdjointVerification
 		END DO
 		dJadj = dJadj + 0.5*DT*dJadj_res       
         PRINT *, dJAdj
-     !   nSteps = nSteps * 2
+        nSteps = nSteps * 2
         DEALLOCATE(x)
-    !END DO
+		err_norm(iSteps) = maxval(abs(dJadj-dJtan))/maxval(abs(dJtan))*100.d0
+    END DO
+	print *, err_norm
 END PROGRAM AdjointVerification
