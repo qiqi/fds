@@ -21,7 +21,7 @@ PROGRAM AdjointVerification
             ds(iS) = 1.d0
             x(:,1) = 1.d0
             dx(:) = 0.d0
-            dJtan(iS) = DT / 2.d0 * TangentdJds(x(:,1), S0, dx, ds)
+            dJtan(iS) = DT  * TangentdJds(x(:,1), S0, dx, ds)
 			x(:,2) = x(:,1)	
 			CALL Step(x(:,2), S0, Dcheb)
             CALL TangentStep(x(:,1), S0, dx, ds, Dcheb)
@@ -38,21 +38,25 @@ PROGRAM AdjointVerification
 				CALL Step(x(:,istep+1), S0, Dcheb)	
             END DO
             dJtan(iS) = dJtan(iS) &
-                      + DT / 2.d0 * TangentdJds(x(:,nSteps), S0, dx, ds)
+                      + DT  * TangentdJds(x(:,nSteps), S0, dx, ds)
         END DO
 		
         PRINT *, dJTan
         ax(:) = 0.0
         dJadj(:) = 0.0
-		CALL AdjointDJDS(x(:,nsteps), S0, ax, dJadj_res, Dcheb)
-		dJadj = dJadj_res*0.5*dT
+		CALL AdjointStep(x(:,nsteps), S0, ax, Dcheb)
+		CALL AdjointDJDS(x(:,nsteps-1), S0, ax, dJadj_res, Dcheb)
+		
+		dJadj = dJadj_res*dT
 		
         DO iStep = nSteps-1, 2, -1
             CALL AdjointStep(x(:,iStep), S0, ax, Dcheb)
-        	CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj_res, Dcheb)
-			dJadj = dJadj + dT*dJadj_res
+        	CALL AdjointDJDS(x(:,iStep-1), S0, ax, dJadj_res, Dcheb)
+			if(iStep .GT. 2) then
+				dJadj = dJadj + dT*dJadj_res
+			end if
 		END DO
-		dJadj = dJadj + 0.5*DT*dJadj_res       
+		dJadj = dJadj + DT*dJadj_res       
         PRINT *, dJAdj
         nSteps = nSteps * 2
         DEALLOCATE(x)

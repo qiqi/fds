@@ -3,7 +3,7 @@
 module equations
 	implicit none
 	REAL, PARAMETER :: Pi = 3.1415927
-	double precision, parameter :: dt = 0.001d0
+	double precision, parameter :: dt = 0.0001d0
 	integer, parameter :: chaos_flag = 1
 	integer, parameter :: N = 10, Ncheb = 10
 	integer, parameter :: d = 2*N + Ncheb + 3*chaos_flag
@@ -28,30 +28,33 @@ subroutine step(X,s,Dcheb)
     endif
 	call dXdt(X,ddt,s,Dcheb)
    	do i = 1, d, 1
-		k1(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k1(i) 
+		X(i) = X(i) + dt*ddt(i)
 	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k2(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + 0.5d0*k2(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-    do i = 1, d, 1
-		k3(i) = dt*ddt(i)
-		Xnp1(i) = X(i) + k3(i) 
-	end do
-	call dXdt(Xnp1,ddt,s,Dcheb)
-	do i = 1, d, 1
-		k4(i) = dt*ddt(i) 
-	end do
+	!do i = 1, d, 1
+	!	k1(i) = dt*ddt(i)
+	!	Xnp1(i) = X(i) + 0.5d0*k1(i) 
+	!end do
+	!call dXdt(Xnp1,ddt,s,Dcheb)
+    !do i = 1, d, 1
+	!	k2(i) = dt*ddt(i)
+	!	Xnp1(i) = X(i) + 0.5d0*k2(i) 
+	!end do
+	!call dXdt(Xnp1,ddt,s,Dcheb)
+    !do i = 1, d, 1
+	!	k3(i) = dt*ddt(i)
+	!	Xnp1(i) = X(i) + k3(i) 
+	!end do
+	!call dXdt(Xnp1,ddt,s,Dcheb)
+	!do i = 1, d, 1
+	!	k4(i) = dt*ddt(i) 
+	!end do
   
-	do i = 1, d, 1
-		X(i) = X(i) + 1.d0/6.d0*k1(i) + &
-               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-                1.d0/6.d0*k4(i)   
+	!do i = 1, d, 1
+	!	X(i) = X(i) + 1.d0/6.d0*k1(i) + &
+    !          1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+    !           1.d0/6.d0*k4(i)   
 
-	end do
+	!end do
 
 
 end subroutine step
@@ -250,34 +253,34 @@ subroutine tangentstep(X,s,v,ds,Dcheb)
         Dcheb = cheb_diff_matrix()
     endif
 	call dvdt(X,s,v,ds,ddt,Dcheb)
-	!do i = 1, d, 1
-	!	v(i) = v(i) + dt*ddt(i)
+	do i = 1, d, 1
+		v(i) = v(i) + dt*ddt(i)
+	end do
+    !do i = 1, d, 1
+	!	k1(i) = dt*ddt(i)
+	!	vnp1(i) = v(i) + 0.5d0*k1(i) 
 	!end do
-    do i = 1, d, 1
-		k1(i) = dt*ddt(i)
-		vnp1(i) = v(i) + 0.5d0*k1(i) 
-	end do
-	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-    do i = 1, d, 1
-		k2(i) = dt*ddt(i)
-		vnp1(i) = v(i) + 0.5d0*k2(i) 
-	end do
-	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-    do i = 1, d, 1
-		k3(i) = dt*ddt(i)
-		vnp1(i) = v(i) + k3(i) 
-	end do
-	call dvdt(X,s,vnp1,ds,ddt,Dcheb)
-	do i = 1, d, 1
-		k4(i) = dt*ddt(i) 
-	end do
+	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+    !do i = 1, d, 1
+	!	k2(i) = dt*ddt(i)
+	!	vnp1(i) = v(i) + 0.5d0*k2(i) 
+	!end do
+	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+    !do i = 1, d, 1
+	!	k3(i) = dt*ddt(i)
+	!	vnp1(i) = v(i) + k3(i) 
+	!end do
+	!call dvdt(X,s,vnp1,ds,ddt,Dcheb)
+	!do i = 1, d, 1
+	!	k4(i) = dt*ddt(i) 
+	!end do
   
-	do i = 1, d, 1
-		v(i) = v(i) + 1.d0/6.d0*k1(i) + &
-               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-                1.d0/6.d0*k4(i)   
+	!do i = 1, d, 1
+	!	v(i) = v(i) + 1.d0/6.d0*k1(i) + &
+    !           1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+    !            1.d0/6.d0*k4(i)   
 
-	end do
+	!end do
 
 
 end subroutine tangentstep
@@ -298,34 +301,34 @@ subroutine adjointstep(X,s,y,Dcheb)
         Dcheb = cheb_diff_matrix()
     endif
 	call dydt(X,s,y,ddt,Dcheb)
-	!do i = 1, d, 1
-	!	y(i) = y(i) - dt*ddt(i)
+	do i = 1, d, 1
+		y(i) = y(i) - dt*ddt(i)
+	end do
+    !do i = 1, d, 1
+	!	k1(i) = -dt*ddt(i)
+	!	ynp1(i) = y(i) + 0.5d0*k1(i) 
 	!end do
-    do i = 1, d, 1
-		k1(i) = -dt*ddt(i)
-		ynp1(i) = y(i) + 0.5d0*k1(i) 
-	end do
-	call dydt(X,s,ynp1,ddt,Dcheb)
-    do i = 1, d, 1
-		k2(i) = -dt*ddt(i)
-		ynp1(i) = y(i) + 0.5d0*k2(i) 
-	end do
-	call dydt(X,s,ynp1,ddt,Dcheb)
-    do i = 1, d, 1
-		k3(i) = -dt*ddt(i)
-		ynp1(i) = y(i) + k3(i) 
-	end do
-	call dydt(X,s,ynp1,ddt,Dcheb)
-	do i = 1, d, 1
-		k4(i) = -dt*ddt(i) 
-	end do
+	!call dydt(X,s,ynp1,ddt,Dcheb)
+    !do i = 1, d, 1
+	!	k2(i) = -dt*ddt(i)
+	!	ynp1(i) = y(i) + 0.5d0*k2(i) 
+	!end do
+	!call dydt(X,s,ynp1,ddt,Dcheb)
+    !do i = 1, d, 1
+	!	k3(i) = -dt*ddt(i)
+	!	ynp1(i) = y(i) + k3(i) 
+	!end do
+	!call dydt(X,s,ynp1,ddt,Dcheb)
+	!do i = 1, d, 1
+	!	k4(i) = -dt*ddt(i) 
+	!end do
   
-	do i = 1, d, 1
-		y(i) = y(i) + 1.d0/6.d0*k1(i) + &
-               1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
-                1.d0/6.d0*k4(i)   
+	!do i = 1, d, 1
+	!	y(i) = y(i) + 1.d0/6.d0*k1(i) + &
+    !           1.d0/3.d0*k2(i) + 1.d0/3.d0*k3(i) + &
+    !            1.d0/6.d0*k4(i)   
 
-	end do
+	!end do
 
 
 end subroutine adjointstep
