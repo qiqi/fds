@@ -91,16 +91,16 @@ def adjoint(u, s, nsteps, ua):
 def test_rijke_adjoint():
     m = 2
     s = 0.865
-    steps_per_segment = 1000
+    steps_per_segment = 10000
     cp_path = 'tests/rijke_adj'
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    J, dJds_tan = shadowing(solve, u0, s, m, 100, steps_per_segment, 1000000,
+    J, dJds_tan = shadowing(solve, u0, s, m, 100, steps_per_segment, 100000,
                             checkpoint_path=cp_path, tangent_run=tangent)
     print("Tangent: ",dJds_tan)
     dJds_adj = adjoint_shadowing(solve, adjoint, s, m, cp_path)
-    print("Adjoint: ", dJds_adj)
+    print("Adjoint: ", dJds_adj[6])
     assert abs(dJds_tan[0] - dJds_adj[6]) < 1E-10
 
 if __name__ == '__main__':
