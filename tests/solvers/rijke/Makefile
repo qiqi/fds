@@ -23,6 +23,19 @@ solver_primal: \
 combustion_juniper_passive.o driver_primal.o 
 	${F90C} -o $@ $^ 
 
+solver: \
+rijke.o solver.o
+	${F90C} -o $@ $^ 
+
+tangent: \
+rijke.o tangent.o 
+	${F90C} -o $@ $^ 
+
+adjoint: \
+rijke.o adjoint.o 
+	${F90C} -o $@ $^ 
+
+
 solver_attractor: \
 combustion_juniper_passive.o driver_attractor.o 
 	${F90C} -o $@ $^ 
@@ -38,6 +51,11 @@ rijke.o test_primal.o
 test_adjoint: \
 rijke.o tan-adj.o 
 	${F90C} -o $@ $^ 
+
+write_dcheb: \
+write_dcheb.o rijke.o 
+	${F90C} -o $@ $^ 
+
 
 numCoreh.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90, $(RTSUPP)) iaddr.c : toolChainh 
 

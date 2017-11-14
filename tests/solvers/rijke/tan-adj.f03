@@ -1,66 +1,51 @@
-PROGRAM AdjointVerification
+PROGRAM AdjoingVerification
 
     Use Equations
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 500
+    INTEGER :: nSteps = 1000
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM)
-    REAL(8) :: dJtan(NPARAMS), dJadj(NPARAMS), dJadj_res(NPARAMS)
+    REAL(8) :: dJtan(NPARAMS), dJadj(NPARAMS)
 	REAL(8) :: Dcheb(Ncheb+1,Ncheb+1)
-	REAL(8) :: err_norm(5)
 
-	err_norm = 0.d0
-	Dcheb = cheb_diff_matrix()	 
-    DO iSteps = 1, 5
-        ALLOCATE(x(NDIM, nSteps))
-        DO iS = 1, NPARAMS, 1
-            ds = 0.d0
-            ds(iS) = 1.d0
-            x(:,1) = 1.d0
-            dx(:) = 0.d0
-            dJtan(iS) = DT  * TangentdJds(x(:,1), S0, dx, ds)
-			x(:,2) = x(:,1)	
-			CALL Step(x(:,2), S0, Dcheb)
-            CALL TangentStep(x(:,1), S0, dx, ds, Dcheb)
-            DO iStep = 2, nSteps-1
-                               
-                dJtan(iS) = dJtan(iS) &
+	Dcheb = cheb_diff_matrix()
+    DO iSteps = 1, 3
+        ALLOCATE(x(NDIM, nSteps+1))
+        DO iS = 1, NPARAMS
+            ds = 0.0
+            ds(iS) = 1.0
+            x(:,1) = 1.0
+            dx(:) = 0.0
+            dJtan(iS) = DT / 2 * TangentdJds(x(:,1), S0, dx, ds)
+            DO iStep = 1, nSteps
+                if (iStep .GT. 1) then
+                    dJtan(iS) = dJtan(iS) &
                               + DT * TangentdJds(x(:,iStep), S0, dx, ds)
-
-				CALL TangentStep(x(:,iStep), S0, dx, ds, Dcheb)
-                
-
-				x(:,iStep+1) = x(:,iStep)
-			
-				CALL Step(x(:,istep+1), S0, Dcheb)	
+                end if
+                CALL TangentStep(x(:,iStep), S0, dx, ds, Dcheb)
+                x(:,iStep+1) = x(:,iStep)
+                CALL Step(x(:,iStep+1), S0, Dcheb)
             END DO
             dJtan(iS) = dJtan(iS) &
-                      + DT  * TangentdJds(x(:,nSteps), S0, dx, ds)
+                      + DT / 2.0_8 * TangentdJds(x(:,nSteps+1), S0, dx, ds)
         END DO
-		
         PRINT *, dJTan
         ax(:) = 0.0
         dJadj(:) = 0.0
-		CALL AdjointStep(x(:,nsteps), S0, ax, Dcheb)
-		CALL AdjointDJDS(x(:,nsteps-1), S0, ax, dJadj_res, Dcheb)
-		
-		dJadj = dJadj_res*dT
-		
-        DO iStep = nSteps-1, 2, -1
+        CALL AdjointSource(x(:,nSteps+1), S0, ax, 0.5_8 * DT)
+        DO iStep = nSteps, 1, -1
+            CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj, Dcheb)
             CALL AdjointStep(x(:,iStep), S0, ax, Dcheb)
-        	CALL AdjointDJDS(x(:,iStep-1), S0, ax, dJadj_res, Dcheb)
-			if(iStep .GT. 2) then
-				dJadj = dJadj + dT*dJadj_res
-			end if
-		END DO
-		dJadj = dJadj + DT*dJadj_res       
+            if (iStep .GT. 1) then
+                CALL AdjointSource(x(:,iStep), S0, ax, 1.0_8 * DT)
+            end if
+        END DO
+        CALL AdjointSource(x(:, 1), S0, ax, 0.5_8 * DT)
         PRINT *, dJAdj
         nSteps = nSteps * 2
         DEALLOCATE(x)
-		err_norm(iSteps) = maxval(abs(dJadj-dJtan))/maxval(abs(dJtan))*100.d0
     END DO
-	print *, err_norm
-END PROGRAM AdjointVerification
+END PROGRAM

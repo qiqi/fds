@@ -90,6 +90,27 @@ double precision function TangentdJds(X,s,v,ds)
 	end do
     TangentdJds = TangentdJds + pressure_flame*dheat_release*v(2*N+Ncheb) 
 end function TangentdJds
+subroutine AdjointSource(X,s,y,weight)
+
+	implicit none
+	double precision, dimension(d) :: X, y
+	double precision, dimension(Nparams) :: s
+	double precision :: weight, heat_release,dheat_release
+	integer :: i
+	
+	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
+
+
+	do i = 1, N, 1
+		y(N+i) = y(N+i) + weight*heat_release*sin(i*pi*s(6))
+ 		y(2*N + Ncheb) = y(2*N + Ncheb)	&
+		+ weight*dheat_release*X(N+i)*sin(i*pi*s(6)) 	
+
+	end do
+
+	
+end subroutine AdjointSource
 subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 
 	implicit none
@@ -106,21 +127,20 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 	velocity_flame = uf(X,s(6))
 	dvelocity_flame = 0.d0
 	dvelocity1 = X(d-2)*s(5)/(s(3)-1.d0)+velocity_flame  
-	dJds = 0.d0
-	dJds(1) = dJds(1) + 1.d0/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))*y(d-2) + &
-			  1.d0/s(1)/s(1)*((s(3)-X(d))*X(d-2)-X(d-1))*y(d-1) + &
-		      1.d0/s(1)/s(1)*(X(d-1)*X(d-2)-s(4)*X(d))*y(d) 
-	dJds(2) = dJds(2) - 1.d0/s(1)*(X(d-1)-X(d-2))*y(d-2) 
-	dJds(3) = dJds(3) - 1.d0*X(d-2)/s(1)*y(d-1)
-	dJds(4) = dJds(4) + 1.d0/s(1)*X(d)*y(d)
+	dJds(1) = dJds(1) + dt*1.d0/s(1)/s(1)*s(2)*(X(d-1)-X(d-2))*y(d-2) + &
+			  dt*1.d0/s(1)/s(1)*((s(3)-X(d))*X(d-2)-X(d-1))*y(d-1) + &
+		      dt*1.d0/s(1)/s(1)*(X(d-1)*X(d-2)-s(4)*X(d))*y(d) 
+	dJds(2) = dJds(2) - dt/s(1)*(X(d-1)-X(d-2))*y(d-2) 
+	dJds(3) = dJds(3) - dt*X(d-2)/s(1)*y(d-1)
+	dJds(4) = dJds(4) + dt/s(1)*X(d)*y(d)
 	do t = 1, N, 1
-		dJds(6) = dJds(6) + t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				 	
+		dJds(6) = dJds(6) + dt*t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				 	
 
-		dJds(7) = dJds(7) + 2.d0/s(7)*heat_release*sin(t*pi*s(6))*y(N+t)
+		dJds(7) = dJds(7) + 2.d0*dt/s(7)*heat_release*sin(t*pi*s(6))*y(N+t)
 
-		dJds(8) = dJds(8) +  t*t*X(N+t)*y(N+t)  
+		dJds(8) = dJds(8) +  dt*t*t*X(N+t)*y(N+t)  
 
-		dJds(9) = dJds(9) + (t**0.5d0)*X(N+t)*y(N+t) 	
+		dJds(9) = dJds(9) + dt*(t**0.5d0)*X(N+t)*y(N+t) 	
 	
 		dvelocity_flame = dvelocity_flame - sin(t*pi*s(6))*t*pi*X(t)
 	end do
@@ -130,11 +150,11 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 		do j = 2, Ncheb+1, 1
 			dvelocity2 = dvelocity2 + X(2*N+j-1)*Dcheb(t+1,j)	
 		end do
-		dJds(5) = dJds(5) +	2.d0/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t)  
-		dJds(3) = dJds(3) - 2.d0*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) 
-		dJds(6) = dJds(6) + dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t)
+		dJds(5) = dJds(5) +	2.d0*dt/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t)  
+		dJds(3) = dJds(3) - 2.d0*dt*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) 
+		dJds(6) = dJds(6) + dt*dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t)
  		dJds(10) = dJds(10) - &
-		2.d0/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
+		2.d0*dt/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
 		
 	end do 
 end subroutine AdjointdJds
@@ -302,7 +322,7 @@ subroutine adjointstep(X,s,y,Dcheb)
     endif
 	call dydt(X,s,y,ddt,Dcheb)
 	do i = 1, d, 1
-		y(i) = y(i) - dt*ddt(i)
+		y(i) = y(i) + dt*ddt(i)
 	end do
     !do i = 1, d, 1
 	!	k1(i) = -dt*ddt(i)
@@ -447,28 +467,28 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 	double precision :: dheat_release
 	integer :: i, j		
 
-	dydt_res(d-2) = -1.d0*(s(3)-X(d))/s(1)*y(d-1) + &
-	s(2)/s(1)*y(d-2) - &
+	dydt_res(d-2) = 1.d0*(s(3)-X(d))/s(1)*y(d-1) - &
+	s(2)/s(1)*y(d-2) + &
 	X(d-1)/s(1)*y(d)	
        
-	dydt_res(d-1) = -1.d0*s(2)/s(1)*y(d-2) &
-	+ 1.d0/s(1)*y(d-1) &
-	- X(d-2)/s(1)*y(d)  
+	dydt_res(d-1) = 1.d0*s(2)/s(1)*y(d-2) &
+	- 1.d0/s(1)*y(d-1) &
+	+ X(d-2)/s(1)*y(d)  
    			 
-	dydt_res(d) = X(d-2)/s(1)*y(d-1) &
-	+ s(4)/s(1)*y(d)	
+	dydt_res(d) = -1.d0*X(d-2)/s(1)*y(d-1) &
+	- s(4)/s(1)*y(d)	
 	
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
 	do i = 1, N, 1
-		dydt_res(i) = i*pi*y(N+i) 
+		dydt_res(i) = -1.d0*i*pi*y(N+i) 
 		do j = 1, Ncheb, 1
-			dydt_res(i) = dydt_res(i) + &
+			dydt_res(i) = dydt_res(i) - &
 				2.d0/s(10)*Dcheb(j+1,1)*cos(i*pi*s(6))*y(2*N+j)
 		end do	
 
-		dydt_res(N+i) = - i*pi*y(i) + zeta(i,s(8),s(9))*y(N+i) &
-				- heat_release*sin(i*pi*s(6)) 
+		dydt_res(N+i) = i*pi*y(i) - zeta(i,s(8),s(9))*y(N+i)
+			
 	end do
 	!velocity_flame = uf(X,s(6)) + s(5)*X(d-2)/(s(3) - 1.d0)
 
@@ -476,18 +496,17 @@ subroutine dydt(X,s,y,dydt_res,Dcheb)
 		
 		dydt_res(2*N+i) = 0.d0
 		do j = 2, Ncheb + 1, 1	
-			dydt_res(2*N+i) = dydt_res(2*N+i) + &
+			dydt_res(2*N+i) = dydt_res(2*N+i) - &
 				2.d0/s(10)*Dcheb(j,i+1)*y(2*N+j-1) 
 		end do
-		dydt_res(d-2) = dydt_res(d-2) + &
+		dydt_res(d-2) = dydt_res(d-2) - &
 		2.d0/s(10)*Dcheb(i+1,1)*s(5)/(s(3)-1.d0)*y(2*N+i)
 	end do	
 
 	do j = 1, N, 1
 		dydt_res(2*N + Ncheb) = dydt_res(2*N + Ncheb) &
-		+ 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j) &
-		- dheat_release*X(N+j)*sin(j*pi*s(6)) 	
-				
+		- 2.d0*dheat_release*sin(j*pi*s(6))*y(N+j) 
+					
 	end do
 end subroutine dydt
 
