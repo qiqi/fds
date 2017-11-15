@@ -35,8 +35,8 @@ PROGRAM AdjointVerification
             dJtan(iS) = dJtan(iS) &
                       + 0.5d0/nsteps * TangentdJds(x(:,nSteps+1), S0, dx, ds)
         END DO
-        PRINT *, dJTan
-        ax(:) = 0.0
+        !PRINT *, dJTan
+        ax(:) = 1.0
         dJadj(:) = 0.0
         CALL AdjointSource(x(:,nSteps+1), S0, ax, 0.5d0/nsteps)
         !print *, "Product at nsteps: ", sum(dx)
