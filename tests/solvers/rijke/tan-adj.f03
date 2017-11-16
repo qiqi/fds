@@ -4,7 +4,7 @@ PROGRAM AdjointVerification
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 100
+    INTEGER :: nSteps = 10
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM)
@@ -31,7 +31,7 @@ PROGRAM AdjointVerification
                 x(:,iStep+1) = x(:,iStep)
                 CALL Step(x(:,iStep+1), S0, Dcheb)
             END DO
-			if(iS .eq. Nparams) then
+			if(iS .eq. 6) then
 				print *, dx
 			end if
             dJtan(iS) = dJtan(iS) &

@@ -15,10 +15,10 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Primal solver
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine step(X,s,Dcheb)
+subroutine step(X,ss,Dcheb)
 
 	implicit none
-	double precision, dimension(Nparams) :: s
+	double precision, dimension(Nparams) :: ss
 	double precision, dimension(d):: X, Xnp1
     double precision, dimension(d):: k1, k2, k3, k4
 	double precision, dimension(d):: ddt
@@ -28,7 +28,7 @@ subroutine step(X,s,Dcheb)
 	!if(present(Dcheb) .eqv. .false.) then
     !    call cheb_diff_matrix(Dcheb)
     !endif
-	call dXdt(X,ddt,s,Dcheb)
+	call dXdt(X,ddt,ss,Dcheb)
    	do i = 1, d, 1
 		X(i) = X(i) + dt*ddt(i)
 	end do
@@ -60,17 +60,17 @@ subroutine step(X,s,Dcheb)
 
 
 end subroutine step
-double precision function Objective(X,s)
+double precision function Objective(X,ss)
 	implicit none
 	double precision, intent(in), dimension(d) :: X
-	double precision, dimension(Nparams) :: s
+	double precision, dimension(Nparams) :: ss
 	integer :: t
 	double precision :: heat_release
 
-	heat_release = s(7)*qdot(X(2*N+Ncheb))
+	heat_release = ss(7)*qdot(X(2*N+Ncheb))
 	Objective = 0.d0
 	do t = 1, N, 1
-		Objective = Objective - X(N+t)*sin(t*pi*s(6))
+		Objective = Objective - X(N+t)*sin(t*pi*ss(6))
 	end do
     Objective = Objective*heat_release
 end function Objective
@@ -158,9 +158,9 @@ end subroutine cheb_diff_matrix
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!Primal step
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine dXdt(X,dXdt_res,s,Dcheb)
+subroutine dXdt(X,dXdt_res,ss,Dcheb)
 	implicit none
-	double precision, dimension(Nparams) :: s
+	double precision, dimension(Nparams) :: ss
 	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
 	double precision :: velocity_fluctuation
 	double precision :: velocity_flame
@@ -169,23 +169,23 @@ subroutine dXdt(X,dXdt_res,s,Dcheb)
 	double precision, intent(out), dimension(d) :: dXdt_res
 	integer :: i,j
 
-	dXdt_res(d-2) = 1.d0/s(1)*(s(2)*(X(d-1)-X(d-2)))
-	dXdt_res(d-1) = 1.d0/s(1)*(X(d-2)*(s(3)-X(d)) - X(d-1))
-	dXdt_res(d) = 1.d0/s(1)*(X(d-2)*X(d-1) - s(4)*X(d))
-	velocity_fluctuation = s(5)*X(d-2)/(s(3) - 1.d0)
-	velocity_flame = uf(X,s(6)) + velocity_fluctuation
-	heat_release = s(7)*qdot(X(2*N+Ncheb))		
+	dXdt_res(d-2) = 1.d0/ss(1)*(ss(2)*(X(d-1)-X(d-2)))
+	dXdt_res(d-1) = 1.d0/ss(1)*(X(d-2)*(ss(3)-X(d)) - X(d-1))
+	dXdt_res(d) = 1.d0/ss(1)*(X(d-2)*X(d-1) - ss(4)*X(d))
+	velocity_fluctuation = ss(5)*X(d-2)/(ss(3) - 1.d0)
+	velocity_flame = uf(X,ss(6)) + velocity_fluctuation
+	heat_release = ss(7)*qdot(X(2*N+Ncheb))		
 
 	do i = 1, N, 1
 		dXdt_res(i) = i*pi*X(N+i)
-		dXdt_res(N+i) = -1.d0*i*pi*X(i) - zeta(i,s(8),s(9))*X(N+i) &
-						- 2.d0*heat_release*sin(i*pi*s(6))
+		dXdt_res(N+i) = -1.d0*i*pi*X(i) - zeta(i,ss(8),ss(9))*X(N+i) &
+						- 2.d0*heat_release*sin(i*pi*ss(6))
 	end do
 	do i = 1, Ncheb, 1
-		dXdt_res(2*N+i) = -2.d0/s(10)*Dcheb(i+1,1)*velocity_flame 
+		dXdt_res(2*N+i) = -2.d0/ss(10)*Dcheb(i+1,1)*velocity_flame 
 		do j = 2, Ncheb+1, 1 
 			dXdt_res(2*N+i) = dXdt_res(2*N+i) &
-							 - 2.d0/s(10)*X(2*N +j-1)*Dcheb(i+1,j)
+							 - 2.d0/ss(10)*X(2*N +j-1)*Dcheb(i+1,j)
 		end do	
 	end do
  
