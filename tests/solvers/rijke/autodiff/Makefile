@@ -18,6 +18,11 @@ solver_iht: $(addsuffix .o, $(RTSUPP_for)) \ \
 rijke_oad_passive.o numCorei.pre.xb.x2w.w2f.post.o driver_iht_nilss.o
 	${F90C} -o $@ $^
 
+solver_adjoint: $(addsuffix .o, $(RTSUPP_rev)) \ \
+rijke_oad_passive.o numCorea.pre.xb.x2w.w2f.post.o driver_adjoint_nilss.o
+	${F90C} -o $@ $^
+
+
 
 solver_primal: \
 rijke_oad_passive.o driver_primal.o 
@@ -30,7 +35,8 @@ numCoreh.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90, $(RTSUPP_for)) iaddr.c : tool
 
 numCorei.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90,  $(RTSUPP_for)) iaddr.c : toolChaini 
 	
-
+numCorea.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90,  $(RTSUPP_rev)) iaddr.c : toolChaina 
+	
 
 toolChainh : numCoreh.f90
 	openad -c -m f $<
@@ -47,6 +53,16 @@ toolChaini : numCorei.f90
 
 numCorei.f90: rijke_oad.f90 head.prepped.inhomo.f90
 	cat $^ > $@
+
+
+toolChaina : numCorea.f90
+	openad -c -m rj $<
+	rsync -av ${OPENADROOT}/runTimeSupport/vector/OAD_active.f90 ./
+	cat OAD_active.f90 | sed 's/100/33/' > OAD_active_custom.f90	
+
+numCorea.f90: rijke_oad.f90 head.prepped.adjoint.f90
+	cat $^ > $@
+
 
 
 rijke_oad_passive.f90: rijke_oad.f90

@@ -31,9 +31,9 @@ PROGRAM AdjointVerification
                 x(:,iStep+1) = x(:,iStep)
                 CALL Step(x(:,iStep+1), S0, Dcheb)
             END DO
-			if(iS .eq. 6) then
-				print *, dx
-			end if
+			!if(iS .eq. 6) then
+			!	print *, dx
+			!end if
             dJtan(iS) = dJtan(iS) &
                       + 0.5d0/nsteps * TangentdJds(x(:,nSteps+1), S0, dx, ds)
         END DO
@@ -52,6 +52,7 @@ PROGRAM AdjointVerification
         CALL AdjointSource(x(:, 1), S0, ax, 0.5d0/nsteps)
 		!print *, "Product at step 1:", sum(ax)
         !PRINT *, dJAdj
+		print *, ax
         nSteps = nSteps * 2
         DEALLOCATE(x)
     END DO
