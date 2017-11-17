@@ -10,11 +10,8 @@ RTSUPP_for=w2f__types OAD_active_custom
 
 
 #Interface with nilss
-solver_ht: $(addsuffix .o, $(RTSUPP_for)) \
-rijke_oad_passive.o numCoreh.pre.xb.x2w.w2f.post.o driver_ht_nilss.o
-	${F90C} -o $@ $^
 
-solver_iht: $(addsuffix .o, $(RTSUPP_for)) \ \
+tangent: $(addsuffix .o, $(RTSUPP_for)) \ \
 rijke_oad_passive.o numCorei.pre.xb.x2w.w2f.post.o driver_iht_nilss.o
 	${F90C} -o $@ $^
 
@@ -31,20 +28,12 @@ rijke_oad_passive.o driver_primal.o
 
 
 
-numCoreh.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90, $(RTSUPP_for)) iaddr.c : toolChainh 
-
 numCorei.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90,  $(RTSUPP_for)) iaddr.c : toolChaini 
 	
 numCorea.pre.xb.x2w.w2f.post.f90 $(addsuffix .f90,  $(RTSUPP_rev)) iaddr.c : toolChaina 
 	
 
-toolChainh : numCoreh.f90
-	openad -c -m f $<
-	rsync -av ${OPENADROOT}/runTimeSupport/vector/OAD_active.f90 ./
-	cat OAD_active.f90 | sed 's/100/33/' > OAD_active_custom.f90		
 
-numCoreh.f90: rijke_oad.f90 head.prepped.homo.f90
-	cat $^ > $@
 
 toolChaini : numCorei.f90
 	openad -c -m f $<

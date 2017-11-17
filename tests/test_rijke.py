@@ -22,8 +22,8 @@ from fds import *
 
 solver_path = os.path.join(my_path, 'solvers', 'rijke')
 solver = os.path.join(solver_path, 'solver')
-adj_solver = os.path.join(solver_path, 'adjoint')
-tan_solver = os.path.join(solver_path, 'tangent')
+adj_solver = os.path.join(solver_path, 'autodiff/adjoint')
+tan_solver = os.path.join(solver_path, 'autodiff/tangent')
 u0 = loadtxt(os.path.join(solver_path, 'u0'))
 
 def solve(u, s, nsteps):

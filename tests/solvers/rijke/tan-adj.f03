@@ -4,7 +4,7 @@ PROGRAM AdjointVerification
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: NDIM = d
-    INTEGER :: nSteps = 1
+    INTEGER :: nSteps = 100
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)
     REAL(8) :: dx(NDIM), ds(NPARAMS), ax(NDIM), axtemp(NDIM)
@@ -20,7 +20,7 @@ PROGRAM AdjointVerification
             	ds(iS) = 1.0
 			!end if
             x(:,1) = 1.0
-            dx(:) = 1.d0
+            dx(:) = 1.3d0
             dJtan(iS) = 0.5d0 / nsteps * TangentdJds(x(:,1), S0, dx, ds)
             DO iStep = 1, nSteps
                 if (iStep .GT. 1) then
@@ -31,14 +31,19 @@ PROGRAM AdjointVerification
                 x(:,iStep+1) = x(:,iStep)
                 CALL Step(x(:,iStep+1), S0, Dcheb)
             END DO
-			!if(iS .eq. 6) then
+			!if(iS .eq. NPARAMS) then
 			!	print *, dx
 			!end if
             dJtan(iS) = dJtan(iS) &
                       + 0.5d0/nsteps * TangentdJds(x(:,nSteps+1), S0, dx, ds)
-            dJtan(iS) = dJtan(iS) + dx(21)
+            if(iS .eq. 6) then
+				print *, dx
+				print *, dJtan(iS)
+			end if
+
+			dJtan(iS) = dJtan(iS) + dx(21)
         END DO
-        PRINT *, dJTan
+        !PRINT *, dJTan
         ax(:) = 0.0
         ax(21) = 1.0
         dJadj(:) = 0.0
@@ -56,7 +61,7 @@ PROGRAM AdjointVerification
     	CALL AdjointSource(x(:,1), s0, ax, 0.5_8 / nSteps)
         
 		!print *, ax
-		PRINT *, sum(ax) + dJadj
+		!PRINT *, sum(ax) + dJadj
         nSteps = nSteps * 2
         DEALLOCATE(x)
     END DO
