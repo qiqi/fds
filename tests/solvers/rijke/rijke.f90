@@ -77,18 +77,22 @@ double precision function TangentdJds(X,s,v,ds)
 	double precision, intent(in), dimension(d) :: X,v
 	double precision, dimension(Nparams) :: s,ds
 	integer :: t
-	double precision :: dheat_release
+	double precision :: dheat_release, dpressure_flamedxf
 	double precision :: heat_release, pressure_flame
 
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
 	pressure_flame = 0.d0
+	dpressure_flamedxf = 0.d0
 	TangentdJds = 0.d0
 	do t = 1, N, 1
 		TangentdJds = TangentdJds - heat_release*sin(t*pi*s(6))*v(N+t) 
 		pressure_flame = pressure_flame - X(N+t)*sin(pi*t*s(6))
+		dpressure_flamedxf = dpressure_flamedxf - X(N+t)*cos(pi*t*s(6))*pi*t
 	end do
-    TangentdJds = TangentdJds + pressure_flame*dheat_release*v(2*N+Ncheb) 
+    TangentdJds = TangentdJds + pressure_flame*dheat_release*v(2*N+Ncheb)
+	TangentdJds = TangentdJds + ds(7)*qdot(X(2*N+Ncheb))*pressure_flame &
+				+ ds(6)*heat_release*dpressure_flamedxf 
 end function TangentdJds
 subroutine AdjointSource(X,s,y,weight)
 
@@ -111,7 +115,7 @@ subroutine AdjointSource(X,s,y,weight)
 
 	
 end subroutine AdjointSource
-subroutine AdjointdJds(X,s,y,dJds,Dcheb)
+subroutine AdjointdJds(X,s,y,dJds,Dcheb,weight)
 
 	implicit none
 	double precision, dimension(Ncheb+1,Ncheb+1) :: Dcheb
@@ -119,7 +123,7 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 	double precision, dimension(Nparams) :: s,ds
 	integer :: t, j
 	double precision :: heat_release, dvelocity_flame, velocity_flame
-	double precision :: dvelocity1,dvelocity2
+	double precision :: dvelocity1,dvelocity2,weight
 	double precision, dimension(Nparams) :: dJds
 
 
@@ -134,9 +138,11 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
 	dJds(3) = dJds(3) + dt*X(d-2)/s(1)*y(d-1)
 	dJds(4) = dJds(4) - dt/s(1)*X(d)*y(d)
 	do t = 1, N, 1
-		dJds(6) = dJds(6) - dt*t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t)				 	
+		dJds(6) = dJds(6) - dt*t*pi*cos(t*pi*s(6))*2.d0*heat_release*y(N+t) &
+				- weight*t*pi*cos(t*pi*s(6))*heat_release*X(N+t)				 	
 
-		dJds(7) = dJds(7) - 2.d0*dt/s(7)*heat_release*sin(t*pi*s(6))*y(N+t)
+		dJds(7) = dJds(7) - 2.d0*dt/s(7)*heat_release*sin(t*pi*s(6))*y(N+t) &
+				- weight*heat_release/s(7)*X(N+t)*sin(t*pi*s(6))
 
 		dJds(8) = dJds(8) -  dt*t*t*X(N+t)*y(N+t)  
 
@@ -156,7 +162,8 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb)
  		dJds(10) = dJds(10) + &
 		2.d0*dt/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
 		
-	end do 
+	end do
+	 
 end subroutine AdjointdJds
 double precision function uf(X,xf)
 	

@@ -16,11 +16,11 @@ PROGRAM AdjointVerification
         ALLOCATE(x(NDIM, nSteps+1))
         DO iS = 1, NPARAMS
             ds = 0.0
-			if(iS .lt. NPARAMS) then
+			!if(iS .lt. NPARAMS) then
             	ds(iS) = 1.0
-			end if
+			!end if
             x(:,1) = 1.0
-            dx(:) = 1.3d0
+            dx(:) = 0.d0
             dJtan(iS) = 0.5d0 / nsteps * TangentdJds(x(:,1), S0, dx, ds)
             DO iStep = 1, nSteps
                 if (iStep .GT. 1) then
@@ -38,20 +38,23 @@ PROGRAM AdjointVerification
                       + 0.5d0/nsteps * TangentdJds(x(:,nSteps+1), S0, dx, ds)
         END DO
         !PRINT *, dJTan
-        ax(:) = 1.0
+        ax(:) = 0.0
         dJadj(:) = 0.0
-        CALL AdjointSource(x(:,nSteps+1), S0, ax, 0.5d0/nsteps)
-        !print *, "Product at nsteps: ", sum(dx)
-		DO iStep = nSteps, 1, -1
-            CALL AdjointDJDS(x(:,iStep), S0, ax, dJadj, Dcheb)
-            CALL AdjointStep(x(:,iStep), S0, ax, Dcheb)
-            if (iStep .GT. 1) then
-                CALL AdjointSource(x(:,iStep), S0, ax, 1.d0/nsteps)
-            end if
-        END DO
-        CALL AdjointSource(x(:, 1), S0, ax, 0.5d0/nsteps)
-		!print *, "Product at step 1:", sum(ax)
-        !PRINT *, dJAdj
+        CALL AdjointDJDS(x(:,nSteps+1), s0, ax, dJadj, Dcheb, 0.5_8/nSteps)
+    	CALL AdjointSource(x(:,nSteps+1), s0, ax, 0.5_8 / nSteps)
+	
+    	DO iStep = nSteps, 2, -1
+        	CALL AdjointDJDS(x(:,iStep), s0, ax, dJadj, Dcheb, 1.0_8/nSteps)
+        	CALL AdjointStep(x(:,iStep), s0, ax, Dcheb)
+       		CALL AdjointSource(x(:,iStep), s0, ax, 1.0_8 / nSteps)
+    	END DO
+		CALL AdjointDJDS(x(:,1), s0, ax, dJadj, Dcheb, 0.5_8/nSteps)
+    	CALL AdjointStep(x(:,1), s0, ax, Dcheb)
+
+    	CALL AdjointSource(x(:,1), s0, ax, 0.5_8 / nSteps)
+        
+
+		!PRINT *, dJAdj
 		print *, ax
         nSteps = nSteps * 2
         DEALLOCATE(x)

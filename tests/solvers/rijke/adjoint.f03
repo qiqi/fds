@@ -48,14 +48,17 @@ PROGRAM Adj
     Close(1)
 
     dJds(:) = 0.0
+	CALL AdjointDJDS(x(:,nSteps+1), s, ax, dJds, Dcheb, 0.5_8/nSteps)
     CALL AdjointSource(x(:,nSteps+1), s, ax, 0.5_8 / nSteps)
-    DO iStep = nSteps, 1, -1
-        CALL AdjointDJDS(x(:,iStep), s, ax, dJds, Dcheb)
+	
+    DO iStep = nSteps, 2, -1
+        CALL AdjointDJDS(x(:,iStep), s, ax, dJds, Dcheb, 1.0_8/nSteps)
         CALL AdjointStep(x(:,iStep), s, ax, Dcheb)
-        if (iStep .GT. 1) then
-            CALL AdjointSource(x(:,iStep), s, ax, 1.0_8 / nSteps)
-        end if
+       	CALL AdjointSource(x(:,iStep), s, ax, 1.0_8 / nSteps)
     END DO
+	CALL AdjointDJDS(x(:,1), s, ax, dJds, Dcheb, 0.5_8/nSteps)
+    CALL AdjointStep(x(:,1), s, ax, Dcheb)
+
     CALL AdjointSource(x(:,1), s, ax, 0.5_8 / nSteps)
 
     Open(1, file="adj-output.bin", form="unformatted", access="stream", &
