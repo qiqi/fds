@@ -99,21 +99,20 @@ subroutine AdjointSource(X,s,y,weight)
 	implicit none
 	double precision, dimension(d) :: X, y
 	double precision, dimension(Nparams) :: s
-	double precision :: weight, heat_release,dheat_release
+	double precision :: weight, heat_release,dheat_release, pressure_flame
 	integer :: i
 	
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	dheat_release = s(7)*dqdot(X(2*N+Ncheb))
 
-
+	pressure_flame = 0.d0
 	do i = 1, N, 1
 		y(N+i) = y(N+i) - weight*heat_release*sin(i*pi*s(6))
- 		y(2*N + Ncheb) = y(2*N + Ncheb)	&
-		- weight*dheat_release*X(N+i)*sin(i*pi*s(6)) 	
-
+		pressure_flame = pressure_flame - X(N+i)*sin(pi*i*s(6))
 	end do
+ 	y(2*N + Ncheb) = y(2*N + Ncheb)	&
+	+ weight*pressure_flame * dheat_release
 
-	
 end subroutine AdjointSource
 subroutine AdjointdJds(X,s,y,dJds,Dcheb,weight)
 
@@ -125,7 +124,6 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb,weight)
 	double precision :: heat_release, dvelocity_flame, velocity_flame
 	double precision :: dvelocity1,dvelocity2,weight
 	double precision, dimension(Nparams) :: dJds
-
 
 	heat_release = s(7)*qdot(X(2*N+Ncheb))
 	velocity_flame = uf(X,s(6))
@@ -152,16 +150,17 @@ subroutine AdjointdJds(X,s,y,dJds,Dcheb,weight)
 	end do
 
 	do t = 1, Ncheb, 1
-		dvelocity2 = 0.d0
+		dJds(10) = dJds(10) + &
+		2.d0*dt/s(10)/s(10)*y(2*N+t)*Dcheb(t+1,1)*dvelocity1		
+
 		do j = 2, Ncheb+1, 1
-			dvelocity2 = dvelocity2 + X(2*N+j-1)*Dcheb(t+1,j)	
+			dJds(10) = dJds(10) + &
+				2.d0*dt/s(10)/s(10)*Dcheb(t+1,j)*X(2*N+j-1)*y(2*N+t)		
 		end do
 		dJds(5) = dJds(5) -	2.d0*dt/s(10)*Dcheb(t+1,1)*X(d-2)/(s(3)-1.d0)*y(2*N+t)  
 		dJds(3) = dJds(3) + 2.d0*dt*s(5)/s(10)*Dcheb(t+1,1)*X(d-2)/((s(3)-1.d0)**2.d0)*y(2*N+t) 
 		dJds(6) = dJds(6) - dt*dvelocity_flame*2.d0/s(10)*Dcheb(t+1,1)*y(2*N+t)
- 		dJds(10) = dJds(10) + &
-		2.d0*dt/s(10)/s(10)*y(2*N+t)*(dvelocity2+dvelocity1*Dcheb(t+1,1))		
-		
+ 				
 	end do
 	 
 end subroutine AdjointdJds

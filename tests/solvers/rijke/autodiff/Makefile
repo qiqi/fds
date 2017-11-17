@@ -18,7 +18,7 @@ solver_iht: $(addsuffix .o, $(RTSUPP_for)) \ \
 rijke_oad_passive.o numCorei.pre.xb.x2w.w2f.post.o driver_iht_nilss.o
 	${F90C} -o $@ $^
 
-solver_adjoint: $(addsuffix .o, $(RTSUPP_rev)) \ \
+adjoint: $(addsuffix .o, $(RTSUPP_rev)) \ \
 rijke_oad_passive.o numCorea.pre.xb.x2w.w2f.post.o driver_adjoint_nilss.o
 	${F90C} -o $@ $^
 

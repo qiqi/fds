@@ -91,12 +91,12 @@ def adjoint(u, s, nsteps, ua):
 def test_rijke_adjoint():
     m = 2
     s = 0.865
-    steps_per_segment = 10000
+    steps_per_segment = 1000
     cp_path = 'tests/rijke_adj'
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    J, dJds_tan = shadowing(solve, u0, s, m, 100, steps_per_segment, 100000,
+    J, dJds_tan = shadowing(solve, u0, s, m, 10, steps_per_segment, 100000,
                             checkpoint_path=cp_path, tangent_run=tangent)
     print("Tangent: ",dJds_tan)
     dJds_adj = adjoint_shadowing(solve, adjoint, s, m, cp_path)
@@ -104,15 +104,19 @@ def test_rijke_adjoint():
     assert abs(dJds_tan[0] - dJds_adj[6]) < 1E-10
 
 if __name__ == '__main__':
-#    s = 0.865
-#    u0 = random.rand(33)
-#    v0 = random.rand(33)
-#    w1 = random.rand(33)
-#    u1, v1, J, dJ = tangent(u0,s,v0,0,100)
-#    print(dot(v1,w1))
-#    w0, dJds = adjoint(u0,s,100,w1)
-#    print(dot(v0,w0))
-#def lorenz_adjoint_oldfashioned_test():
+    test_rijke_adjoint()
+    stop
+#     s = 0.865
+#     u0 = random.rand(33)
+#     v0 = random.rand(33)
+#     w1 = random.rand(33)
+#     u1, v1, J, dJ = tangent(u0,s,v0,1,10000)
+#     print(dot(v1,w1)) + trapez_mean(dJ,0)
+#     w0, dJds = adjoint(u0,s,10000,w1)
+#     #print(dot(v0,w0))
+#     print(dot(v0,w0)) + dJds[6]
+# 
+# def lorenz_adjoint_oldfashioned_test():
     m = 2
     s = 0.865
     steps_per_segment = 10000
@@ -173,28 +177,26 @@ if __name__ == '__main__':
 
         time_dil = TimeDilation(RunWrapper(solve), u0, s, 'time_dilation_test', 4)
         V = time_dil.project(V)
-        # v0 = time_dil.project(v)
+        v0 = time_dil.project(v)
 
-        # _, v1 = lss.checkpoint(V, v0)
+        _, v1 = lss.checkpoint(V, v0)
 
-        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
-        #       g_lss[k] * g_lss_adj[k] + dot(b_adj[k], bs[k]))
-        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
-        #       dJds[3] + dot(v1,w0) + dot(b_adj[k], bs[k]))
+        print('a', g_lss[k] * g_lss_adj[k] + dot(b_adj[k], bs[k]))
+        print('b', dJds[6] + dot(v1,w0) + dot(b_adj[k], bs[k]))
 
         w1 = lss.adjoint_checkpoint(V, w0, b_adj[k])
         w2 = time_dil.project(w1)
         print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
-              dJds[3] + state_dot(v,w2))
+              dJds[6] + state_dot(v,w2))
 
         if k > 0:
             w3 = time_dil.adjoint_contribution(w2, g_dil_adj[k-1])
             print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k-1].sum() + dJds_adj + \
-                  dJds[3] + state_dot(v,w3))
+                  dJds[6] + state_dot(v,w3))
             w = w3
         else:
             w = w2
-        dJds_adj += dJds[3]
+        dJds_adj += dJds[6]
 
     print('Final:')
     print(dJds_adj)

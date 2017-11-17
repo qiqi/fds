@@ -7,7 +7,7 @@ PROGRAM Adj
     CHARACTER(len=128) :: arg
     INTEGER :: iStep, nSteps
 	INTEGER, PARAMETER :: NDIM = d
-    REAL(8) :: ax(NDIM), s(NPARAMS), dJds(NPARAMS)
+    REAL(8) :: ax(NDIM), s(NPARAMS), dJds(NPARAMS), axtemp(NDIM)
     REAL(8), Allocatable :: x(:,:)
 	REAL(8) :: Dcheb(Ncheb+1,Ncheb+1)
     if (command_argument_count() .ne. 1) then
@@ -46,9 +46,9 @@ PROGRAM Adj
             status="old", convert='big_endian')
     Read(1) ax
     Close(1)
-
+	axtemp(:)= 0.0
     dJds(:) = 0.0
-	CALL AdjointDJDS(x(:,nSteps+1), s, ax, dJds, Dcheb, 0.5_8/nSteps)
+	CALL AdjointDJDS(x(:,nSteps+1), s, axtemp, dJds, Dcheb, 0.5_8/nSteps)
     CALL AdjointSource(x(:,nSteps+1), s, ax, 0.5_8 / nSteps)
 	
     DO iStep = nSteps, 2, -1

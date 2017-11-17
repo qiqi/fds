@@ -50,27 +50,29 @@ program driver
 	Open(1, file="adj-output.bin", form="unformatted", access="stream", &
          status='replace', convert='big_endian')
 	
- 
+  	Open(2, file="dJds.bin", form="unformatted", access="stream", &
+         status='replace', convert='big_endian')
+
 	call cheb_diff_matrix(Dcheb)
 	y%d = 1.d0
 	x%v = 0.d0
-	print *, v0	
+	!print *, v0	
 	call head_adjoint(x,y,ss,X0,v0,nsteps,Dcheb)
 
 	do t = 1, d, 1
-		print *, x(t)%d(1)
+		!print *, x(t)%d(1)
 		Write(1) x(t)%d(1)	
 	end do
-
+	Close(1)
 	do t = 1, Nparams, 1
-		print *, x(t+d)%d(1)
-		Write(1) x(t+d)%d(1)	
+		!print *, x(t+d)%d(1)
+		Write(2) x(t+d)%d(1)	
 	end do
-
+	Close(2)
 		
 
 	
-    Close(1)
+    
 		
 
 end program driver
