@@ -8,7 +8,8 @@ from .compute import run_compute
 
 def trapez_mean(J, dim):
     J = np.rollaxis(J, dim)
-    return (J[1:].sum(0) + J[:-1].sum(0)) / (2 * (J.shape[0] - 1))
+    #return (J[1:].sum(0) + J[:-1].sum(0)) / (2 * (J.shape[0] - 1))
+    return J[1:].sum(0) / (J.shape[0] - 1)
 
 def run_segment(run, u0, V, v, parameter, i_segment, steps,
                 epsilon, simultaneous_runs):

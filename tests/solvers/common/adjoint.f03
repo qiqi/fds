@@ -40,7 +40,7 @@ PROGRAM Adj
     Close(1)
 
     dJds(:) = 0.0
-    CALL AdjointSource(x(:,nSteps+1), s, ax, 0.5_8 / nSteps)
+    CALL AdjointSource(x(:,nSteps+1), s, ax, 1.0_8 / nSteps)
     DO iStep = nSteps, 1, -1
         CALL AdjointDJDS(x(:,iStep), s, ax, dJds)
         CALL AdjointStep(x(:,iStep), s, ax)
@@ -48,7 +48,6 @@ PROGRAM Adj
             CALL AdjointSource(x(:,iStep), s, ax, 1.0_8 / nSteps)
         end if
     END DO
-    CALL AdjointSource(x(:,1), s, ax, 0.5_8 / nSteps)
 
     Open(1, file="adj-output.bin", form="unformatted", access="stream", &
          status='replace', convert='big_endian')

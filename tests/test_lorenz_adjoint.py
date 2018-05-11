@@ -81,17 +81,21 @@ def adjoint(u, s, nsteps, ua):
 def test_lorenz_adjoint():
     m = 2
     s = 28
+    segments = 10
+    runup_steps = 10000
     steps_per_segment = 10000
-    cp_path = 'tests/lorenz_adj'
+    cp_path = os.path.join(os.path.dirname(__file__), 'lorenz_adj')
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    J, dJds_tan = shadowing(solve, u0, s, m, 2, steps_per_segment, 100000,
+    J, dJds_tan = shadowing(solve, u0, s, m, segments,
+                            steps_per_segment, runup_steps,
                             checkpoint_path=cp_path, tangent_run=tangent)
+    print('Tangent LSS sensitivity: ', dJds_tan[0])
     dJds_adj = adjoint_shadowing(solve, adjoint, s, m, cp_path)
+    print('Adjoint LSS sensitivity: ', dJds_adj[3])
     assert abs(dJds_tan[0] - dJds_adj[3]) < 1E-10
 
-#if __name__ == '__main__':
 def lorenz_adjoint_oldfashioned_test():
     m = 2
     s = 28
@@ -176,8 +180,8 @@ def lorenz_adjoint_oldfashioned_test():
     print('Final:')
     print(dJds_adj)
 
-if __name__ == '__main__':
-#def test_adjoint_consistency(solve, adjoint, u0, s, nsteps):
+#if __name__ == '__main__':
+def test_adjoint_consistency(solve, adjoint, u0, s, nsteps):
     s = 28
     nsteps = 10000
     solve = RunWrapper(solve)
@@ -209,3 +213,6 @@ if __name__ == '__main__':
     ylabel('Adjoint - Finite Diff')
     grid()
     show()
+
+if __name__ == '__main__':
+    test_lorenz_adjoint()
