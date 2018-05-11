@@ -1,6 +1,9 @@
-BINARIES = tests/solvers/vanderpol/solver tests/solvers/lorenz/solver tests/solvers/circular/solver tests/solvers/mock_fun3d/final.data.0
+TESTS = tests/solvers/vanderpol/solver tests/solvers/lorenz/solver tests/solvers/circular/solver
+BINARIES = tests/solvers/mock_fun3d/final.data.0 $(TESTS)
 
 default:	$(BINARIES)
+
+tests:	$(TESTS)
 
 tests/solvers/lorenz/solver:
 	cd tests/solvers/lorenz; make
