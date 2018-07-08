@@ -210,6 +210,8 @@ if __name__ == '__main__':
     # produce and visualize data
     #    Moehlis-Faisst-Eckhart model
     #==========================================
+    if not os.path.exists('MFE'):
+        os.mkdir('MFE')
 
     dt  = 1.e-2
     mfe = MoehlisFaisstEckhart(Re = 800., Lx = 4.*np.pi, Lz = 2.*np.pi)

@@ -22,9 +22,9 @@ class grab_from_SLURM_NODELIST:
     '''
     def __init__(self, num_nodes, lock_and_dict, exclude_this_node=False):
         if lock_and_dict is None:
-	    self.lock = None
-	else:
-	    self.lock, self.dict = lock_and_dict
+            self.lock = None
+        else:
+            self.lock, self.dict = lock_and_dict
         self.grab(num_nodes, exclude_this_node)
 
     def grab(self, num_nodes, exclude_this_node=False):
