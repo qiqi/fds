@@ -119,7 +119,7 @@ if __name__ == '__main__':
 # def lorenz_adjoint_oldfashioned_test():
     m = 2
     s = 0.865
-    steps_per_segment = 10000
+    steps_per_segment = 1000
     cp_path = 'tests/lorenz_adj'
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)

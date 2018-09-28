@@ -11,6 +11,10 @@ RTSUPP_for=w2f__types OAD_active_custom
 
 #Interface with nilss
 
+play: $(addsuffix .o, $(RTSUPP_for)) \ \
+rijke_oad_passive.o numCorei.pre.xb.x2w.w2f.post.o play_tangent.o
+	${F90C} -o $@ $^
+
 tangent: $(addsuffix .o, $(RTSUPP_for)) \ \
 rijke_oad_passive.o numCorei.pre.xb.x2w.w2f.post.o driver_iht_nilss.o
 	${F90C} -o $@ $^

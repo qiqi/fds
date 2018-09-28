@@ -58,6 +58,21 @@ subroutine step(X,s,Dcheb)
 
 
 end subroutine step
+!double precision function Objective(X,s)
+!	implicit none
+!	double precision, intent(in), dimension(d) :: X
+!	double precision, dimension(Nparams) :: s
+!	integer :: t
+!	double precision :: heat_release
+!
+!	
+!	!Objective = X(d)
+!	!do t = 1, N, 1
+!	!	Objective = Objective - (X(N+t)*sin(t*pi*s(6)) - &
+!	!		 (X(t)*cos(t*pi*s(6))) 
+	!end do
+!end function Objective
+
 double precision function Objective(X,s)
 	implicit none
 	double precision, intent(in), dimension(d) :: X
