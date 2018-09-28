@@ -81,22 +81,26 @@ def adjoint(u, s, nsteps, ua):
 def test_lorenz_adjoint():
     m = 2
     s = 28
+    segments = 10
+    runup_steps = 10000
     steps_per_segment = 10000
-    cp_path = 'tests/lorenz_adj'
+    cp_path = os.path.join(os.path.dirname(__file__), 'lorenz_adj')
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
-    J, dJds_tan = shadowing(solve, u0, s, m, 2, steps_per_segment, 100000,
+    J, dJds_tan = shadowing(solve, u0, s, m, segments,
+                            steps_per_segment, runup_steps,
                             checkpoint_path=cp_path, tangent_run=tangent)
+    print('Tangent LSS sensitivity: ', dJds_tan[0])
     dJds_adj = adjoint_shadowing(solve, adjoint, s, m, cp_path)
+    print('Adjoint LSS sensitivity: ', dJds_adj[3])
     assert abs(dJds_tan[0] - dJds_adj[3]) < 1E-10
 
-#if __name__ == '__main__':
 def lorenz_adjoint_oldfashioned_test():
     m = 2
     s = 28
     steps_per_segment = 10000
-    cp_path = 'tests/lorenz_adj'
+    cp_path = os.path.join(os.path.dirname(__file__), 'lorenz_adj')
     if os.path.exists(cp_path):
         shutil.rmtree(cp_path)
     os.mkdir(cp_path)
@@ -149,17 +153,18 @@ def lorenz_adjoint_oldfashioned_test():
 
         time_dil = TimeDilation(RunWrapper(solve), u0, s, 'time_dilation_test', 4)
         V = time_dil.project(V)
-        # v0 = time_dil.project(v)
+        v0 = time_dil.project(v)
 
-        # _, v1 = lss.checkpoint(V, v0)
+        #_, v1 = lss.checkpoint(V, v0)
 
-        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
-        #       g_lss[k] * g_lss_adj[k] + dot(b_adj[k], bs[k]))
-        # print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
-        #       dJds[3] + dot(v1,w0) + dot(b_adj[k], bs[k]))
+        #print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+        #      g_lss[k] * g_lss_adj[k] + dot(b_adj[k], bs[k]))
+        #print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
+        #      dJds[3] + dot(v1,w0) + dot(b_adj[k], bs[k]))
 
         w1 = lss.adjoint_checkpoint(V, w0, b_adj[k])
         w2 = time_dil.project(w1)
+
         print((g_lss * g_lss_adj)[:k].sum() + (b_adj * bs)[:k].sum() + (g_dil_adj * g_dil[1:])[:k].sum() + dJds_adj + \
               dJds[3] + state_dot(v,w2))
 
@@ -174,3 +179,40 @@ def lorenz_adjoint_oldfashioned_test():
 
     print('Final:')
     print(dJds_adj)
+
+#if __name__ == '__main__':
+def test_adjoint_consistency(solve, adjoint, u0, s, nsteps):
+    s = 28
+    nsteps = 10000
+    solve = RunWrapper(solve)
+    adjoint = AdjointWrapper(adjoint)
+    du0 = rand(u0.size)
+    w1 = rand(u0.size)
+    u1, J = solve(u0, s, nsteps, "segmentTest_baseline")
+    epss, sens_diff = [1E-9, 1E-8, 1E-7, 1E-6, 1E-5, 1E-4, 1E-3], []
+    for eps in epss:
+        u1p, Jp = solve(u0 + eps * du0, s, nsteps, "segmentTest_initi_pert000")
+        du1 = (u1p - u1) / eps
+        dJ = (Jp - J) / eps
+        w0, dJds = adjoint(u0, s, nsteps, w1, "segmentTest_adjoint")
+        sens1 = trapez_mean(dJ, 0) + dot(du1, w1)
+        sens0 = dot(du0, w0)
+        sens_diff.append(abs(sens0 - sens1))
+    loglog(epss, sens_diff, 'o-')
+    sens_diff = []
+    for eps in epss:
+        u1p, Jp = solve(u0, s + eps, nsteps, "segmentTest_initi_pert000")
+        du1 = (u1p - u1) / eps
+        dJ = (Jp - J) / eps
+        w0, dJds = adjoint(u0, s, nsteps, w1, "segmentTest_adjoint")
+        sens1 = trapez_mean(dJ, 0) + dot(du1, w1)
+        sens0 = dJds[3]
+        sens_diff.append(abs(sens0 - sens1))
+    loglog(epss, sens_diff, 's--')
+    xlabel(r'\epsilon')
+    ylabel('Adjoint - Finite Diff')
+    grid()
+    show()
+
+if __name__ == '__main__':
+    test_lorenz_adjoint()

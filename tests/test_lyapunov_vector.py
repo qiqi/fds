@@ -5,7 +5,7 @@ from numpy import *
 from scipy.integrate import odeint
 
 my_path = os.path.dirname(os.path.abspath(__file__))
-#sys.path.append(os.path.join(my_path, '..'))
+sys.path.append(os.path.join(my_path, '..'))
 
 from fds import *
 
@@ -22,21 +22,24 @@ def dudt(u, s):
     return array([dxdt, dydt, dzdt, dx0dt, dy0dt])
 
 def solve(u, s, nsteps):
-    x = empty([nsteps, 2])
-    for i in range(nsteps):
+    x = empty([nsteps+1, 2])
+    x[0,0] = u[2]
+    x[0,1] = u[3]**2
+    for i in range(1,nsteps+1):
         u = odeint(lambda u,t : dudt(u, s), u, [0, dt])[1]
         x[i,0] = u[2]
         x[i,1] = u[3]**2
     return u, x
 
-#if __name__ == '__main__':
-def test_lyapunov():
+if __name__ == '__main__':
+#def test_lyapunov():
     m, steps_per_segment, n_segment = 5, 50, 50
     u = ones(5)
     cp = shadowing(solve, u, 28, m, n_segment, steps_per_segment, 100,
                    run_ddt=0, return_checkpoint=True)
     L = cp.lss.lyapunov_exponents() / (steps_per_segment * dt)
     L, L_err = timeseries.mean_std(L)
+    stop
     L_min = L - L_err * 3
     L_max = L + L_err * 3
     assert L_min[0] < +0.90 < L_max[0]
