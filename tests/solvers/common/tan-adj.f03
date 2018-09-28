@@ -3,7 +3,7 @@ PROGRAM AdjoingVerification
     Use Equations
 
     IMPLICIT NONE
-
+    INTEGER, PARAMETER :: NDIM = d
     INTEGER :: nSteps = 100000
     INTEGER :: iStep, iEps, iS, iSteps
     REAL(8), ALLOCATABLE :: x(:,:)

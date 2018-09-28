@@ -77,7 +77,7 @@ class TangentWrapper(RunWrapper):
         try:
             u, v, J, dJ = self.variable_args(u, s, du, ds, steps,
                                              *args, **kwargs)
-            return encode_state(v), encode_state(v), \
+            return encode_state(u), encode_state(v), \
                    np.array(J).reshape([steps+1, -1]), \
                    np.array(dJ).reshape([steps+1, -1])
         except Exception as e:
