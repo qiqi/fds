@@ -1,5 +1,4 @@
 *.pyc
-apps/*/
 *.png
 apps/.txt
 tests/test_autonomous_system/charles/
