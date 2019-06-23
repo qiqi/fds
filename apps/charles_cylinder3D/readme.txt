@@ -1,5 +1,6 @@
 Follow below steps to compute sensitivities and draw shadowing directions related figures.
 Readers should adjust this instruction to their own situations.
+For computing and plotting Lyapunov exponents and vectors, please check the charles_cylinder3D_Lyapunov folder.
 
 
 1.
