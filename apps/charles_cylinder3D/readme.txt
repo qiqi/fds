@@ -10,7 +10,7 @@ Then compile the charles code from Cascade Technology.
 
 
 2.
-Use charles to run several simulations with different parameters to get corresponding objectives.
+Use charles.exe to run several simulations with different parameters to get corresponding objectives.
 
 
 3.
@@ -22,27 +22,33 @@ Move the ref folder to the REF_WORK_PATH given in charles.py
 
 4.
 Move every file in the main folder to the fds/apps folder.
-Note: the parallel_job.sh files are subscripts for submitting jobs to Slurm queue.
-Should change to the particular job submission method on your own computer.
+The parallel_job.sh files are subscripts for submitting jobs to Slurm queue,
+should change to the particular job submission method on your own computer.
 
 
 5.
-Run charles.py in the main folder, this should generate 
-1) a folder with many checkpoint files of fds.
-2) screen output of the sensitivities computed by FD-NILSS after each time segment
+Run main/charles.py, this should generate a folder with many checkpoint files of fds.
 
 
 6.
-Run drawshadowing.py in the draw_shadowing_direction folder.
-This should generate:
+Run draw_shadowing_djds/plot_djds_hist.py, this requires only the last checkpoint file generated in step 5.
+This should generate the convergence history of confidence interval of sensitivities.
+The final sensitivities should be printed to screen.
+
+
+7.
+With sensitivities computed from previous step and averaged objectives computed in step 2,
+we can use the plot_J_s file to plot objective vs parameter figure, with sensitivities on it.
+
+
+8.
+Run draw_shadowing_djds/drawshadowing.py, this should generate:
 1) a folder with many .vtu files containing flow fields of shadowing directions, v^\perp.
-2) a norms.p file which contains the norm of shadowing direction, which we can use drawnorm.py to plot.
-Moreover, with sensitivities computed from previous step and averaged objectives computed in step 2,
-we can use the plot.py file to plot objective vs parameter figure, with sensitivities on it.
+2) a norms.p file which contains the history of the norm of shadowing direction, which we can use drawnorm.py to plot.
 
 
-7. 
+9. 
 Install paraview.
-Move  paraviewVperp.py and averageVperp.py to the folder of .vtu files.
+Move for_paraview/paraviewVperp.py and averageVperp.py to the folder of .vtu files generated in the above step.
 Use paraviewVperp.py to plot .png files of v^perp at the end of each time segment.
 Use averageVperp.py to plot .png files of v^perp averaged over time.
