@@ -51,5 +51,6 @@ Run draw_shadowing_djds/drawshadowing.py, this should generate:
 9. 
 Install paraview.
 Move for_paraview/paraviewVperp.py and averageVperp.py to the folder of .vtu files generated in the above step.
-Use paraviewVperp.py to plot .png files of v^perp at the end of each time segment.
+Use paraviewVperp.py to plot .png files of v^perp at the end of each time segment;
+further use the make_avi script to assemble .png files to videos.
 Use averageVperp.py to plot .png files of v^perp averaged over time.

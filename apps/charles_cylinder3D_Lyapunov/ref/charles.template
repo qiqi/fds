@@ -1,0 +1,51 @@
+# ==========================
+# restart/result file
+# ==========================
+RESTART = initial.les
+REPART = FALSE
+WRITE_RESULT 50000
+RESULT = final.les 
+
+# ==========================
+# equation of state & 
+# fluid properties
+# ==========================
+GAMMA = 1.4
+P_REF = 101325.
+RHO_REF = 1.1838921585324385
+T_REF = 298.15
+MU_REF = 1.86e-5
+MU_POWER_LAW = 0.667
+PR_LAM = 0.7
+
+# ==========================
+# solver settings
+# ==========================
+DT = 1e-8
+NSTEPS = ${NSTEPS}
+
+# ==========================
+# boundary conditions
+# ==========================
+left = CBC_UPT 33.0 0 0 101325. 298.15
+right = NSCBC_OUTLET_P 101325.0 0.5 0.25e-3
+cylinder = WALL_ADIABATIC ROTATING 0 0 0 0 0 1 ${ROTATION}
+
+# ==========================
+# physical models
+# ==========================
+SGS_MODEL = NONE
+
+# ==========================
+# shock capturing
+# ==========================
+SHOCK_CAPTURING = ANKIT_ENO 0.02
+
+# ==========================
+# output
+# ==========================
+CHECK_INTERVAL = 1
+#PROBE NAME = SOLUT_1/CpCircle INTERVAL = 1 GEOM = CIRCLE_ZRN 0 0.125e-3 40 VARS = P
+#WRITE_DATA FORMAT=VTK NAME=SOLUT_2/z0_plane INTERVAL=200 GEOM=PLANE 0 0 0 0 0 1 VARS=T U RHO P 
+#PROBE NAME = SOLUT_3/basepressure INTERVAL = 1 GEOM = POINT 0.125e-3 0 0 VARS = RHO U P
+PROBE NAME = SOLUT_4/baselinepressure INTERVAL = 1 GEOM = LINE 0.125e-3 0 -0.125e-3 0.125e-3 0 0.125e-3 24 VARS = P
